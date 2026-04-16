@@ -11,7 +11,9 @@
     "db:seed": "DATABASE_URL=file:./dev.db tsx prisma/seed.ts",
     "db:reset": "DATABASE_URL=file:./dev.db prisma migrate reset --force && DATABASE_URL=file:./dev.db tsx prisma/seed.ts",
     "db:studio": "DATABASE_URL=file:./dev.db prisma studio",
-    "ai:test": "tsx src/lib/ai/smoke-test.ts"
+    "ai:test": "tsx src/lib/ai/smoke-test.ts",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@prisma/client": "^6.6.0",
@@ -24,14 +26,20 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@types/node": "^22.13.10",
     "@types/react": "^19.0.10",
     "@types/react-dom": "^19.0.4",
+    "@vitejs/plugin-react": "^6.0.1",
     "autoprefixer": "^10.4.21",
+    "jsdom": "^29.0.2",
     "postcss": "^8.5.3",
     "prisma": "^6.6.0",
     "tailwindcss": "^3.4.17",
     "tsx": "^4.19.3",
-    "typescript": "^5.8.2"
+    "typescript": "^5.8.2",
+    "vitest": "^4.1.4"
   }
 }
