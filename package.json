@@ -1,0 +1,37 @@
+{
+  "name": "wrapped-local",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "NODE_ENV=development next dev",
+    "build": "NODE_ENV=production next build",
+    "start": "NODE_ENV=production next start",
+    "lint": "next lint",
+    "setup": "DATABASE_URL=file:./dev.db prisma migrate dev --name init && DATABASE_URL=file:./dev.db tsx prisma/seed.ts",
+    "db:seed": "DATABASE_URL=file:./dev.db tsx prisma/seed.ts",
+    "db:reset": "DATABASE_URL=file:./dev.db prisma migrate reset --force && DATABASE_URL=file:./dev.db tsx prisma/seed.ts",
+    "db:studio": "DATABASE_URL=file:./dev.db prisma studio",
+    "ai:test": "tsx src/lib/ai/smoke-test.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.6.0",
+    "@tanstack/react-query": "^5.72.1",
+    "date-fns": "^4.1.0",
+    "framer-motion": "^12.9.2",
+    "next": "^15.2.4",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.10",
+    "@types/react": "^19.0.10",
+    "@types/react-dom": "^19.0.4",
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.3",
+    "prisma": "^6.6.0",
+    "tailwindcss": "^3.4.17",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2"
+  }
+}

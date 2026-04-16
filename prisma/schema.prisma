@@ -1,0 +1,46 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String          @id
+  contributions Contribution[]
+  wrapJobs      WrapJob[]
+}
+
+model Contribution {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  source      String
+  category    String
+  signal      String
+  rawData     String
+  occurredAt  DateTime
+  weight      Int
+  externalId  String?
+  externalUrl String?
+  createdAt   DateTime @default(now())
+
+  @@unique([userId, externalId])
+  @@index([userId, occurredAt])
+}
+
+model WrapJob {
+  id           String   @id @default(uuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id])
+  status       String   @default("pending")
+  mode         String
+  windowStart  DateTime
+  windowEnd    DateTime
+  sliceContent String?
+  errorMessage String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}

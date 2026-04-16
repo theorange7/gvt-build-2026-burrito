@@ -1,0 +1,14 @@
+import type { Contribution, SliceContent, WrapMode } from '@/lib/types';
+import { createSlice } from '../shared';
+
+export function generateVelocity(contributions: Contribution[], mode: WrapMode): Promise<SliceContent> {
+  return createSlice({
+    sliceKey: 'velocity',
+    sliceName: 'Velocity',
+    coverage: 'Your pace of delivery, ticket closure, and throughput across the selected window.',
+    mode,
+    contributions,
+    categories: ['delivery'],
+    statHint: '"47 PRs"',
+  });
+}
