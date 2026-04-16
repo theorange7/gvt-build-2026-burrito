@@ -9,15 +9,23 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { useState } from 'react';
 import type { Contribution, ContributionCategory } from '@/lib/types';
+import { contributionsQueryKey } from '@/components/dashboard/useContributions';
 
 const categories: ContributionCategory[] = ['delivery', 'collaboration', 'mentorship', 'process', 'leadership'];
 
-export function ManualInputForm() {
+export function ManualInputForm({ userId }: { userId: string }) {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [freeText, setFreeText] = useState('');
   const [occurredAt, setOccurredAt] = useState(new Date().toISOString().slice(0, 10));
   const [category, setCategory] = useState('');
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  const resetForm = () => {
+    setFreeText('');
+    setOccurredAt(new Date().toISOString().slice(0, 10));
+    setCategory('');
+  };
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -25,27 +33,38 @@ export function ManualInputForm() {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
-          userId: 'demo-user',
-          freeText,
+          userId,
+          freeText: freeText.trim(),
           occurredAt,
           category: category || undefined,
         }),
       });
 
+      const body = await response.json().catch(() => ({ error: 'Failed to add contribution.' }));
+
       if (!response.ok) {
-        const error = await response.json().catch(() => ({ error: 'Failed to add contribution.' }));
-        throw new Error(error.error || 'Failed to add contribution.');
+        throw new Error(body.error || 'Failed to add contribution.');
       }
 
-      return (await response.json()) as Contribution;
+      return body as Contribution;
     },
-    onSuccess: (created) => {
-      queryClient.setQueryData<Contribution[]>(['contributions'], (current = []) => [created, ...current]);
-      setFreeText('');
-      setCategory('');
-      setOpen(true);
+    onMutate: () => {
+      setSuccessMessage(null);
+    },
+    onSuccess: async (created) => {
+      queryClient.setQueryData<Contribution[]>(contributionsQueryKey, (current = []) => [created, ...current]);
+      await queryClient.invalidateQueries({ queryKey: contributionsQueryKey });
+      resetForm();
+      setOpen(false);
+      setSuccessMessage('Contribution added to the timeline.');
     },
   });
+
+  const toggleOpen = () => {
+    setOpen((current) => !current);
+    mutation.reset();
+    setSuccessMessage(null);
+  };
 
   return (
     <section className="rounded-[28px] border border-[color:var(--border)] bg-[color:var(--surface)]/78 p-5 md:p-6">
@@ -56,12 +75,14 @@ export function ManualInputForm() {
         </div>
         <button
           type="button"
-          onClick={() => setOpen((current) => !current)}
+          onClick={toggleOpen}
           className="rounded-full border border-white/10 px-4 py-2 text-sm text-[color:var(--foreground)] transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]"
         >
           {open ? 'Hide form' : 'Add contribution'}
         </button>
       </div>
+
+      {successMessage ? <p className="mt-4 text-sm text-[color:var(--accent)]">{successMessage}</p> : null}
 
       {open ? (
         <motion.form

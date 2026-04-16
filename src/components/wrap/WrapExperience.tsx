@@ -7,7 +7,7 @@
  */
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { useMemo, useRef, useState } from 'react';
+import { ComponentType, useEffect, useMemo, useRef, useState } from 'react';
 import type { SliceContent, WrapMode } from '@/lib/types';
 import { LaunchesShipped } from '@/components/slides/LaunchesShipped';
 import { Velocity } from '@/components/slides/Velocity';
@@ -20,18 +20,37 @@ import { Consistency } from '@/components/slides/Consistency';
 import { HighlightReel } from '@/components/slides/HighlightReel';
 import { Identity } from '@/components/slides/Identity';
 
-const components = [
-  LaunchesShipped,
-  Velocity,
-  CrossTeamImpact,
-  DeepWorkStreak,
-  Mentorship,
-  Initiative,
-  CollaborationStyle,
-  Consistency,
-  HighlightReel,
-  Identity,
-] as const;
+type SlideComponentProps = {
+  content: SliceContent;
+  mode: WrapMode;
+  index: number;
+};
+
+const componentBySliceKey: Record<string, ComponentType<SlideComponentProps>> = {
+  launches_shipped: LaunchesShipped,
+  velocity: Velocity,
+  cross_team_impact: CrossTeamImpact,
+  deep_work_streak: DeepWorkStreak,
+  mentorship: Mentorship,
+  initiative: Initiative,
+  collaboration_style: CollaborationStyle,
+  consistency: Consistency,
+  highlight_reel: HighlightReel,
+  identity: Identity,
+};
+
+function FallbackSlide({ content, index }: { content: SliceContent; index: number }) {
+  return (
+    <article className="grain w-full max-w-5xl rounded-[36px] border border-white/10 bg-[rgba(17,17,24,0.94)] px-6 py-8 text-white shadow-[0_30px_120px_rgba(0,0,0,0.45)] md:px-10 md:py-12">
+      <p className="text-xs uppercase tracking-[0.36em] text-white/45">
+        {String(index + 1).padStart(2, '0')} / 10 · {content.sliceKey.replaceAll('_', ' ')}
+      </p>
+      <h2 className="mt-4 font-display text-[clamp(2.4rem,5vw,4rem)] leading-[0.95]">{content.headline}</h2>
+      <p className="mt-6 max-w-3xl text-lg leading-8 text-white/72">{content.body}</p>
+      {content.stat ? <p className="mt-8 text-sm uppercase tracking-[0.28em] text-[color:var(--accent)]">{content.stat}</p> : null}
+    </article>
+  );
+}
 
 export function WrapExperience({
   id,
@@ -44,21 +63,72 @@ export function WrapExperience({
   title: string;
   slices: SliceContent[];
 }) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const sectionRefs = useRef<Array<HTMLElement | null>>([]);
   const [activeSlide, setActiveSlide] = useState(0);
+  const [shareMessage, setShareMessage] = useState<string | null>(null);
 
   const totalPanels = useMemo(() => slices.length + 1, [slices.length]);
 
+  useEffect(() => {
+    const nodes = sectionRefs.current.filter((node): node is HTMLElement => Boolean(node));
+
+    if (!nodes.length) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visibleEntry = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+
+        if (!visibleEntry) {
+          return;
+        }
+
+        const index = nodes.findIndex((node) => node === visibleEntry.target);
+        if (index >= 0) {
+          setActiveSlide(index + 1);
+        }
+      },
+      { threshold: [0.4, 0.6, 0.8] },
+    );
+
+    nodes.forEach((node) => observer.observe(node));
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [slices]);
+
+  useEffect(() => {
+    if (!shareMessage) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => setShareMessage(null), 2500);
+    return () => window.clearTimeout(timer);
+  }, [shareMessage]);
+
   const share = async () => {
-    await navigator.clipboard.writeText(window.location.href);
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setShareMessage('Link copied.');
+    } catch {
+      setShareMessage('Copy failed on this browser.');
+    }
   };
 
   return (
-    <div className="h-screen overflow-y-auto scroll-smooth snap-y snap-mandatory scrollbar-hidden bg-[#08080d]">
+    <div ref={containerRef} data-wrap-id={id} className="h-screen overflow-y-auto scroll-smooth snap-y snap-mandatory scrollbar-hidden bg-[#08080d]">
       <div className="pointer-events-none fixed inset-x-0 top-0 z-30 flex items-center justify-between px-4 py-4 md:px-8">
         <Link href="/dashboard" className="pointer-events-auto rounded-full border border-white/10 bg-black/30 px-4 py-2 text-sm text-white/75 backdrop-blur">← Back</Link>
         <div className="flex items-center gap-3">
-          <button onClick={share} className="pointer-events-auto rounded-full border border-white/10 bg-black/30 px-4 py-2 text-sm text-white/75 backdrop-blur">Share</button>
+          <div className="flex flex-col items-end gap-2">
+            <button onClick={share} className="pointer-events-auto rounded-full border border-white/10 bg-black/30 px-4 py-2 text-sm text-white/75 backdrop-blur">Share</button>
+            {shareMessage ? <p className="pointer-events-auto text-xs text-[color:var(--accent)]">{shareMessage}</p> : null}
+          </div>
           <div className="rounded-full border border-white/10 bg-black/30 px-4 py-2 text-sm text-white/75 backdrop-blur">{Math.min(activeSlide + 1, totalPanels)} / {totalPanels}</div>
         </div>
       </div>
@@ -85,27 +155,17 @@ export function WrapExperience({
       </section>
 
       {slices.map((slice, index) => {
-        const Component = components[index];
+        const Component = componentBySliceKey[slice.sliceKey];
+
         return (
           <section
-            key={slice.sliceKey}
+            key={`${slice.sliceKey}-${index}`}
             ref={(node) => {
               sectionRefs.current[index] = node;
-              if (node) {
-                const observer = new IntersectionObserver(
-                  ([entry]) => {
-                    if (entry.isIntersecting) {
-                      setActiveSlide(index + 1);
-                    }
-                  },
-                  { threshold: 0.6 },
-                );
-                observer.observe(node);
-              }
             }}
             className="flex min-h-screen snap-start items-center justify-center px-4 py-24"
           >
-            <Component content={slice} mode={mode} index={index} />
+            {Component ? <Component content={slice} mode={mode} index={index} /> : <FallbackSlide content={slice} index={index} />}
           </section>
         );
       })}

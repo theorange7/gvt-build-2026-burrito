@@ -19,15 +19,17 @@ const sourceStyles: Record<string, string> = {
 };
 
 function weightDots(weight: number) {
+  const normalizedWeight = Math.max(0, Math.min(5, weight));
+
   return Array.from({ length: 5 }, (_, index) => (
     <span
       key={index}
-      className={`h-1.5 w-1.5 rounded-full ${index < weight ? 'bg-[var(--accent)]' : 'bg-white/10'}`}
+      className={`h-1.5 w-1.5 rounded-full ${index < normalizedWeight ? 'bg-[var(--accent)]' : 'bg-white/10'}`}
     />
   ));
 }
 
-function groupByWeek(items: Contribution[]) {
+export function groupByWeek(items: Contribution[]) {
   const grouped = new Map<string, Contribution[]>();
 
   items.forEach((item) => {
@@ -40,7 +42,13 @@ function groupByWeek(items: Contribution[]) {
   return Array.from(grouped.entries()).sort((a, b) => +new Date(b[0]) - +new Date(a[0]));
 }
 
-export function ContributionFeed({ contributions }: { contributions: Contribution[] }) {
+export function ContributionFeed({
+  contributions,
+  isRefreshing = false,
+}: {
+  contributions: Contribution[];
+  isRefreshing?: boolean;
+}) {
   const [visibleWeeks, setVisibleWeeks] = useState(8);
   const groups = useMemo(() => groupByWeek(contributions), [contributions]);
   const visibleGroups = groups.slice(0, visibleWeeks);
@@ -57,6 +65,7 @@ export function ContributionFeed({ contributions }: { contributions: Contributio
         <div className="text-right text-sm text-[color:var(--muted)]">
           <div>{contributions.length} total signals</div>
           <div>{groups.length} active weeks</div>
+          {isRefreshing ? <div className="mt-1 text-[color:var(--accent)]">Refreshing…</div> : null}
         </div>
       </div>
 
@@ -81,7 +90,7 @@ export function ContributionFeed({ contributions }: { contributions: Contributio
                     key={item.id}
                     className="grid gap-3 rounded-[22px] border border-white/7 bg-white/[0.02] px-4 py-4 transition duration-300 hover:border-white/12 hover:bg-white/[0.035] md:grid-cols-[auto_minmax(0,1fr)_auto] md:items-start"
                   >
-                    <div className={`inline-flex w-fit items-center rounded-full px-2.5 py-1 text-[0.65rem] font-medium uppercase tracking-[0.24em] ${sourceStyles[item.source]}`}>
+                    <div className={`inline-flex w-fit items-center rounded-full px-2.5 py-1 text-[0.65rem] font-medium uppercase tracking-[0.24em] ${sourceStyles[item.source] ?? sourceStyles.manual}`}>
                       {item.source}
                     </div>
                     <div className="min-w-0">

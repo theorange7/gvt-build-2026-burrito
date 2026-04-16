@@ -11,8 +11,10 @@ import { ManualInputForm } from '@/components/dashboard/ManualInputForm';
 import { useContributions } from '@/components/dashboard/useContributions';
 import type { Contribution } from '@/lib/types';
 
+const DEMO_USER_ID = 'demo-user';
+
 export function DashboardShell({ initialContributions }: { initialContributions: Contribution[] }) {
-  const { data } = useContributions(initialContributions);
+  const { data, isError, error, isFetching } = useContributions(initialContributions);
   const contributions = data ?? initialContributions;
 
   return (
@@ -27,7 +29,7 @@ export function DashboardShell({ initialContributions }: { initialContributions:
               </h1>
             </div>
             <div className="flex items-start justify-end lg:pt-1">
-              <GenerateWrapModal />
+              <GenerateWrapModal userId={DEMO_USER_ID} />
             </div>
             <div className="grid gap-4 border-t border-white/6 pt-6 md:grid-cols-3 lg:col-span-2">
               <div>
@@ -40,12 +42,18 @@ export function DashboardShell({ initialContributions }: { initialContributions:
               </div>
               <div>
                 <p className="text-xs uppercase tracking-[0.32em] text-[color:var(--muted)]">Demo user</p>
-                <p className="mt-2 text-sm leading-6 text-[color:var(--foreground)]">All flows run for <span className="text-[color:var(--accent)]">demo-user</span> so the local prototype feels complete with zero setup friction.</p>
+                <p className="mt-2 text-sm leading-6 text-[color:var(--foreground)]">All flows run for <span className="text-[color:var(--accent)]">{DEMO_USER_ID}</span> so the local prototype feels complete with zero setup friction.</p>
               </div>
             </div>
           </header>
 
-          <ContributionFeed contributions={contributions} />
+          {isError ? (
+            <section className="rounded-[28px] border border-[rgb(255,193,168)]/20 bg-[rgb(255,193,168)]/6 p-5 text-sm text-[rgb(255,193,168)] md:p-6">
+              The contribution timeline could not be refreshed right now. {error instanceof Error ? error.message : 'Please try again.'}
+            </section>
+          ) : null}
+
+          <ContributionFeed contributions={contributions} isRefreshing={isFetching} />
         </div>
 
         <aside className="space-y-6 lg:sticky lg:top-6 lg:self-start">
@@ -54,7 +62,7 @@ export function DashboardShell({ initialContributions }: { initialContributions:
             <h2 className="mt-3 font-display text-3xl text-[color:var(--foreground)]">The product experience should feel evaluative, not ornamental.</h2>
             <p className="mt-4 text-sm leading-7 text-[color:var(--muted)]">This prototype keeps the data close, lets manual evidence enter instantly, and turns the year into a shareable sequence of ten polished slides.</p>
           </section>
-          <ManualInputForm />
+          <ManualInputForm userId={DEMO_USER_ID} />
         </aside>
       </section>
     </main>

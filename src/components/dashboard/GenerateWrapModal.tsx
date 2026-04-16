@@ -10,41 +10,81 @@ import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import type { WrapMode } from '@/lib/types';
 
-export function GenerateWrapModal() {
+const DEFAULT_SNAPSHOT_START = '2025-04-01';
+const DEFAULT_SNAPSHOT_END = '2025-06-30';
+
+type Status = 'idle' | 'loading' | 'success' | 'error';
+
+export function GenerateWrapModal({ userId }: { userId: string }) {
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<WrapMode>('snapshot');
-  const [windowStart, setWindowStart] = useState('2025-04-01');
-  const [windowEnd, setWindowEnd] = useState('2025-06-30');
-  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [windowStart, setWindowStart] = useState(DEFAULT_SNAPSHOT_START);
+  const [windowEnd, setWindowEnd] = useState(DEFAULT_SNAPSHOT_END);
+  const [status, setStatus] = useState<Status>('idle');
   const [jobId, setJobId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const payload = useMemo(() => {
     if (mode === 'year-end') {
-      return { userId: 'demo-user', mode, windowStart: '2025-01-01', windowEnd: '2025-12-31' };
+      return { userId, mode, windowStart: '2025-01-01', windowEnd: '2025-12-31' };
     }
-    return { userId: 'demo-user', mode, windowStart, windowEnd };
-  }, [mode, windowEnd, windowStart]);
+
+    return { userId, mode, windowStart, windowEnd };
+  }, [mode, userId, windowEnd, windowStart]);
+
+  const snapshotWindowIsValid = mode === 'year-end' || new Date(windowStart) <= new Date(windowEnd);
+
+  function resetState(nextMode: WrapMode = mode) {
+    setMode(nextMode);
+    setWindowStart(DEFAULT_SNAPSHOT_START);
+    setWindowEnd(DEFAULT_SNAPSHOT_END);
+    setStatus('idle');
+    setJobId(null);
+    setErrorMessage(null);
+  }
+
+  function openModal() {
+    resetState();
+    setOpen(true);
+  }
+
+  function closeModal() {
+    setOpen(false);
+    resetState();
+  }
 
   async function generate() {
-    setStatus('loading');
-    setErrorMessage(null);
-    const response = await fetch('/api/jobs', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-
-    const body = await response.json().catch(() => ({}));
-
-    if (!response.ok) {
+    if (!snapshotWindowIsValid) {
       setStatus('error');
-      setErrorMessage(body.errorMessage || body.error || 'Wrap generation failed.');
+      setErrorMessage('The end date must be on or after the start date.');
       return;
     }
 
-    setJobId(body.jobId);
-    setStatus('success');
+    setStatus('loading');
+    setJobId(null);
+    setErrorMessage(null);
+
+    try {
+      const response = await fetch('/api/jobs', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const body = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        setStatus('error');
+        setErrorMessage(body.errorMessage || body.error || 'Wrap generation failed.');
+        return;
+      }
+
+      setJobId(body.jobId);
+      setStatus('success');
+    } catch {
+      setStatus('error');
+      setErrorMessage('The wrap service could not be reached. Please try again.');
+    }
   }
 
   const modeCards = [
@@ -66,7 +106,7 @@ export function GenerateWrapModal() {
     <>
       <button
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={openModal}
         className="rounded-full bg-[color:var(--accent)] px-5 py-3 text-sm font-medium text-black transition hover:translate-y-[-1px]"
       >
         Generate Wrap
@@ -91,7 +131,7 @@ export function GenerateWrapModal() {
                   <p className="text-xs uppercase tracking-[0.34em] text-[color:var(--muted)]">Wrap generator</p>
                   <h2 className="mt-2 font-display text-4xl text-[color:var(--foreground)]">Pick the lens for this story.</h2>
                 </div>
-                <button type="button" onClick={() => setOpen(false)} className="text-sm text-[color:var(--muted)] transition hover:text-[color:var(--foreground)]">Close</button>
+                <button type="button" onClick={closeModal} className="text-sm text-[color:var(--muted)] transition hover:text-[color:var(--foreground)]">Close</button>
               </div>
 
               <div className="mt-6 grid gap-4 md:grid-cols-2">
@@ -99,7 +139,12 @@ export function GenerateWrapModal() {
                   <button
                     key={card.value}
                     type="button"
-                    onClick={() => setMode(card.value)}
+                    onClick={() => {
+                      setMode(card.value);
+                      setStatus('idle');
+                      setJobId(null);
+                      setErrorMessage(null);
+                    }}
                     className={`rounded-[24px] border p-5 text-left transition ${mode === card.value ? 'border-[color:var(--accent)] bg-[rgba(255,107,53,0.08)]' : 'border-white/10 bg-black/15 hover:border-white/20'}`}
                   >
                     <p className="text-xs uppercase tracking-[0.32em] text-[color:var(--muted)]">{card.description}</p>
@@ -146,11 +191,15 @@ export function GenerateWrapModal() {
                 ) : null}
               </div>
 
+              {!snapshotWindowIsValid ? (
+                <p className="mt-4 text-sm text-[rgb(255,193,168)]">Choose a valid snapshot window before generating.</p>
+              ) : null}
+
               <div className="mt-6 flex justify-end">
                 <button
                   type="button"
                   onClick={generate}
-                  disabled={status === 'loading'}
+                  disabled={status === 'loading' || !snapshotWindowIsValid}
                   className="rounded-full bg-[color:var(--accent)] px-5 py-3 text-sm font-medium text-black transition hover:translate-y-[-1px] disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   Generate
