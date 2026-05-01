@@ -49,8 +49,17 @@ export function WrapExperience({
 
   const totalPanels = useMemo(() => slices.length + 1, [slices.length]);
 
-  const share = async () => {
-    await navigator.clipboard.writeText(window.location.href);
+  const exportJson = () => {
+    const payload = { id, mode, title, slices };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `wrap-${mode}-${id.slice(0, 8)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -58,7 +67,7 @@ export function WrapExperience({
       <div className="pointer-events-none fixed inset-x-0 top-0 z-30 flex items-center justify-between px-4 py-4 md:px-8">
         <Link href="/dashboard" className="pointer-events-auto rounded-full border border-white/10 bg-black/30 px-4 py-2 text-sm text-white/75 backdrop-blur">← Back</Link>
         <div className="flex items-center gap-3">
-          <button onClick={share} className="pointer-events-auto rounded-full border border-white/10 bg-black/30 px-4 py-2 text-sm text-white/75 backdrop-blur">Share</button>
+          <button onClick={exportJson} className="pointer-events-auto rounded-full border border-white/10 bg-black/30 px-4 py-2 text-sm text-white/75 backdrop-blur">Export</button>
           <div className="rounded-full border border-white/10 bg-black/30 px-4 py-2 text-sm text-white/75 backdrop-blur">{Math.min(activeSlide + 1, totalPanels)} / {totalPanels}</div>
         </div>
       </div>

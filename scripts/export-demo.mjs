@@ -1,18 +1,12 @@
-import { PrismaClient } from '@prisma/client';
-import type { ContributionCategory, ContributionSource } from '@/lib/types';
+// Pure-Node script that builds the demo dataset and writes
+// public/demo-contributions.json. No deps. Run via `node scripts/export-demo.mjs`.
 
-const prisma = new PrismaClient();
+import { writeFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
 
-type SeedContribution = {
-  source: ContributionSource;
-  category: ContributionCategory;
-  signal: string;
-  rawData: Record<string, unknown>;
-  occurredAt: Date;
-  weight: number;
-  externalId: string;
-  externalUrl?: string;
-};
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const outputPath = join(__dirname, '..', 'public', 'demo-contributions.json');
 
 const signalTemplates = {
   githubDelivery: [
@@ -63,36 +57,26 @@ const signalTemplates = {
     'Facilitated a retro that turned recurring deployment pain into three concrete fixes',
     'Stepped in to coordinate comms during a cross-team dependency issue and kept delivery on track',
   ],
-} as const;
+};
 
-const makeDate = (month: number, day: number) => new Date(Date.UTC(2025, month - 1, day, 9, 0, 0));
+const makeDate = (month, day) => new Date(Date.UTC(2025, month - 1, day, 9, 0, 0));
+const pick = (items, index) => items[index % items.length];
 
-const pick = <T,>(items: readonly T[], index: number) => items[index % items.length];
-
-export function buildSeedContributions(): SeedContribution[] {
-  const items: SeedContribution[] = [];
+function build() {
+  const items = [];
   let sequence = 1;
 
-  const push = (
-    count: number,
-    source: ContributionSource,
-    category: ContributionCategory,
-    monthStart: number,
-    monthEnd: number,
-    templates: readonly string[],
-    weightPattern: number[],
-    options?: { initiative?: boolean; peak?: boolean; mentorshipCluster?: boolean },
-  ) => {
+  const push = (count, source, category, monthStart, monthEnd, templates, weightPattern, options = {}) => {
     for (let index = 0; index < count; index += 1) {
       const month = monthStart + (index % Math.max(1, monthEnd - monthStart + 1));
       const day = 2 + ((index * 5) % 24);
       const weight = weightPattern[index % weightPattern.length];
       const signalBase = pick(templates, sequence + index);
-      const signal = options?.initiative
+      const signal = options.initiative
         ? `${signalBase} — self-started and carried from proposal to adoption`
-        : options?.peak
+        : options.peak
           ? `${signalBase} — part of the Q2 delivery peak that shifted the roadmap forward`
-          : options?.mentorshipCluster
+          : options.mentorshipCluster
             ? `${signalBase} — one of the mentorship moments teammates kept coming back to`
             : signalBase;
       items.push({
@@ -100,7 +84,7 @@ export function buildSeedContributions(): SeedContribution[] {
         category,
         signal,
         rawData: { source, templateIndex: (sequence + index) % templates.length },
-        occurredAt: makeDate(month, day),
+        occurredAt: makeDate(month, day).toISOString(),
         weight,
         externalId: `${source}:${category}:${sequence}`,
         externalUrl: `https://example.com/${source}/${sequence}`,
@@ -132,7 +116,7 @@ export function buildSeedContributions(): SeedContribution[] {
       category: 'delivery',
       signal: `${signal} — part of the Q2 delivery peak that shifted the roadmap forward`,
       rawData: { source: 'peak', quarter: 'Q2' },
-      occurredAt: makeDate(4 + (index % 3), 10 + index * 4),
+      occurredAt: makeDate(4 + (index % 3), 10 + index * 4).toISOString(),
       weight: index % 2 === 0 ? 5 : 4,
       externalId: `peak:q2:${index}`,
       externalUrl: `https://example.com/peak/${index}`,
@@ -150,7 +134,7 @@ export function buildSeedContributions(): SeedContribution[] {
       category: 'leadership',
       signal: `${signal} — self-started and carried from proposal to adoption`,
       rawData: { source: 'initiative' },
-      occurredAt: makeDate(index === 0 ? 5 : 10, 18 + index * 2),
+      occurredAt: makeDate(index === 0 ? 5 : 10, 18 + index * 2).toISOString(),
       weight: 5,
       externalId: `initiative:${index}`,
       externalUrl: `https://example.com/initiative/${index}`,
@@ -158,46 +142,10 @@ export function buildSeedContributions(): SeedContribution[] {
   });
 
   return items
-    .sort((a, b) => a.occurredAt.getTime() - b.occurredAt.getTime())
+    .sort((a, b) => new Date(a.occurredAt).getTime() - new Date(b.occurredAt).getTime())
     .slice(0, 134);
 }
 
-async function main() {
-  await prisma.user.upsert({
-    where: { id: 'demo-user' },
-    update: {},
-    create: { id: 'demo-user' },
-  });
-
-  await prisma.contribution.deleteMany({ where: { userId: 'demo-user' } });
-  await prisma.wrapJob.deleteMany({ where: { userId: 'demo-user' } });
-
-  const contributions = buildSeedContributions();
-
-  for (const contribution of contributions) {
-    await prisma.contribution.create({
-      data: {
-        userId: 'demo-user',
-        source: contribution.source,
-        category: contribution.category,
-        signal: contribution.signal,
-        rawData: JSON.stringify(contribution.rawData),
-        occurredAt: contribution.occurredAt,
-        weight: contribution.weight,
-        externalId: contribution.externalId,
-        externalUrl: contribution.externalUrl,
-      },
-    });
-  }
-
-  console.log(`Seeded demo-user with ${contributions.length} contributions.`);
-}
-
-main()
-  .catch((error) => {
-    console.error(error);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+const data = build();
+writeFileSync(outputPath, JSON.stringify(data, null, 2));
+console.log(`Wrote ${data.length} demo rows to ${outputPath}`);

@@ -1,3 +1,8 @@
+/*
+ * PRIVACY: This module forwards request bodies to Anthropic without persistence.
+ * Do not add request-body logging here. Only error status codes and messages
+ * may be logged.
+ */
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export async function callClaude(systemPrompt: string, userMessage: string): Promise<string> {
