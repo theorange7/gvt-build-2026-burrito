@@ -1,0 +1,1742 @@
+[
+  {
+    "source": "github",
+    "category": "delivery",
+    "signal": "Shipped audit-log export for compliance reviews after closing the final edge cases",
+    "rawData": {
+      "source": "github",
+      "templateIndex": 1
+    },
+    "occurredAt": "2025-01-02T09:00:00.000Z",
+    "weight": 2,
+    "externalId": "github:delivery:1",
+    "externalUrl": "https://example.com/github/1"
+  },
+  {
+    "source": "github",
+    "category": "delivery",
+    "signal": "Launched service health indicators in the admin console for faster triage during peaks",
+    "rawData": {
+      "source": "github",
+      "templateIndex": 4
+    },
+    "occurredAt": "2025-01-02T09:00:00.000Z",
+    "weight": 2,
+    "externalId": "github:delivery:25",
+    "externalUrl": "https://example.com/github/25"
+  },
+  {
+    "source": "github",
+    "category": "collaboration",
+    "signal": "Left refactoring guidance on shared auth utilities and aligned two squads on the final shape",
+    "rawData": {
+      "source": "github",
+      "templateIndex": 2
+    },
+    "occurredAt": "2025-01-02T09:00:00.000Z",
+    "weight": 2,
+    "externalId": "github:collaboration:35",
+    "externalUrl": "https://example.com/github/35"
+  },
+  {
+    "source": "jira",
+    "category": "delivery",
+    "signal": "Closed the final tickets for the incident dashboard revamp and coordinated release readiness",
+    "rawData": {
+      "source": "jira",
+      "templateIndex": 1
+    },
+    "occurredAt": "2025-01-02T09:00:00.000Z",
+    "weight": 2,
+    "externalId": "jira:delivery:53",
+    "externalUrl": "https://example.com/jira/53"
+  },
+  {
+    "source": "jira",
+    "category": "process",
+    "signal": "Closed the sprint hygiene epic to standardize acceptance criteria across the platform team",
+    "rawData": {
+      "source": "jira",
+      "templateIndex": 0
+    },
+    "occurredAt": "2025-01-02T09:00:00.000Z",
+    "weight": 2,
+    "externalId": "jira:process:75",
+    "externalUrl": "https://example.com/jira/75"
+  },
+  {
+    "source": "slack",
+    "category": "collaboration",
+    "signal": "Coordinated a rollout plan in Slack across infra, QA, and support during a risky release",
+    "rawData": {
+      "source": "slack",
+      "templateIndex": 1
+    },
+    "occurredAt": "2025-01-02T09:00:00.000Z",
+    "weight": 2,
+    "externalId": "slack:collaboration:85",
+    "externalUrl": "https://example.com/slack/85"
+  },
+  {
+    "source": "confluence",
+    "category": "process",
+    "signal": "Authored a Confluence page documenting the new incident response runbook",
+    "rawData": {
+      "source": "confluence",
+      "templateIndex": 0
+    },
+    "occurredAt": "2025-01-02T09:00:00.000Z",
+    "weight": 2,
+    "externalId": "confluence:process:105",
+    "externalUrl": "https://example.com/confluence/105"
+  },
+  {
+    "source": "confluence",
+    "category": "leadership",
+    "signal": "Drafted the architectural decision record for event-driven notifications and socialized the trade-offs",
+    "rawData": {
+      "source": "confluence",
+      "templateIndex": 0
+    },
+    "occurredAt": "2025-01-02T09:00:00.000Z",
+    "weight": 3,
+    "externalId": "confluence:leadership:112",
+    "externalUrl": "https://example.com/confluence/112"
+  },
+  {
+    "source": "manual",
+    "category": "other",
+    "signal": "Facilitated a retro that turned recurring deployment pain into three concrete fixes",
+    "rawData": {
+      "source": "manual",
+      "templateIndex": 1
+    },
+    "occurredAt": "2025-01-02T09:00:00.000Z",
+    "weight": 1,
+    "externalId": "manual:other:118",
+    "externalUrl": "https://example.com/manual/118"
+  },
+  {
+    "source": "github",
+    "category": "delivery",
+    "signal": "Merged PR implementing rate limiting for the payment API and cut abuse incidents by 60%",
+    "rawData": {
+      "source": "github",
+      "templateIndex": 0
+    },
+    "occurredAt": "2025-01-14T09:00:00.000Z",
+    "weight": 2,
+    "externalId": "github:delivery:13",
+    "externalUrl": "https://example.com/github/13"
+  },
+  {
+    "source": "github",
+    "category": "collaboration",
+    "signal": "Left refactoring guidance on shared auth utilities and aligned two squads on the final shape",
+    "rawData": {
+      "source": "github",
+      "templateIndex": 2
+    },
+    "occurredAt": "2025-01-14T09:00:00.000Z",
+    "weight": 2,
+    "externalId": "github:collaboration:47",
+    "externalUrl": "https://example.com/github/47"
+  },
+  {
+    "source": "jira",
+    "category": "delivery",
+    "signal": "Closed the final tickets for the incident dashboard revamp and coordinated release readiness",
+    "rawData": {
+      "source": "jira",
+      "templateIndex": 1
+    },
+    "occurredAt": "2025-01-14T09:00:00.000Z",
+    "weight": 3,
+    "externalId": "jira:delivery:65",
+    "externalUrl": "https://example.com/jira/65"
+  },
+  {
+    "source": "manual",
+    "category": "other",
+    "signal": "Facilitated a retro that turned recurring deployment pain into three concrete fixes",
+    "rawData": {
+      "source": "manual",
+      "templateIndex": 1
+    },
+    "occurredAt": "2025-01-14T09:00:00.000Z",
+    "weight": 2,
+    "externalId": "manual:other:130",
+    "externalUrl": "https://example.com/manual/130"
+  },
+  {
+    "source": "github",
+    "category": "delivery",
+    "signal": "Completed the bulk beneficiary upload flow and handled validation errors across all edge paths",
+    "rawData": {
+      "source": "github",
+      "templateIndex": 3
+    },
+    "occurredAt": "2025-02-07T09:00:00.000Z",
+    "weight": 3,
+    "externalId": "github:delivery:2",
+    "externalUrl": "https://example.com/github/2"
+  },
+  {
+    "source": "github",
+    "category": "delivery",
+    "signal": "Shipped audit-log export for compliance reviews after closing the final edge cases",
+    "rawData": {
+      "source": "github",
+      "templateIndex": 1
+    },
+    "occurredAt": "2025-02-07T09:00:00.000Z",
+    "weight": 3,
+    "externalId": "github:delivery:26",
+    "externalUrl": "https://example.com/github/26"
+  },
+  {
+    "source": "github",
+    "category": "collaboration",
+    "signal": "Paired with frontend teammates on API pagination changes and removed downstream rework",
+    "rawData": {
+      "source": "github",
+      "templateIndex": 1
+    },
+    "occurredAt": "2025-02-07T09:00:00.000Z",
+    "weight": 3,
+    "externalId": "github:collaboration:36",
+    "externalUrl": "https://example.com/github/36"
+  },
+  {
+    "source": "jira",
+    "category": "delivery",
+    "signal": "Completed the policy renewal workflow and removed duplicate manual review steps",
+    "rawData": {
+      "source": "jira",
+      "templateIndex": 3
+    },
+    "occurredAt": "2025-02-07T09:00:00.000Z",
+    "weight": 3,
+    "externalId": "jira:delivery:54",
+    "externalUrl": "https://example.com/jira/54"
+  },
+  {
+    "source": "jira",
+    "category": "process",
+    "signal": "Finished the triage workflow update so incidents now route cleanly by severity",
+    "rawData": {
+      "source": "jira",
+      "templateIndex": 2
+    },
+    "occurredAt": "2025-02-07T09:00:00.000Z",
+    "weight": 3,
+    "externalId": "jira:process:76",
+    "externalUrl": "https://example.com/jira/76"
+  },
+  {
+    "source": "slack",
+    "category": "collaboration",
+    "signal": "Unblocked the frontend team by clarifying the API contract in a Slack thread and saved roughly a day of rework",
+    "rawData": {
+      "source": "slack",
+      "templateIndex": 0
+    },
+    "occurredAt": "2025-02-07T09:00:00.000Z",
+    "weight": 3,
+    "externalId": "slack:collaboration:86",
+    "externalUrl": "https://example.com/slack/86"
+  },
+  {
+    "source": "confluence",
+    "category": "process",
+    "signal": "Wrote the support handover guide for the Q4 policy launch and clarified escalation paths",
+    "rawData": {
+      "source": "confluence",
+      "templateIndex": 2
+    },
+    "occurredAt": "2025-02-07T09:00:00.000Z",
+    "weight": 3,
+    "externalId": "confluence:process:106",
+    "externalUrl": "https://example.com/confluence/106"
+  },
+  {
+    "source": "confluence",
+    "category": "leadership",
+    "signal": "Drafted the architectural decision record for event-driven notifications and socialized the trade-offs",
+    "rawData": {
+      "source": "confluence",
+      "templateIndex": 0
+    },
+    "occurredAt": "2025-02-07T09:00:00.000Z",
+    "weight": 4,
+    "externalId": "confluence:leadership:113",
+    "externalUrl": "https://example.com/confluence/113"
+  },
+  {
+    "source": "manual",
+    "category": "other",
+    "signal": "Captured stakeholder feedback after launch and translated it into the next iteration plan",
+    "rawData": {
+      "source": "manual",
+      "templateIndex": 0
+    },
+    "occurredAt": "2025-02-07T09:00:00.000Z",
+    "weight": 2,
+    "externalId": "manual:other:119",
+    "externalUrl": "https://example.com/manual/119"
+  },
+  {
+    "source": "github",
+    "category": "delivery",
+    "signal": "Delivered queue retry controls that reduced manual ops escalations during incident windows",
+    "rawData": {
+      "source": "github",
+      "templateIndex": 2
+    },
+    "occurredAt": "2025-02-19T09:00:00.000Z",
+    "weight": 3,
+    "externalId": "github:delivery:14",
+    "externalUrl": "https://example.com/github/14"
+  },
+  {
+    "source": "github",
+    "category": "collaboration",
+    "signal": "Paired with frontend teammates on API pagination changes and removed downstream rework",
+    "rawData": {
+      "source": "github",
+      "templateIndex": 1
+    },
+    "occurredAt": "2025-02-19T09:00:00.000Z",
+    "weight": 3,
+    "externalId": "github:collaboration:48",
+    "externalUrl": "https://example.com/github/48"
+  },
+  {
+    "source": "jira",
+    "category": "delivery",
+    "signal": "Completed the policy renewal workflow and removed duplicate manual review steps",
+    "rawData": {
+      "source": "jira",
+      "templateIndex": 3
+    },
+    "occurredAt": "2025-02-19T09:00:00.000Z",
+    "weight": 4,
+    "externalId": "jira:delivery:66",
+    "externalUrl": "https://example.com/jira/66"
+  },
+  {
+    "source": "github",
+    "category": "delivery",
+    "signal": "Merged PR implementing rate limiting for the payment API and cut abuse incidents by 60%",
+    "rawData": {
+      "source": "github",
+      "templateIndex": 0
+    },
+    "occurredAt": "2025-03-12T09:00:00.000Z",
+    "weight": 3,
+    "externalId": "github:delivery:3",
+    "externalUrl": "https://example.com/github/3"
+  },
+  {
+    "source": "github",
+    "category": "delivery",
+    "signal": "Completed the bulk beneficiary upload flow and handled validation errors across all edge paths",
+    "rawData": {
+      "source": "github",
+      "templateIndex": 3
+    },
+    "occurredAt": "2025-03-12T09:00:00.000Z",
+    "weight": 3,
+    "externalId": "github:delivery:27",
+    "externalUrl": "https://example.com/github/27"
+  },
+  {
+    "source": "github",
+    "category": "collaboration",
+    "signal": "Reviewed and approved 3 PRs from junior engineers with detailed architectural feedback",
+    "rawData": {
+      "source": "github",
+      "templateIndex": 0
+    },
+    "occurredAt": "2025-03-12T09:00:00.000Z",
+    "weight": 2,
+    "externalId": "github:collaboration:37",
+    "externalUrl": "https://example.com/github/37"
+  },
+  {
+    "source": "jira",
+    "category": "delivery",
+    "signal": "Closed the final tickets for the incident dashboard revamp and coordinated release readiness",
+    "rawData": {
+      "source": "jira",
+      "templateIndex": 1
+    },
+    "occurredAt": "2025-03-12T09:00:00.000Z",
+    "weight": 3,
+    "externalId": "jira:delivery:55",
+    "externalUrl": "https://example.com/jira/55"
+  },
+  {
+    "source": "jira",
+    "category": "process",
+    "signal": "Resolved a release-readiness checklist gap that had been causing late QA surprises",
+    "rawData": {
+      "source": "jira",
+      "templateIndex": 1
+    },
+    "occurredAt": "2025-03-12T09:00:00.000Z",
+    "weight": 2,
+    "externalId": "jira:process:77",
+    "externalUrl": "https://example.com/jira/77"
+  },
+  {
+    "source": "slack",
+    "category": "collaboration",
+    "signal": "Summarized production learnings after the outage review and aligned follow-up owners asynchronously",
+    "rawData": {
+      "source": "slack",
+      "templateIndex": 2
+    },
+    "occurredAt": "2025-03-12T09:00:00.000Z",
+    "weight": 3,
+    "externalId": "slack:collaboration:87",
+    "externalUrl": "https://example.com/slack/87"
+  },
+  {
+    "source": "confluence",
+    "category": "process",
+    "signal": "Published migration notes for the entitlement service so future releases have a cleaner path",
+    "rawData": {
+      "source": "confluence",
+      "templateIndex": 1
+    },
+    "occurredAt": "2025-03-12T09:00:00.000Z",
+    "weight": 4,
+    "externalId": "confluence:process:107",
+    "externalUrl": "https://example.com/confluence/107"
+  },
+  {
+    "source": "confluence",
+    "category": "leadership",
+    "signal": "Drafted the architectural decision record for event-driven notifications and socialized the trade-offs",
+    "rawData": {
+      "source": "confluence",
+      "templateIndex": 0
+    },
+    "occurredAt": "2025-03-12T09:00:00.000Z",
+    "weight": 5,
+    "externalId": "confluence:leadership:114",
+    "externalUrl": "https://example.com/confluence/114"
+  },
+  {
+    "source": "manual",
+    "category": "other",
+    "signal": "Stepped in to coordinate comms during a cross-team dependency issue and kept delivery on track",
+    "rawData": {
+      "source": "manual",
+      "templateIndex": 2
+    },
+    "occurredAt": "2025-03-12T09:00:00.000Z",
+    "weight": 2,
+    "externalId": "manual:other:120",
+    "externalUrl": "https://example.com/manual/120"
+  },
+  {
+    "source": "github",
+    "category": "delivery",
+    "signal": "Launched service health indicators in the admin console for faster triage during peaks",
+    "rawData": {
+      "source": "github",
+      "templateIndex": 4
+    },
+    "occurredAt": "2025-03-24T09:00:00.000Z",
+    "weight": 3,
+    "externalId": "github:delivery:15",
+    "externalUrl": "https://example.com/github/15"
+  },
+  {
+    "source": "github",
+    "category": "collaboration",
+    "signal": "Reviewed and approved 3 PRs from junior engineers with detailed architectural feedback",
+    "rawData": {
+      "source": "github",
+      "templateIndex": 0
+    },
+    "occurredAt": "2025-03-24T09:00:00.000Z",
+    "weight": 4,
+    "externalId": "github:collaboration:49",
+    "externalUrl": "https://example.com/github/49"
+  },
+  {
+    "source": "jira",
+    "category": "delivery",
+    "signal": "Closed the final tickets for the incident dashboard revamp and coordinated release readiness",
+    "rawData": {
+      "source": "jira",
+      "templateIndex": 1
+    },
+    "occurredAt": "2025-03-24T09:00:00.000Z",
+    "weight": 2,
+    "externalId": "jira:delivery:67",
+    "externalUrl": "https://example.com/jira/67"
+  },
+  {
+    "source": "github",
+    "category": "delivery",
+    "signal": "Shipped audit-log export for compliance reviews after closing the final edge cases",
+    "rawData": {
+      "source": "github",
+      "templateIndex": 1
+    },
+    "occurredAt": "2025-04-05T09:00:00.000Z",
+    "weight": 4,
+    "externalId": "github:delivery:16",
+    "externalUrl": "https://example.com/github/16"
+  },
+  {
+    "source": "github",
+    "category": "collaboration",
+    "signal": "Left refactoring guidance on shared auth utilities and aligned two squads on the final shape",
+    "rawData": {
+      "source": "github",
+      "templateIndex": 2
+    },
+    "occurredAt": "2025-04-05T09:00:00.000Z",
+    "weight": 2,
+    "externalId": "github:collaboration:50",
+    "externalUrl": "https://example.com/github/50"
+  },
+  {
+    "source": "jira",
+    "category": "delivery",
+    "signal": "Completed the policy renewal workflow and removed duplicate manual review steps",
+    "rawData": {
+      "source": "jira",
+      "templateIndex": 3
+    },
+    "occurredAt": "2025-04-05T09:00:00.000Z",
+    "weight": 2,
+    "externalId": "jira:delivery:68",
+    "externalUrl": "https://example.com/jira/68"
+  },
+  {
+    "source": "github",
+    "category": "delivery",
+    "signal": "Shipped the payments reconciliation redesign that eliminated the weekly manual backfill — part of the Q2 delivery peak that shifted the roadmap forward",
+    "rawData": {
+      "source": "peak",
+      "quarter": "Q2"
+    },
+    "occurredAt": "2025-04-10T09:00:00.000Z",
+    "weight": 5,
+    "externalId": "peak:q2:0",
+    "externalUrl": "https://example.com/peak/0"
+  },
+  {
+    "source": "github",
+    "category": "delivery",
+    "signal": "Delivered queue retry controls that reduced manual ops escalations during incident windows",
+    "rawData": {
+      "source": "github",
+      "templateIndex": 2
+    },
+    "occurredAt": "2025-04-17T09:00:00.000Z",
+    "weight": 4,
+    "externalId": "github:delivery:4",
+    "externalUrl": "https://example.com/github/4"
+  },
+  {
+    "source": "github",
+    "category": "delivery",
+    "signal": "Merged PR implementing rate limiting for the payment API and cut abuse incidents by 60%",
+    "rawData": {
+      "source": "github",
+      "templateIndex": 0
+    },
+    "occurredAt": "2025-04-17T09:00:00.000Z",
+    "weight": 4,
+    "externalId": "github:delivery:28",
+    "externalUrl": "https://example.com/github/28"
+  },
+  {
+    "source": "github",
+    "category": "collaboration",
+    "signal": "Left refactoring guidance on shared auth utilities and aligned two squads on the final shape",
+    "rawData": {
+      "source": "github",
+      "templateIndex": 2
+    },
+    "occurredAt": "2025-04-17T09:00:00.000Z",
+    "weight": 3,
+    "externalId": "github:collaboration:38",
+    "externalUrl": "https://example.com/github/38"
+  },
+  {
+    "source": "jira",
+    "category": "delivery",
+    "signal": "Completed the policy renewal workflow and removed duplicate manual review steps",
+    "rawData": {
+      "source": "jira",
+      "templateIndex": 3
+    },
+    "occurredAt": "2025-04-17T09:00:00.000Z",
+    "weight": 4,
+    "externalId": "jira:delivery:56",
+    "externalUrl": "https://example.com/jira/56"
+  },
+  {
+    "source": "jira",
+    "category": "process",
+    "signal": "Closed the sprint hygiene epic to standardize acceptance criteria across the platform team",
+    "rawData": {
+      "source": "jira",
+      "templateIndex": 0
+    },
+    "occurredAt": "2025-04-17T09:00:00.000Z",
+    "weight": 4,
+    "externalId": "jira:process:78",
+    "externalUrl": "https://example.com/jira/78"
+  },
+  {
+    "source": "slack",
+    "category": "collaboration",
+    "signal": "Coordinated a rollout plan in Slack across infra, QA, and support during a risky release",
+    "rawData": {
+      "source": "slack",
+      "templateIndex": 1
+    },
+    "occurredAt": "2025-04-17T09:00:00.000Z",
+    "weight": 4,
+    "externalId": "slack:collaboration:88",
+    "externalUrl": "https://example.com/slack/88"
+  },
+  {
+    "source": "confluence",
+    "category": "process",
+    "signal": "Authored a Confluence page documenting the new incident response runbook",
+    "rawData": {
+      "source": "confluence",
+      "templateIndex": 0
+    },
+    "occurredAt": "2025-04-17T09:00:00.000Z",
+    "weight": 2,
+    "externalId": "confluence:process:108",
+    "externalUrl": "https://example.com/confluence/108"
+  },
+  {
+    "source": "confluence",
+    "category": "leadership",
+    "signal": "Drafted the architectural decision record for event-driven notifications and socialized the trade-offs",
+    "rawData": {
+      "source": "confluence",
+      "templateIndex": 0
+    },
+    "occurredAt": "2025-04-17T09:00:00.000Z",
+    "weight": 3,
+    "externalId": "confluence:leadership:115",
+    "externalUrl": "https://example.com/confluence/115"
+  },
+  {
+    "source": "manual",
+    "category": "other",
+    "signal": "Facilitated a retro that turned recurring deployment pain into three concrete fixes",
+    "rawData": {
+      "source": "manual",
+      "templateIndex": 1
+    },
+    "occurredAt": "2025-04-17T09:00:00.000Z",
+    "weight": 3,
+    "externalId": "manual:other:121",
+    "externalUrl": "https://example.com/manual/121"
+  },
+  {
+    "source": "jira",
+    "category": "delivery",
+    "signal": "Closed the final migration steps for the case-management rewrite and steadied the release train — part of the Q2 delivery peak that shifted the roadmap forward",
+    "rawData": {
+      "source": "peak",
+      "quarter": "Q2"
+    },
+    "occurredAt": "2025-04-22T09:00:00.000Z",
+    "weight": 4,
+    "externalId": "peak:q2:3",
+    "externalUrl": "https://example.com/peak/3"
+  },
+  {
+    "source": "github",
+    "category": "delivery",
+    "signal": "Completed the bulk beneficiary upload flow and handled validation errors across all edge paths",
+    "rawData": {
+      "source": "github",
+      "templateIndex": 3
+    },
+    "occurredAt": "2025-05-10T09:00:00.000Z",
+    "weight": 2,
+    "externalId": "github:delivery:17",
+    "externalUrl": "https://example.com/github/17"
+  },
+  {
+    "source": "github",
+    "category": "collaboration",
+    "signal": "Paired with frontend teammates on API pagination changes and removed downstream rework",
+    "rawData": {
+      "source": "github",
+      "templateIndex": 1
+    },
+    "occurredAt": "2025-05-10T09:00:00.000Z",
+    "weight": 3,
+    "externalId": "github:collaboration:51",
+    "externalUrl": "https://example.com/github/51"
+  },
+  {
+    "source": "jira",
+    "category": "delivery",
+    "signal": "Closed the final tickets for the incident dashboard revamp and coordinated release readiness",
+    "rawData": {
+      "source": "jira",
+      "templateIndex": 1
+    },
+    "occurredAt": "2025-05-10T09:00:00.000Z",
+    "weight": 3,
+    "externalId": "jira:delivery:69",
+    "externalUrl": "https://example.com/jira/69"
+  },
+  {
+    "source": "jira",
+    "category": "delivery",
+    "signal": "Delivered the permit-processing overhaul ahead of the public launch milestone — part of the Q2 delivery peak that shifted the roadmap forward",
+    "rawData": {
+      "source": "peak",
+      "quarter": "Q2"
+    },
+    "occurredAt": "2025-05-14T09:00:00.000Z",
+    "weight": 4,
+    "externalId": "peak:q2:1",
+    "externalUrl": "https://example.com/peak/1"
+  },
+  {
+    "source": "manual",
+    "category": "leadership",
+    "signal": "Proposed and built a lightweight release readiness board before anyone asked for it — self-started and carried from proposal to adoption",
+    "rawData": {
+      "source": "initiative"
+    },
+    "occurredAt": "2025-05-18T09:00:00.000Z",
+    "weight": 5,
+    "externalId": "initiative:0",
+    "externalUrl": "https://example.com/initiative/0"
+  },
+  {
+    "source": "github",
+    "category": "delivery",
+    "signal": "Launched service health indicators in the admin console for faster triage during peaks",
+    "rawData": {
+      "source": "github",
+      "templateIndex": 4
+    },
+    "occurredAt": "2025-05-22T09:00:00.000Z",
+    "weight": 2,
+    "externalId": "github:delivery:5",
+    "externalUrl": "https://example.com/github/5"
+  },
+  {
+    "source": "github",
+    "category": "delivery",
+    "signal": "Delivered queue retry controls that reduced manual ops escalations during incident windows",
+    "rawData": {
+      "source": "github",
+      "templateIndex": 2
+    },
+    "occurredAt": "2025-05-22T09:00:00.000Z",
+    "weight": 2,
+    "externalId": "github:delivery:29",
+    "externalUrl": "https://example.com/github/29"
+  },
+  {
+    "source": "github",
+    "category": "collaboration",
+    "signal": "Paired with frontend teammates on API pagination changes and removed downstream rework",
+    "rawData": {
+      "source": "github",
+      "templateIndex": 1
+    },
+    "occurredAt": "2025-05-22T09:00:00.000Z",
+    "weight": 4,
+    "externalId": "github:collaboration:39",
+    "externalUrl": "https://example.com/github/39"
+  },
+  {
+    "source": "jira",
+    "category": "delivery",
+    "signal": "Closed the final tickets for the incident dashboard revamp and coordinated release readiness",
+    "rawData": {
+      "source": "jira",
+      "templateIndex": 1
+    },
+    "occurredAt": "2025-05-22T09:00:00.000Z",
+    "weight": 2,
+    "externalId": "jira:delivery:57",
+    "externalUrl": "https://example.com/jira/57"
+  },
+  {
+    "source": "jira",
+    "category": "process",
+    "signal": "Finished the triage workflow update so incidents now route cleanly by severity",
+    "rawData": {
+      "source": "jira",
+      "templateIndex": 2
+    },
+    "occurredAt": "2025-05-22T09:00:00.000Z",
+    "weight": 2,
+    "externalId": "jira:process:79",
+    "externalUrl": "https://example.com/jira/79"
+  },
+  {
+    "source": "slack",
+    "category": "collaboration",
+    "signal": "Unblocked the frontend team by clarifying the API contract in a Slack thread and saved roughly a day of rework",
+    "rawData": {
+      "source": "slack",
+      "templateIndex": 0
+    },
+    "occurredAt": "2025-05-22T09:00:00.000Z",
+    "weight": 2,
+    "externalId": "slack:collaboration:89",
+    "externalUrl": "https://example.com/slack/89"
+  },
+  {
+    "source": "confluence",
+    "category": "process",
+    "signal": "Wrote the support handover guide for the Q4 policy launch and clarified escalation paths",
+    "rawData": {
+      "source": "confluence",
+      "templateIndex": 2
+    },
+    "occurredAt": "2025-05-22T09:00:00.000Z",
+    "weight": 3,
+    "externalId": "confluence:process:109",
+    "externalUrl": "https://example.com/confluence/109"
+  },
+  {
+    "source": "confluence",
+    "category": "leadership",
+    "signal": "Drafted the architectural decision record for event-driven notifications and socialized the trade-offs",
+    "rawData": {
+      "source": "confluence",
+      "templateIndex": 0
+    },
+    "occurredAt": "2025-05-22T09:00:00.000Z",
+    "weight": 4,
+    "externalId": "confluence:leadership:116",
+    "externalUrl": "https://example.com/confluence/116"
+  },
+  {
+    "source": "manual",
+    "category": "other",
+    "signal": "Captured stakeholder feedback after launch and translated it into the next iteration plan",
+    "rawData": {
+      "source": "manual",
+      "templateIndex": 0
+    },
+    "occurredAt": "2025-05-22T09:00:00.000Z",
+    "weight": 4,
+    "externalId": "manual:other:122",
+    "externalUrl": "https://example.com/manual/122"
+  },
+  {
+    "source": "github",
+    "category": "delivery",
+    "signal": "Shipped audit-log export for compliance reviews after closing the final edge cases",
+    "rawData": {
+      "source": "github",
+      "templateIndex": 1
+    },
+    "occurredAt": "2025-06-03T09:00:00.000Z",
+    "weight": 3,
+    "externalId": "github:delivery:6",
+    "externalUrl": "https://example.com/github/6"
+  },
+  {
+    "source": "github",
+    "category": "delivery",
+    "signal": "Launched service health indicators in the admin console for faster triage during peaks",
+    "rawData": {
+      "source": "github",
+      "templateIndex": 4
+    },
+    "occurredAt": "2025-06-03T09:00:00.000Z",
+    "weight": 3,
+    "externalId": "github:delivery:30",
+    "externalUrl": "https://example.com/github/30"
+  },
+  {
+    "source": "github",
+    "category": "collaboration",
+    "signal": "Reviewed and approved 3 PRs from junior engineers with detailed architectural feedback",
+    "rawData": {
+      "source": "github",
+      "templateIndex": 0
+    },
+    "occurredAt": "2025-06-03T09:00:00.000Z",
+    "weight": 2,
+    "externalId": "github:collaboration:40",
+    "externalUrl": "https://example.com/github/40"
+  },
+  {
+    "source": "jira",
+    "category": "delivery",
+    "signal": "Completed the policy renewal workflow and removed duplicate manual review steps",
+    "rawData": {
+      "source": "jira",
+      "templateIndex": 3
+    },
+    "occurredAt": "2025-06-03T09:00:00.000Z",
+    "weight": 2,
+    "externalId": "jira:delivery:58",
+    "externalUrl": "https://example.com/jira/58"
+  },
+  {
+    "source": "jira",
+    "category": "process",
+    "signal": "Resolved a release-readiness checklist gap that had been causing late QA surprises",
+    "rawData": {
+      "source": "jira",
+      "templateIndex": 1
+    },
+    "occurredAt": "2025-06-03T09:00:00.000Z",
+    "weight": 3,
+    "externalId": "jira:process:80",
+    "externalUrl": "https://example.com/jira/80"
+  },
+  {
+    "source": "slack",
+    "category": "collaboration",
+    "signal": "Summarized production learnings after the outage review and aligned follow-up owners asynchronously",
+    "rawData": {
+      "source": "slack",
+      "templateIndex": 2
+    },
+    "occurredAt": "2025-06-03T09:00:00.000Z",
+    "weight": 3,
+    "externalId": "slack:collaboration:90",
+    "externalUrl": "https://example.com/slack/90"
+  },
+  {
+    "source": "confluence",
+    "category": "process",
+    "signal": "Published migration notes for the entitlement service so future releases have a cleaner path",
+    "rawData": {
+      "source": "confluence",
+      "templateIndex": 1
+    },
+    "occurredAt": "2025-06-03T09:00:00.000Z",
+    "weight": 4,
+    "externalId": "confluence:process:110",
+    "externalUrl": "https://example.com/confluence/110"
+  },
+  {
+    "source": "confluence",
+    "category": "leadership",
+    "signal": "Drafted the architectural decision record for event-driven notifications and socialized the trade-offs",
+    "rawData": {
+      "source": "confluence",
+      "templateIndex": 0
+    },
+    "occurredAt": "2025-06-03T09:00:00.000Z",
+    "weight": 5,
+    "externalId": "confluence:leadership:117",
+    "externalUrl": "https://example.com/confluence/117"
+  },
+  {
+    "source": "manual",
+    "category": "other",
+    "signal": "Stepped in to coordinate comms during a cross-team dependency issue and kept delivery on track",
+    "rawData": {
+      "source": "manual",
+      "templateIndex": 2
+    },
+    "occurredAt": "2025-06-03T09:00:00.000Z",
+    "weight": 1,
+    "externalId": "manual:other:123",
+    "externalUrl": "https://example.com/manual/123"
+  },
+  {
+    "source": "github",
+    "category": "delivery",
+    "signal": "Merged PR implementing rate limiting for the payment API and cut abuse incidents by 60%",
+    "rawData": {
+      "source": "github",
+      "templateIndex": 0
+    },
+    "occurredAt": "2025-06-15T09:00:00.000Z",
+    "weight": 3,
+    "externalId": "github:delivery:18",
+    "externalUrl": "https://example.com/github/18"
+  },
+  {
+    "source": "github",
+    "category": "collaboration",
+    "signal": "Reviewed and approved 3 PRs from junior engineers with detailed architectural feedback",
+    "rawData": {
+      "source": "github",
+      "templateIndex": 0
+    },
+    "occurredAt": "2025-06-15T09:00:00.000Z",
+    "weight": 2,
+    "externalId": "github:collaboration:52",
+    "externalUrl": "https://example.com/github/52"
+  },
+  {
+    "source": "jira",
+    "category": "delivery",
+    "signal": "Completed the policy renewal workflow and removed duplicate manual review steps",
+    "rawData": {
+      "source": "jira",
+      "templateIndex": 3
+    },
+    "occurredAt": "2025-06-15T09:00:00.000Z",
+    "weight": 3,
+    "externalId": "jira:delivery:70",
+    "externalUrl": "https://example.com/jira/70"
+  },
+  {
+    "source": "github",
+    "category": "delivery",
+    "signal": "Rolled out resilient file ingestion for partner uploads with zero rollback events — part of the Q2 delivery peak that shifted the roadmap forward",
+    "rawData": {
+      "source": "peak",
+      "quarter": "Q2"
+    },
+    "occurredAt": "2025-06-18T09:00:00.000Z",
+    "weight": 5,
+    "externalId": "peak:q2:2",
+    "externalUrl": "https://example.com/peak/2"
+  },
+  {
+    "source": "slack",
+    "category": "mentorship",
+    "signal": "Walked a teammate through the release process in Slack and stayed online through the deploy — one of the mentorship moments teammates kept coming back to",
+    "rawData": {
+      "source": "slack",
+      "templateIndex": 1
+    },
+    "occurredAt": "2025-07-02T09:00:00.000Z",
+    "weight": 3,
+    "externalId": "slack:mentorship:97",
+    "externalUrl": "https://example.com/slack/97"
+  },
+  {
+    "source": "github",
+    "category": "delivery",
+    "signal": "Completed the bulk beneficiary upload flow and handled validation errors across all edge paths",
+    "rawData": {
+      "source": "github",
+      "templateIndex": 3
+    },
+    "occurredAt": "2025-07-08T09:00:00.000Z",
+    "weight": 2,
+    "externalId": "github:delivery:7",
+    "externalUrl": "https://example.com/github/7"
+  },
+  {
+    "source": "github",
+    "category": "delivery",
+    "signal": "Shipped audit-log export for compliance reviews after closing the final edge cases",
+    "rawData": {
+      "source": "github",
+      "templateIndex": 1
+    },
+    "occurredAt": "2025-07-08T09:00:00.000Z",
+    "weight": 2,
+    "externalId": "github:delivery:31",
+    "externalUrl": "https://example.com/github/31"
+  },
+  {
+    "source": "github",
+    "category": "collaboration",
+    "signal": "Left refactoring guidance on shared auth utilities and aligned two squads on the final shape",
+    "rawData": {
+      "source": "github",
+      "templateIndex": 2
+    },
+    "occurredAt": "2025-07-08T09:00:00.000Z",
+    "weight": 3,
+    "externalId": "github:collaboration:41",
+    "externalUrl": "https://example.com/github/41"
+  },
+  {
+    "source": "jira",
+    "category": "delivery",
+    "signal": "Closed the final tickets for the incident dashboard revamp and coordinated release readiness",
+    "rawData": {
+      "source": "jira",
+      "templateIndex": 1
+    },
+    "occurredAt": "2025-07-08T09:00:00.000Z",
+    "weight": 3,
+    "externalId": "jira:delivery:59",
+    "externalUrl": "https://example.com/jira/59"
+  },
+  {
+    "source": "jira",
+    "category": "process",
+    "signal": "Closed the sprint hygiene epic to standardize acceptance criteria across the platform team",
+    "rawData": {
+      "source": "jira",
+      "templateIndex": 0
+    },
+    "occurredAt": "2025-07-08T09:00:00.000Z",
+    "weight": 2,
+    "externalId": "jira:process:81",
+    "externalUrl": "https://example.com/jira/81"
+  },
+  {
+    "source": "slack",
+    "category": "collaboration",
+    "signal": "Coordinated a rollout plan in Slack across infra, QA, and support during a risky release",
+    "rawData": {
+      "source": "slack",
+      "templateIndex": 1
+    },
+    "occurredAt": "2025-07-08T09:00:00.000Z",
+    "weight": 3,
+    "externalId": "slack:collaboration:91",
+    "externalUrl": "https://example.com/slack/91"
+  },
+  {
+    "source": "slack",
+    "category": "mentorship",
+    "signal": "Walked a teammate through the release process in Slack and stayed online through the deploy — one of the mentorship moments teammates kept coming back to",
+    "rawData": {
+      "source": "slack",
+      "templateIndex": 1
+    },
+    "occurredAt": "2025-07-08T09:00:00.000Z",
+    "weight": 3,
+    "externalId": "slack:mentorship:103",
+    "externalUrl": "https://example.com/slack/103"
+  },
+  {
+    "source": "confluence",
+    "category": "process",
+    "signal": "Authored a Confluence page documenting the new incident response runbook",
+    "rawData": {
+      "source": "confluence",
+      "templateIndex": 0
+    },
+    "occurredAt": "2025-07-08T09:00:00.000Z",
+    "weight": 2,
+    "externalId": "confluence:process:111",
+    "externalUrl": "https://example.com/confluence/111"
+  },
+  {
+    "source": "manual",
+    "category": "other",
+    "signal": "Facilitated a retro that turned recurring deployment pain into three concrete fixes",
+    "rawData": {
+      "source": "manual",
+      "templateIndex": 1
+    },
+    "occurredAt": "2025-07-08T09:00:00.000Z",
+    "weight": 2,
+    "externalId": "manual:other:124",
+    "externalUrl": "https://example.com/manual/124"
+  },
+  {
+    "source": "slack",
+    "category": "mentorship",
+    "signal": "Explained our alert thresholds to a new hire and connected them to the right runbooks — one of the mentorship moments teammates kept coming back to",
+    "rawData": {
+      "source": "slack",
+      "templateIndex": 3
+    },
+    "occurredAt": "2025-07-17T09:00:00.000Z",
+    "weight": 5,
+    "externalId": "slack:mentorship:100",
+    "externalUrl": "https://example.com/slack/100"
+  },
+  {
+    "source": "github",
+    "category": "delivery",
+    "signal": "Delivered queue retry controls that reduced manual ops escalations during incident windows",
+    "rawData": {
+      "source": "github",
+      "templateIndex": 2
+    },
+    "occurredAt": "2025-07-20T09:00:00.000Z",
+    "weight": 2,
+    "externalId": "github:delivery:19",
+    "externalUrl": "https://example.com/github/19"
+  },
+  {
+    "source": "jira",
+    "category": "delivery",
+    "signal": "Closed the final tickets for the incident dashboard revamp and coordinated release readiness",
+    "rawData": {
+      "source": "jira",
+      "templateIndex": 1
+    },
+    "occurredAt": "2025-07-20T09:00:00.000Z",
+    "weight": 4,
+    "externalId": "jira:delivery:71",
+    "externalUrl": "https://example.com/jira/71"
+  },
+  {
+    "source": "slack",
+    "category": "mentorship",
+    "signal": "Explained our alert thresholds to a new hire and connected them to the right runbooks — one of the mentorship moments teammates kept coming back to",
+    "rawData": {
+      "source": "slack",
+      "templateIndex": 3
+    },
+    "occurredAt": "2025-08-07T09:00:00.000Z",
+    "weight": 4,
+    "externalId": "slack:mentorship:98",
+    "externalUrl": "https://example.com/slack/98"
+  },
+  {
+    "source": "github",
+    "category": "delivery",
+    "signal": "Merged PR implementing rate limiting for the payment API and cut abuse incidents by 60%",
+    "rawData": {
+      "source": "github",
+      "templateIndex": 0
+    },
+    "occurredAt": "2025-08-13T09:00:00.000Z",
+    "weight": 3,
+    "externalId": "github:delivery:8",
+    "externalUrl": "https://example.com/github/8"
+  },
+  {
+    "source": "github",
+    "category": "delivery",
+    "signal": "Completed the bulk beneficiary upload flow and handled validation errors across all edge paths",
+    "rawData": {
+      "source": "github",
+      "templateIndex": 3
+    },
+    "occurredAt": "2025-08-13T09:00:00.000Z",
+    "weight": 3,
+    "externalId": "github:delivery:32",
+    "externalUrl": "https://example.com/github/32"
+  },
+  {
+    "source": "github",
+    "category": "collaboration",
+    "signal": "Paired with frontend teammates on API pagination changes and removed downstream rework",
+    "rawData": {
+      "source": "github",
+      "templateIndex": 1
+    },
+    "occurredAt": "2025-08-13T09:00:00.000Z",
+    "weight": 2,
+    "externalId": "github:collaboration:42",
+    "externalUrl": "https://example.com/github/42"
+  },
+  {
+    "source": "jira",
+    "category": "delivery",
+    "signal": "Completed the policy renewal workflow and removed duplicate manual review steps",
+    "rawData": {
+      "source": "jira",
+      "templateIndex": 3
+    },
+    "occurredAt": "2025-08-13T09:00:00.000Z",
+    "weight": 3,
+    "externalId": "jira:delivery:60",
+    "externalUrl": "https://example.com/jira/60"
+  },
+  {
+    "source": "jira",
+    "category": "process",
+    "signal": "Finished the triage workflow update so incidents now route cleanly by severity",
+    "rawData": {
+      "source": "jira",
+      "templateIndex": 2
+    },
+    "occurredAt": "2025-08-13T09:00:00.000Z",
+    "weight": 4,
+    "externalId": "jira:process:82",
+    "externalUrl": "https://example.com/jira/82"
+  },
+  {
+    "source": "slack",
+    "category": "collaboration",
+    "signal": "Unblocked the frontend team by clarifying the API contract in a Slack thread and saved roughly a day of rework",
+    "rawData": {
+      "source": "slack",
+      "templateIndex": 0
+    },
+    "occurredAt": "2025-08-13T09:00:00.000Z",
+    "weight": 4,
+    "externalId": "slack:collaboration:92",
+    "externalUrl": "https://example.com/slack/92"
+  },
+  {
+    "source": "slack",
+    "category": "mentorship",
+    "signal": "Explained our alert thresholds to a new hire and connected them to the right runbooks — one of the mentorship moments teammates kept coming back to",
+    "rawData": {
+      "source": "slack",
+      "templateIndex": 3
+    },
+    "occurredAt": "2025-08-13T09:00:00.000Z",
+    "weight": 5,
+    "externalId": "slack:mentorship:104",
+    "externalUrl": "https://example.com/slack/104"
+  },
+  {
+    "source": "manual",
+    "category": "other",
+    "signal": "Captured stakeholder feedback after launch and translated it into the next iteration plan",
+    "rawData": {
+      "source": "manual",
+      "templateIndex": 0
+    },
+    "occurredAt": "2025-08-13T09:00:00.000Z",
+    "weight": 2,
+    "externalId": "manual:other:125",
+    "externalUrl": "https://example.com/manual/125"
+  },
+  {
+    "source": "slack",
+    "category": "mentorship",
+    "signal": "Walked a teammate through the release process in Slack and stayed online through the deploy — one of the mentorship moments teammates kept coming back to",
+    "rawData": {
+      "source": "slack",
+      "templateIndex": 1
+    },
+    "occurredAt": "2025-08-22T09:00:00.000Z",
+    "weight": 3,
+    "externalId": "slack:mentorship:101",
+    "externalUrl": "https://example.com/slack/101"
+  },
+  {
+    "source": "github",
+    "category": "delivery",
+    "signal": "Launched service health indicators in the admin console for faster triage during peaks",
+    "rawData": {
+      "source": "github",
+      "templateIndex": 4
+    },
+    "occurredAt": "2025-08-25T09:00:00.000Z",
+    "weight": 3,
+    "externalId": "github:delivery:20",
+    "externalUrl": "https://example.com/github/20"
+  },
+  {
+    "source": "jira",
+    "category": "delivery",
+    "signal": "Completed the policy renewal workflow and removed duplicate manual review steps",
+    "rawData": {
+      "source": "jira",
+      "templateIndex": 3
+    },
+    "occurredAt": "2025-08-25T09:00:00.000Z",
+    "weight": 2,
+    "externalId": "jira:delivery:72",
+    "externalUrl": "https://example.com/jira/72"
+  },
+  {
+    "source": "slack",
+    "category": "mentorship",
+    "signal": "Explained our alert thresholds to a new hire and connected them to the right runbooks — one of the mentorship moments teammates kept coming back to",
+    "rawData": {
+      "source": "slack",
+      "templateIndex": 3
+    },
+    "occurredAt": "2025-09-03T09:00:00.000Z",
+    "weight": 4,
+    "externalId": "slack:mentorship:102",
+    "externalUrl": "https://example.com/slack/102"
+  },
+  {
+    "source": "github",
+    "category": "delivery",
+    "signal": "Shipped audit-log export for compliance reviews after closing the final edge cases",
+    "rawData": {
+      "source": "github",
+      "templateIndex": 1
+    },
+    "occurredAt": "2025-09-06T09:00:00.000Z",
+    "weight": 3,
+    "externalId": "github:delivery:21",
+    "externalUrl": "https://example.com/github/21"
+  },
+  {
+    "source": "jira",
+    "category": "delivery",
+    "signal": "Closed the final tickets for the incident dashboard revamp and coordinated release readiness",
+    "rawData": {
+      "source": "jira",
+      "templateIndex": 1
+    },
+    "occurredAt": "2025-09-06T09:00:00.000Z",
+    "weight": 2,
+    "externalId": "jira:delivery:73",
+    "externalUrl": "https://example.com/jira/73"
+  },
+  {
+    "source": "slack",
+    "category": "mentorship",
+    "signal": "Walked a teammate through the release process in Slack and stayed online through the deploy — one of the mentorship moments teammates kept coming back to",
+    "rawData": {
+      "source": "slack",
+      "templateIndex": 1
+    },
+    "occurredAt": "2025-09-12T09:00:00.000Z",
+    "weight": 3,
+    "externalId": "slack:mentorship:99",
+    "externalUrl": "https://example.com/slack/99"
+  },
+  {
+    "source": "github",
+    "category": "delivery",
+    "signal": "Delivered queue retry controls that reduced manual ops escalations during incident windows",
+    "rawData": {
+      "source": "github",
+      "templateIndex": 2
+    },
+    "occurredAt": "2025-09-18T09:00:00.000Z",
+    "weight": 3,
+    "externalId": "github:delivery:9",
+    "externalUrl": "https://example.com/github/9"
+  },
+  {
+    "source": "github",
+    "category": "delivery",
+    "signal": "Merged PR implementing rate limiting for the payment API and cut abuse incidents by 60%",
+    "rawData": {
+      "source": "github",
+      "templateIndex": 0
+    },
+    "occurredAt": "2025-09-18T09:00:00.000Z",
+    "weight": 3,
+    "externalId": "github:delivery:33",
+    "externalUrl": "https://example.com/github/33"
+  },
+  {
+    "source": "github",
+    "category": "collaboration",
+    "signal": "Reviewed and approved 3 PRs from junior engineers with detailed architectural feedback",
+    "rawData": {
+      "source": "github",
+      "templateIndex": 0
+    },
+    "occurredAt": "2025-09-18T09:00:00.000Z",
+    "weight": 3,
+    "externalId": "github:collaboration:43",
+    "externalUrl": "https://example.com/github/43"
+  },
+  {
+    "source": "jira",
+    "category": "delivery",
+    "signal": "Closed the final tickets for the incident dashboard revamp and coordinated release readiness",
+    "rawData": {
+      "source": "jira",
+      "templateIndex": 1
+    },
+    "occurredAt": "2025-09-18T09:00:00.000Z",
+    "weight": 4,
+    "externalId": "jira:delivery:61",
+    "externalUrl": "https://example.com/jira/61"
+  },
+  {
+    "source": "jira",
+    "category": "process",
+    "signal": "Resolved a release-readiness checklist gap that had been causing late QA surprises",
+    "rawData": {
+      "source": "jira",
+      "templateIndex": 1
+    },
+    "occurredAt": "2025-09-18T09:00:00.000Z",
+    "weight": 2,
+    "externalId": "jira:process:83",
+    "externalUrl": "https://example.com/jira/83"
+  },
+  {
+    "source": "slack",
+    "category": "collaboration",
+    "signal": "Summarized production learnings after the outage review and aligned follow-up owners asynchronously",
+    "rawData": {
+      "source": "slack",
+      "templateIndex": 2
+    },
+    "occurredAt": "2025-09-18T09:00:00.000Z",
+    "weight": 2,
+    "externalId": "slack:collaboration:93",
+    "externalUrl": "https://example.com/slack/93"
+  },
+  {
+    "source": "manual",
+    "category": "other",
+    "signal": "Stepped in to coordinate comms during a cross-team dependency issue and kept delivery on track",
+    "rawData": {
+      "source": "manual",
+      "templateIndex": 2
+    },
+    "occurredAt": "2025-09-18T09:00:00.000Z",
+    "weight": 3,
+    "externalId": "manual:other:126",
+    "externalUrl": "https://example.com/manual/126"
+  },
+  {
+    "source": "github",
+    "category": "delivery",
+    "signal": "Completed the bulk beneficiary upload flow and handled validation errors across all edge paths",
+    "rawData": {
+      "source": "github",
+      "templateIndex": 3
+    },
+    "occurredAt": "2025-10-11T09:00:00.000Z",
+    "weight": 4,
+    "externalId": "github:delivery:22",
+    "externalUrl": "https://example.com/github/22"
+  },
+  {
+    "source": "jira",
+    "category": "delivery",
+    "signal": "Completed the policy renewal workflow and removed duplicate manual review steps",
+    "rawData": {
+      "source": "jira",
+      "templateIndex": 3
+    },
+    "occurredAt": "2025-10-11T09:00:00.000Z",
+    "weight": 3,
+    "externalId": "jira:delivery:74",
+    "externalUrl": "https://example.com/jira/74"
+  },
+  {
+    "source": "manual",
+    "category": "leadership",
+    "signal": "Created a reusable risk-review template that became the team default for major launches — self-started and carried from proposal to adoption",
+    "rawData": {
+      "source": "initiative"
+    },
+    "occurredAt": "2025-10-20T09:00:00.000Z",
+    "weight": 5,
+    "externalId": "initiative:1",
+    "externalUrl": "https://example.com/initiative/1"
+  },
+  {
+    "source": "github",
+    "category": "delivery",
+    "signal": "Launched service health indicators in the admin console for faster triage during peaks",
+    "rawData": {
+      "source": "github",
+      "templateIndex": 4
+    },
+    "occurredAt": "2025-10-23T09:00:00.000Z",
+    "weight": 4,
+    "externalId": "github:delivery:10",
+    "externalUrl": "https://example.com/github/10"
+  },
+  {
+    "source": "github",
+    "category": "delivery",
+    "signal": "Delivered queue retry controls that reduced manual ops escalations during incident windows",
+    "rawData": {
+      "source": "github",
+      "templateIndex": 2
+    },
+    "occurredAt": "2025-10-23T09:00:00.000Z",
+    "weight": 4,
+    "externalId": "github:delivery:34",
+    "externalUrl": "https://example.com/github/34"
+  },
+  {
+    "source": "github",
+    "category": "collaboration",
+    "signal": "Left refactoring guidance on shared auth utilities and aligned two squads on the final shape",
+    "rawData": {
+      "source": "github",
+      "templateIndex": 2
+    },
+    "occurredAt": "2025-10-23T09:00:00.000Z",
+    "weight": 4,
+    "externalId": "github:collaboration:44",
+    "externalUrl": "https://example.com/github/44"
+  },
+  {
+    "source": "jira",
+    "category": "delivery",
+    "signal": "Completed the policy renewal workflow and removed duplicate manual review steps",
+    "rawData": {
+      "source": "jira",
+      "templateIndex": 3
+    },
+    "occurredAt": "2025-10-23T09:00:00.000Z",
+    "weight": 2,
+    "externalId": "jira:delivery:62",
+    "externalUrl": "https://example.com/jira/62"
+  },
+  {
+    "source": "jira",
+    "category": "process",
+    "signal": "Closed the sprint hygiene epic to standardize acceptance criteria across the platform team",
+    "rawData": {
+      "source": "jira",
+      "templateIndex": 0
+    },
+    "occurredAt": "2025-10-23T09:00:00.000Z",
+    "weight": 3,
+    "externalId": "jira:process:84",
+    "externalUrl": "https://example.com/jira/84"
+  },
+  {
+    "source": "slack",
+    "category": "collaboration",
+    "signal": "Coordinated a rollout plan in Slack across infra, QA, and support during a risky release",
+    "rawData": {
+      "source": "slack",
+      "templateIndex": 1
+    },
+    "occurredAt": "2025-10-23T09:00:00.000Z",
+    "weight": 3,
+    "externalId": "slack:collaboration:94",
+    "externalUrl": "https://example.com/slack/94"
+  },
+  {
+    "source": "manual",
+    "category": "other",
+    "signal": "Facilitated a retro that turned recurring deployment pain into three concrete fixes",
+    "rawData": {
+      "source": "manual",
+      "templateIndex": 1
+    },
+    "occurredAt": "2025-10-23T09:00:00.000Z",
+    "weight": 4,
+    "externalId": "manual:other:127",
+    "externalUrl": "https://example.com/manual/127"
+  },
+  {
+    "source": "github",
+    "category": "delivery",
+    "signal": "Shipped audit-log export for compliance reviews after closing the final edge cases",
+    "rawData": {
+      "source": "github",
+      "templateIndex": 1
+    },
+    "occurredAt": "2025-11-04T09:00:00.000Z",
+    "weight": 2,
+    "externalId": "github:delivery:11",
+    "externalUrl": "https://example.com/github/11"
+  },
+  {
+    "source": "github",
+    "category": "collaboration",
+    "signal": "Paired with frontend teammates on API pagination changes and removed downstream rework",
+    "rawData": {
+      "source": "github",
+      "templateIndex": 1
+    },
+    "occurredAt": "2025-11-04T09:00:00.000Z",
+    "weight": 2,
+    "externalId": "github:collaboration:45",
+    "externalUrl": "https://example.com/github/45"
+  },
+  {
+    "source": "jira",
+    "category": "delivery",
+    "signal": "Closed the final tickets for the incident dashboard revamp and coordinated release readiness",
+    "rawData": {
+      "source": "jira",
+      "templateIndex": 1
+    },
+    "occurredAt": "2025-11-04T09:00:00.000Z",
+    "weight": 2,
+    "externalId": "jira:delivery:63",
+    "externalUrl": "https://example.com/jira/63"
+  },
+  {
+    "source": "slack",
+    "category": "collaboration",
+    "signal": "Unblocked the frontend team by clarifying the API contract in a Slack thread and saved roughly a day of rework",
+    "rawData": {
+      "source": "slack",
+      "templateIndex": 0
+    },
+    "occurredAt": "2025-11-04T09:00:00.000Z",
+    "weight": 3,
+    "externalId": "slack:collaboration:95",
+    "externalUrl": "https://example.com/slack/95"
+  },
+  {
+    "source": "manual",
+    "category": "other",
+    "signal": "Captured stakeholder feedback after launch and translated it into the next iteration plan",
+    "rawData": {
+      "source": "manual",
+      "templateIndex": 0
+    },
+    "occurredAt": "2025-11-04T09:00:00.000Z",
+    "weight": 1,
+    "externalId": "manual:other:128",
+    "externalUrl": "https://example.com/manual/128"
+  },
+  {
+    "source": "github",
+    "category": "delivery",
+    "signal": "Merged PR implementing rate limiting for the payment API and cut abuse incidents by 60%",
+    "rawData": {
+      "source": "github",
+      "templateIndex": 0
+    },
+    "occurredAt": "2025-11-16T09:00:00.000Z",
+    "weight": 2,
+    "externalId": "github:delivery:23",
+    "externalUrl": "https://example.com/github/23"
+  },
+  {
+    "source": "github",
+    "category": "delivery",
+    "signal": "Completed the bulk beneficiary upload flow and handled validation errors across all edge paths",
+    "rawData": {
+      "source": "github",
+      "templateIndex": 3
+    },
+    "occurredAt": "2025-12-09T09:00:00.000Z",
+    "weight": 3,
+    "externalId": "github:delivery:12",
+    "externalUrl": "https://example.com/github/12"
+  },
+  {
+    "source": "github",
+    "category": "collaboration",
+    "signal": "Reviewed and approved 3 PRs from junior engineers with detailed architectural feedback",
+    "rawData": {
+      "source": "github",
+      "templateIndex": 0
+    },
+    "occurredAt": "2025-12-09T09:00:00.000Z",
+    "weight": 3,
+    "externalId": "github:collaboration:46",
+    "externalUrl": "https://example.com/github/46"
+  },
+  {
+    "source": "jira",
+    "category": "delivery",
+    "signal": "Completed the policy renewal workflow and removed duplicate manual review steps",
+    "rawData": {
+      "source": "jira",
+      "templateIndex": 3
+    },
+    "occurredAt": "2025-12-09T09:00:00.000Z",
+    "weight": 3,
+    "externalId": "jira:delivery:64",
+    "externalUrl": "https://example.com/jira/64"
+  },
+  {
+    "source": "slack",
+    "category": "collaboration",
+    "signal": "Summarized production learnings after the outage review and aligned follow-up owners asynchronously",
+    "rawData": {
+      "source": "slack",
+      "templateIndex": 2
+    },
+    "occurredAt": "2025-12-09T09:00:00.000Z",
+    "weight": 4,
+    "externalId": "slack:collaboration:96",
+    "externalUrl": "https://example.com/slack/96"
+  }
+]

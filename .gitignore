@@ -1,7 +1,8 @@
 node_modules
 .next
+out
 .env.local
-prisma/dev.db
-prisma/dev.db-journal
-dev.db
-dev.db-journal
+src-tauri/target
+src-tauri/gen
+src-tauri/Cargo.lock
+tsconfig.tsbuildinfo

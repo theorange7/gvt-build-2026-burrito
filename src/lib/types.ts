@@ -22,22 +22,16 @@ export type Contribution = {
   createdAt: Date;
 };
 
-export type WrapMode = 'snapshot' | 'year-end';
-
-export type WrapJob = {
-  id: string;
-  status: 'pending' | 'processing' | 'complete' | 'failed';
-  userId: string;
-  mode: WrapMode;
-  windowStart: Date;
-  windowEnd: Date;
-  sliceContent?: SliceContent[];
-  micrositeUrl?: string;
-  videoUrl?: string;
-  errorMessage?: string;
-  createdAt: Date;
-  updatedAt: Date;
+export type ContributionForAI = {
+  source: ContributionSource;
+  category: ContributionCategory;
+  signal: string;
+  rawData: Record<string, unknown>;
+  occurredAt: Date;
+  weight: number;
 };
+
+export type WrapMode = 'snapshot' | 'year-end';
 
 export type SliceContent = {
   sliceKey: string;
@@ -48,7 +42,6 @@ export type SliceContent = {
 };
 
 export type ManualContributionInput = {
-  userId: string;
   freeText: string;
   occurredAt?: Date;
   category?: ContributionCategory;

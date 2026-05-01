@@ -8,7 +8,9 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
-import type { WrapMode } from '@/lib/types';
+import type { SliceContent, WrapMode } from '@/lib/types';
+import { listContributionsInRange } from '@/lib/local-store/contributions';
+import { saveWrap } from '@/lib/local-store/wraps';
 
 export function GenerateWrapModal() {
   const [open, setOpen] = useState(false);
@@ -16,35 +18,70 @@ export function GenerateWrapModal() {
   const [windowStart, setWindowStart] = useState('2025-04-01');
   const [windowEnd, setWindowEnd] = useState('2025-06-30');
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-  const [jobId, setJobId] = useState<string | null>(null);
+  const [wrapId, setWrapId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const payload = useMemo(() => {
+  const range = useMemo(() => {
     if (mode === 'year-end') {
-      return { userId: 'demo-user', mode, windowStart: '2025-01-01', windowEnd: '2025-12-31' };
+      return { windowStart: '2025-01-01', windowEnd: '2025-12-31' };
     }
-    return { userId: 'demo-user', mode, windowStart, windowEnd };
+    return { windowStart, windowEnd };
   }, [mode, windowEnd, windowStart]);
 
   async function generate() {
     setStatus('loading');
     setErrorMessage(null);
-    const response = await fetch('/api/jobs', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
 
-    const body = await response.json().catch(() => ({}));
+    try {
+      const start = new Date(range.windowStart);
+      const end = new Date(range.windowEnd);
+      end.setHours(23, 59, 59, 999);
 
-    if (!response.ok) {
+      const local = await listContributionsInRange(start, end);
+      const stripped = local.map((c) => ({
+        source: c.source,
+        category: c.category,
+        signal: c.signal,
+        rawData: c.rawData,
+        occurredAt: c.occurredAt.toISOString(),
+        weight: c.weight,
+      }));
+
+      const response = await fetch('/api/wrap', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          contributions: stripped,
+          mode,
+          windowStart: start.toISOString(),
+          windowEnd: end.toISOString(),
+        }),
+      });
+
+      const body = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        setStatus('error');
+        setErrorMessage(body.error || 'Wrap generation failed.');
+        return;
+      }
+
+      const sliceContent = body.sliceContent as SliceContent[];
+      const title = mode === 'year-end' ? 'Your year, wrapped for work.' : 'Your recent momentum, wrapped.';
+      const stored = await saveWrap({
+        mode,
+        windowStart: start,
+        windowEnd: end,
+        title,
+        sliceContent,
+      });
+
+      setWrapId(stored.id);
+      setStatus('success');
+    } catch (error) {
       setStatus('error');
-      setErrorMessage(body.errorMessage || body.error || 'Wrap generation failed.');
-      return;
+      setErrorMessage(error instanceof Error ? error.message : 'Wrap generation failed.');
     }
-
-    setJobId(body.jobId);
-    setStatus('success');
   }
 
   const modeCards = [
@@ -125,7 +162,7 @@ export function GenerateWrapModal() {
               )}
 
               <div className="mt-6 rounded-[24px] border border-white/8 bg-black/20 p-5">
-                {status === 'idle' ? <p className="text-sm text-[color:var(--muted)]">You’ll get a local microsite with 10 mode-aware slides and live narrative copy.</p> : null}
+                {status === 'idle' ? <p className="text-sm text-[color:var(--muted)]">Your contributions are sent to the AI proxy without identifiers; the result is stored encrypted on this device.</p> : null}
                 {status === 'loading' ? (
                   <div className="flex items-center gap-3 text-sm text-[color:var(--foreground)]">
                     <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-[color:var(--accent)]" />
@@ -138,10 +175,10 @@ export function GenerateWrapModal() {
                     <button type="button" onClick={generate} className="rounded-full border border-white/10 px-4 py-2 text-[color:var(--foreground)]">Retry</button>
                   </div>
                 ) : null}
-                {status === 'success' && jobId ? (
+                {status === 'success' && wrapId ? (
                   <div className="space-y-3 text-sm">
-                    <p className="text-[color:var(--foreground)]">Your wrap is ready.</p>
-                    <Link href={`/wrap/${jobId}`} className="inline-flex rounded-full bg-[color:var(--accent)] px-4 py-2 text-black">View Wrap →</Link>
+                    <p className="text-[color:var(--foreground)]">Your wrap is ready. Saved on this device.</p>
+                    <Link href={`/wrap/${wrapId}`} className="inline-flex rounded-full bg-[color:var(--accent)] px-4 py-2 text-black">View Wrap →</Link>
                   </div>
                 ) : null}
               </div>

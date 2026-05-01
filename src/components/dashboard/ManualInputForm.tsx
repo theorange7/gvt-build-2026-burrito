@@ -9,8 +9,15 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { useState } from 'react';
 import type { Contribution, ContributionCategory } from '@/lib/types';
+import { addContribution } from '@/lib/local-store/contributions';
 
 const categories: ContributionCategory[] = ['delivery', 'collaboration', 'mentorship', 'process', 'leadership'];
+
+type Classification = {
+  signal: string;
+  category: ContributionCategory;
+  weight: number;
+};
 
 export function ManualInputForm() {
   const queryClient = useQueryClient();
@@ -21,23 +28,28 @@ export function ManualInputForm() {
 
   const mutation = useMutation({
     mutationFn: async () => {
-      const response = await fetch('/api/contributions', {
+      const response = await fetch('/api/classify', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          userId: 'demo-user',
-          freeText,
-          occurredAt,
-          category: category || undefined,
-        }),
+        body: JSON.stringify({ freeText, source: 'manual' }),
       });
 
       if (!response.ok) {
-        const error = await response.json().catch(() => ({ error: 'Failed to add contribution.' }));
-        throw new Error(error.error || 'Failed to add contribution.');
+        const error = await response.json().catch(() => ({ error: 'Classification failed.' }));
+        throw new Error(error.error || 'Classification failed.');
       }
 
-      return (await response.json()) as Contribution;
+      const classified = (await response.json()) as Classification;
+
+      return addContribution({
+        source: 'manual',
+        category: (category as ContributionCategory) || classified.category,
+        signal: classified.signal,
+        rawData: { source: 'manual', freeText },
+        occurredAt: new Date(occurredAt),
+        weight: classified.weight,
+        externalId: `manual:${crypto.randomUUID()}`,
+      });
     },
     onSuccess: (created) => {
       queryClient.setQueryData<Contribution[]>(['contributions'], (current = []) => [created, ...current]);
@@ -100,7 +112,7 @@ export function ManualInputForm() {
             </select>
           </div>
           <div className="flex items-center justify-between gap-4">
-            <p className="text-sm text-[color:var(--muted)]">Entries are classified on save and added straight into the timeline.</p>
+            <p className="text-sm text-[color:var(--muted)]">Entries are classified on save and added straight into the timeline. Stored only on this device.</p>
             <button
               type="submit"
               disabled={mutation.isPending || !freeText.trim()}
