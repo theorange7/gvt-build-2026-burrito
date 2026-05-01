@@ -3,8 +3,9 @@
  * (Anthropic, Azure Foundry) without persistence. Do not add request-body
  * logging here. Only error status codes and messages may be logged.
  */
-import { AIProjectsClient } from '@azure/ai-projects';
+import { AIProjectClient } from '@azure/ai-projects';
 import { DefaultAzureCredential } from '@azure/identity';
+import type OpenAI from 'openai';
 import { resolveModel, type ModelOption } from './models';
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -83,27 +84,22 @@ async function callAnthropic(
   throw lastError ?? new Error('Anthropic request failed after retries.');
 }
 
-let cachedAzureChatClient: Promise<AzureChatClient> | null = null;
+let cachedOpenAIClient: Promise<OpenAI> | null = null;
 
-type AzureChatClient = Awaited<ReturnType<AIProjectsClient['inference']['getChatCompletionsClient']>>;
+function getAzureOpenAIClient(): Promise<OpenAI> {
+  if (cachedOpenAIClient) return cachedOpenAIClient;
 
-function getAzureChatClient(): Promise<AzureChatClient> {
-  if (cachedAzureChatClient) return cachedAzureChatClient;
-
-  const connectionString = process.env.AZURE_FOUNDRY_CONNECTION_STRING;
-  if (!connectionString) {
+  const projectEndpoint = process.env.AZURE_FOUNDRY_PROJECT_ENDPOINT;
+  if (!projectEndpoint) {
     throw new Error(
-      'AZURE_FOUNDRY_CONNECTION_STRING is not set. Add it to .env.local to use Azure Foundry models.',
+      'AZURE_FOUNDRY_PROJECT_ENDPOINT is not set. Add it to .env.local to use Azure Foundry models. ' +
+        'Format: https://<account>.services.ai.azure.com/api/projects/<project>',
     );
   }
 
-  const projectClient = AIProjectsClient.fromConnectionString(
-    connectionString,
-    new DefaultAzureCredential(),
-  );
-
-  cachedAzureChatClient = projectClient.inference.getChatCompletionsClient();
-  return cachedAzureChatClient;
+  const project = new AIProjectClient(projectEndpoint, new DefaultAzureCredential());
+  cachedOpenAIClient = Promise.resolve(project.getOpenAIClient() as unknown as OpenAI);
+  return cachedOpenAIClient;
 }
 
 async function callAzureFoundry(
@@ -111,22 +107,20 @@ async function callAzureFoundry(
   userMessage: string,
   model: ModelOption,
 ): Promise<string> {
-  const chat = await getAzureChatClient();
+  const openai = await getAzureOpenAIClient();
 
   let lastError: Error | null = null;
 
   for (const [index, delay] of RETRY_DELAYS.entries()) {
     try {
-      const response = await chat.complete({
-        body: {
-          model: model.modelId,
-          max_tokens: 1024,
-          temperature: 0.7,
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: userMessage },
-          ],
-        },
+      const response = await openai.chat.completions.create({
+        model: model.modelId,
+        max_tokens: 1024,
+        temperature: 0.7,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userMessage },
+        ],
       });
 
       const text = response.choices?.[0]?.message?.content;
@@ -135,8 +129,8 @@ async function callAzureFoundry(
       }
       return text;
     } catch (error) {
-      const status = (error as { statusCode?: number; status?: number }).statusCode
-        ?? (error as { status?: number }).status;
+      const status = (error as { status?: number; statusCode?: number }).status
+        ?? (error as { statusCode?: number }).statusCode;
       const message = error instanceof Error ? error.message : String(error);
 
       if (status === 429 || (typeof status === 'number' && status >= 500)) {
