@@ -178,7 +178,7 @@ export function GenerateWrapModal() {
                   ))}
                 </select>
                 <span className="text-xs text-[color:var(--muted)]">
-                  Anthropic models use ANTHROPIC_API_KEY. Azure Foundry models use AZURE_FOUNDRY_PROJECT_ENDPOINT with DefaultAzureCredential (Entra ID).
+                  Anthropic models use ANTHROPIC_API_KEY. Azure Foundry options call your project's Azure OpenAI deployment of the same name via AZURE_FOUNDRY_PROJECT_ENDPOINT and DefaultAzureCredential (Entra ID). Override AZURE_FOUNDRY_API_VERSION if your deployment requires a different api-version.
                 </span>
               </label>
 

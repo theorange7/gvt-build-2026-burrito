@@ -97,7 +97,7 @@ function getAzureOpenAIClient(): Promise<AzureOpenAI> {
     );
   }
 
-  const apiVersion = process.env.AZURE_FOUNDRY_API_VERSION ?? '2024-10-21';
+  const apiVersion = process.env.AZURE_FOUNDRY_API_VERSION ?? '2025-01-01-preview';
   const project = new AIProjectClient(projectEndpoint, new DefaultAzureCredential());
   const pending = project.getAzureOpenAIClient({ apiVersion });
   cachedOpenAIClient = pending;
@@ -143,7 +143,11 @@ async function callAzureFoundry(
         }
       }
 
-      throw new Error(`Azure Foundry API error${status ? ` ${status}` : ''}: ${message}`);
+      const hint =
+        status === 404
+          ? ` Verify that "${model.modelId}" is the exact deployment name in your Foundry project and that AZURE_FOUNDRY_API_VERSION (currently using a default of 2025-01-01-preview) is supported by that deployment.`
+          : '';
+      throw new Error(`Azure Foundry API error${status ? ` ${status}` : ''}: ${message}${hint}`);
     }
   }
 

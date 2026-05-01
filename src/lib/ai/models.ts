@@ -8,6 +8,16 @@ export type ModelOption = {
   modelId: string;
 };
 
+/**
+ * NOTE: For provider 'azure-foundry', `modelId` is the **deployment name** in
+ * your Azure AI Foundry project, not the model family name. The defaults below
+ * assume conventional deployment names; override them to match your project.
+ *
+ * Only Azure OpenAI–compatible deployments (GPT-4o, GPT-4o-mini, GPT-4.1, etc.)
+ * are supported through @azure/ai-projects' getAzureOpenAIClient. Non-OpenAI
+ * Foundry models (Phi, Llama, Mistral) are served by the separate Model
+ * Inference API and would need @azure-rest/ai-inference to be wired up.
+ */
 export const MODEL_OPTIONS: ModelOption[] = [
   {
     id: 'anthropic:claude-sonnet-4',
@@ -17,27 +27,21 @@ export const MODEL_OPTIONS: ModelOption[] = [
   },
   {
     id: 'azure:gpt-4o',
-    label: 'GPT-4o (Azure Foundry)',
+    label: 'GPT-4o (Azure Foundry deployment)',
     provider: 'azure-foundry',
     modelId: 'gpt-4o',
   },
   {
     id: 'azure:gpt-4o-mini',
-    label: 'GPT-4o mini (Azure Foundry)',
+    label: 'GPT-4o mini (Azure Foundry deployment)',
     provider: 'azure-foundry',
     modelId: 'gpt-4o-mini',
   },
   {
-    id: 'azure:phi-4',
-    label: 'Phi-4 (Azure Foundry)',
+    id: 'azure:gpt-4.1',
+    label: 'GPT-4.1 (Azure Foundry deployment)',
     provider: 'azure-foundry',
-    modelId: 'Phi-4',
-  },
-  {
-    id: 'azure:llama-3.3-70b',
-    label: 'Llama 3.3 70B (Azure Foundry)',
-    provider: 'azure-foundry',
-    modelId: 'Llama-3.3-70B-Instruct',
+    modelId: 'gpt-4.1',
   },
 ];
 
