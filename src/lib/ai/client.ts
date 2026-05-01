@@ -5,7 +5,7 @@
  */
 import { AIProjectClient } from '@azure/ai-projects';
 import { DefaultAzureCredential } from '@azure/identity';
-import type OpenAI from 'openai';
+import type { AzureOpenAI } from 'openai';
 import { resolveModel, type ModelOption } from './models';
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -84,9 +84,9 @@ async function callAnthropic(
   throw lastError ?? new Error('Anthropic request failed after retries.');
 }
 
-let cachedOpenAIClient: Promise<OpenAI> | null = null;
+let cachedOpenAIClient: Promise<AzureOpenAI> | null = null;
 
-function getAzureOpenAIClient(): Promise<OpenAI> {
+function getAzureOpenAIClient(): Promise<AzureOpenAI> {
   if (cachedOpenAIClient) return cachedOpenAIClient;
 
   const projectEndpoint = process.env.AZURE_FOUNDRY_PROJECT_ENDPOINT;
@@ -97,9 +97,11 @@ function getAzureOpenAIClient(): Promise<OpenAI> {
     );
   }
 
+  const apiVersion = process.env.AZURE_FOUNDRY_API_VERSION ?? '2024-10-21';
   const project = new AIProjectClient(projectEndpoint, new DefaultAzureCredential());
-  cachedOpenAIClient = Promise.resolve(project.getOpenAIClient() as unknown as OpenAI);
-  return cachedOpenAIClient;
+  const pending = project.getAzureOpenAIClient({ apiVersion });
+  cachedOpenAIClient = pending;
+  return pending;
 }
 
 async function callAzureFoundry(
