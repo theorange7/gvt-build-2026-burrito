@@ -3,6 +3,8 @@
  * (Anthropic, Azure Foundry) without persistence. Do not add request-body
  * logging here. Only error status codes and messages may be logged.
  */
+import { AIProjectsClient } from '@azure/ai-projects';
+import { DefaultAzureCredential } from '@azure/identity';
 import { resolveModel, type ModelOption } from './models';
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -81,77 +83,73 @@ async function callAnthropic(
   throw lastError ?? new Error('Anthropic request failed after retries.');
 }
 
+let cachedAzureChatClient: Promise<AzureChatClient> | null = null;
+
+type AzureChatClient = Awaited<ReturnType<AIProjectsClient['inference']['getChatCompletionsClient']>>;
+
+function getAzureChatClient(): Promise<AzureChatClient> {
+  if (cachedAzureChatClient) return cachedAzureChatClient;
+
+  const connectionString = process.env.AZURE_FOUNDRY_CONNECTION_STRING;
+  if (!connectionString) {
+    throw new Error(
+      'AZURE_FOUNDRY_CONNECTION_STRING is not set. Add it to .env.local to use Azure Foundry models.',
+    );
+  }
+
+  const projectClient = AIProjectsClient.fromConnectionString(
+    connectionString,
+    new DefaultAzureCredential(),
+  );
+
+  cachedAzureChatClient = projectClient.inference.getChatCompletionsClient();
+  return cachedAzureChatClient;
+}
+
 async function callAzureFoundry(
   systemPrompt: string,
   userMessage: string,
   model: ModelOption,
 ): Promise<string> {
-  const endpoint = process.env.AZURE_FOUNDRY_ENDPOINT;
-  const apiKey = process.env.AZURE_FOUNDRY_API_KEY;
-  const apiVersion = process.env.AZURE_FOUNDRY_API_VERSION ?? '2024-05-01-preview';
-
-  if (!endpoint) {
-    throw new Error('AZURE_FOUNDRY_ENDPOINT is not set. Add it to .env.local to use Azure Foundry models.');
-  }
-  if (!apiKey) {
-    throw new Error('AZURE_FOUNDRY_API_KEY is not set. Add it to .env.local to use Azure Foundry models.');
-  }
-
-  const url = buildAzureUrl(endpoint, apiVersion);
-
-  const payload = {
-    model: model.modelId,
-    max_tokens: 1024,
-    temperature: 0.7,
-    messages: [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: userMessage },
-    ],
-  };
+  const chat = await getAzureChatClient();
 
   let lastError: Error | null = null;
 
   for (const [index, delay] of RETRY_DELAYS.entries()) {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        'api-key': apiKey,
-        authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify(payload),
-    });
+    try {
+      const response = await chat.complete({
+        body: {
+          model: model.modelId,
+          max_tokens: 1024,
+          temperature: 0.7,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userMessage },
+          ],
+        },
+      });
 
-    if (response.ok) {
-      const data = (await response.json()) as {
-        choices?: Array<{ message?: { content?: string } }>;
-      };
-      const text = data.choices?.[0]?.message?.content;
+      const text = response.choices?.[0]?.message?.content;
       if (!text) {
         throw new Error('Azure Foundry returned no message content.');
       }
       return text;
-    }
+    } catch (error) {
+      const status = (error as { statusCode?: number; status?: number }).statusCode
+        ?? (error as { status?: number }).status;
+      const message = error instanceof Error ? error.message : String(error);
 
-    const body = await response.text();
-    if (response.status === 429 || response.status >= 500) {
-      lastError = new Error(`Azure Foundry transient error ${response.status}: ${body}`);
-      if (index < RETRY_DELAYS.length - 1) {
-        await sleep(delay);
-        continue;
+      if (status === 429 || (typeof status === 'number' && status >= 500)) {
+        lastError = new Error(`Azure Foundry transient error ${status}: ${message}`);
+        if (index < RETRY_DELAYS.length - 1) {
+          await sleep(delay);
+          continue;
+        }
       }
-    }
 
-    throw new Error(`Azure Foundry API error ${response.status}: ${body}`);
+      throw new Error(`Azure Foundry API error${status ? ` ${status}` : ''}: ${message}`);
+    }
   }
 
   throw lastError ?? new Error('Azure Foundry request failed after retries.');
-}
-
-function buildAzureUrl(endpoint: string, apiVersion: string): string {
-  const trimmed = endpoint.replace(/\/+$/, '');
-  if (/\/chat\/completions(\?|$)/.test(trimmed)) {
-    return trimmed.includes('api-version=') ? trimmed : `${trimmed}?api-version=${apiVersion}`;
-  }
-  return `${trimmed}/models/chat/completions?api-version=${apiVersion}`;
 }
