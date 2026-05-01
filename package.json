@@ -7,10 +7,17 @@
     "build": "NODE_ENV=production next build",
     "start": "NODE_ENV=production next start",
     "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test",
+    "test:e2e:install": "playwright install chromium",
     "export:demo": "node scripts/export-demo.mjs",
     "tauri:dev": "TAURI=1 pnpm dev & cd src-tauri && cargo tauri dev",
     "tauri:build": "TAURI=1 next build && cd src-tauri && cargo tauri build",
-    "ai:test": "tsx src/lib/ai/smoke-test.ts"
+    "ai:test": "vitest run test/integration/wrap.test.ts",
+    "ai:test:live": "INTEGRATION_LIVE=1 vitest run test/integration/wrap.test.ts"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.72.1",
@@ -24,13 +31,24 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@playwright/test": "^1.49.0",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.1.0",
+    "@testing-library/user-event": "^14.5.2",
     "@types/node": "^22.13.10",
     "@types/react": "^19.0.10",
     "@types/react-dom": "^19.0.4",
+    "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.21",
+    "eslint": "^8.57.1",
+    "eslint-config-next": "15.5.0",
+    "fake-indexeddb": "^6.0.0",
+    "happy-dom": "^15.11.0",
+    "msw": "^2.6.6",
     "postcss": "^8.5.3",
     "tailwindcss": "^3.4.17",
     "tsx": "^4.19.3",
-    "typescript": "^5.8.2"
+    "typescript": "^5.8.2",
+    "vitest": "^2.1.8"
   }
 }
