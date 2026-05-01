@@ -103,6 +103,27 @@ pnpm tauri:build  # builds .dmg for macOS
 
 See `src-tauri/README.md` for bootstrap instructions.
 
+## Tests
+
+```bash
+pnpm typecheck       # tsc --noEmit
+pnpm test            # Vitest: unit, component, integration (mocked Anthropic)
+pnpm test:watch      # Vitest in watch mode
+pnpm test:e2e        # Playwright e2e (boots dev server, real browser)
+pnpm ai:test         # AI integration with MSW-mocked Anthropic (fast)
+pnpm ai:test:live    # Same suite against the real Anthropic API
+```
+
+Test layout:
+
+- `test/unit/` — crypto round-trip, local-store CRUD, AI classify/generate/client, API route handlers, privacy invariants (static-analysis).
+- `test/component/` — UnlockGate (React Testing Library, happy-dom).
+- `test/integration/` — wrap pipeline smoke against MSW-mocked Anthropic; gate live runs behind `INTEGRATION_LIVE=1`.
+- `test/e2e/` — Playwright specs: locality (clear site data → fresh state), encryption-at-rest (raw IDB rows have no plaintext signal), network minimality (`/api/wrap` payloads carry no `userId`/`id`/`externalId`).
+- `test/fixtures/`, `test/mocks/`, `test/setup/` — shared fixtures, MSW handlers, and Vitest setup files.
+
+CI runs typecheck + lint + unit + build, then a separate Playwright job. A manual `workflow_dispatch` job runs the live AI smoke against a `secrets.ANTHROPIC_API_KEY`.
+
 ## Verification checklist
 
 - **Locality**: clear browser site data → reload → empty state returns.
