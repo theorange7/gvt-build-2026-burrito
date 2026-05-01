@@ -1,7 +1,7 @@
 import type { Contribution, SliceContent, WrapMode } from '@/lib/types';
 import { createSlice } from '../shared';
 
-export function generateCollaborationStyle(contributions: Contribution[], mode: WrapMode): Promise<SliceContent> {
+export function generateCollaborationStyle(contributions: Contribution[], mode: WrapMode, modelId?: string): Promise<SliceContent> {
   return createSlice({
     sliceKey: 'collaboration_style',
     sliceName: 'Collaboration Style',
@@ -10,5 +10,6 @@ export function generateCollaborationStyle(contributions: Contribution[], mode: 
     contributions,
     categories: ['collaboration', 'process'],
     statHint: '"68 shared moments"',
+    modelId,
   });
 }

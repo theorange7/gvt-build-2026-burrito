@@ -1,7 +1,7 @@
 import type { Contribution, SliceContent, WrapMode } from '@/lib/types';
 import { createSlice } from '../shared';
 
-export function generateVelocity(contributions: Contribution[], mode: WrapMode): Promise<SliceContent> {
+export function generateVelocity(contributions: Contribution[], mode: WrapMode, modelId?: string): Promise<SliceContent> {
   return createSlice({
     sliceKey: 'velocity',
     sliceName: 'Velocity',
@@ -10,5 +10,6 @@ export function generateVelocity(contributions: Contribution[], mode: WrapMode):
     contributions,
     categories: ['delivery'],
     statHint: '"47 PRs"',
+    modelId,
   });
 }

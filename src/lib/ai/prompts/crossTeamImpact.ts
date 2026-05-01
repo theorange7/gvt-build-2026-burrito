@@ -1,7 +1,7 @@
 import type { Contribution, SliceContent, WrapMode } from '@/lib/types';
 import { createSlice } from '../shared';
 
-export function generateCrossTeamImpact(contributions: Contribution[], mode: WrapMode): Promise<SliceContent> {
+export function generateCrossTeamImpact(contributions: Contribution[], mode: WrapMode, modelId?: string): Promise<SliceContent> {
   return createSlice({
     sliceKey: 'cross_team_impact',
     sliceName: 'Cross-Team Impact',
@@ -10,5 +10,6 @@ export function generateCrossTeamImpact(contributions: Contribution[], mode: Wra
     contributions,
     categories: ['collaboration'],
     statHint: '"12 unblockers"',
+    modelId,
   });
 }

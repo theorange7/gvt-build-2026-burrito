@@ -1,7 +1,7 @@
 import type { Contribution, SliceContent, WrapMode } from '@/lib/types';
 import { createSlice } from '../shared';
 
-export function generateLaunchesShipped(contributions: Contribution[], mode: WrapMode): Promise<SliceContent> {
+export function generateLaunchesShipped(contributions: Contribution[], mode: WrapMode, modelId?: string): Promise<SliceContent> {
   return createSlice({
     sliceKey: 'launches_shipped',
     sliceName: 'Launches Shipped',
@@ -11,5 +11,6 @@ export function generateLaunchesShipped(contributions: Contribution[], mode: Wra
     categories: ['delivery'],
     minWeight: 4,
     statHint: '"3 launches"',
+    modelId,
   });
 }

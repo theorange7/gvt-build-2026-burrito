@@ -1,7 +1,7 @@
 import type { Contribution, SliceContent, WrapMode } from '@/lib/types';
 import { createSlice } from '../shared';
 
-export function generateDeepWorkStreak(contributions: Contribution[], mode: WrapMode): Promise<SliceContent> {
+export function generateDeepWorkStreak(contributions: Contribution[], mode: WrapMode, modelId?: string): Promise<SliceContent> {
   return createSlice({
     sliceKey: 'deep_work_streak',
     sliceName: 'Deep Work Streak',
@@ -11,5 +11,6 @@ export function generateDeepWorkStreak(contributions: Contribution[], mode: Wrap
     categories: ['delivery', 'process'],
     minWeight: 3,
     statHint: '"5-week run"',
+    modelId,
   });
 }

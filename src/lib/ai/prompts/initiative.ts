@@ -1,7 +1,7 @@
 import type { Contribution, SliceContent, WrapMode } from '@/lib/types';
 import { createSlice } from '../shared';
 
-export function generateInitiative(contributions: Contribution[], mode: WrapMode): Promise<SliceContent> {
+export function generateInitiative(contributions: Contribution[], mode: WrapMode, modelId?: string): Promise<SliceContent> {
   return createSlice({
     sliceKey: 'initiative',
     sliceName: 'Initiative',
@@ -11,5 +11,6 @@ export function generateInitiative(contributions: Contribution[], mode: WrapMode
     categories: ['leadership', 'delivery'],
     minWeight: 4,
     statHint: '"2 self-started bets"',
+    modelId,
   });
 }
