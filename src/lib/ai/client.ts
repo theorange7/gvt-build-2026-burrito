@@ -117,8 +117,7 @@ async function callAzureFoundry(
     try {
       const response = await openai.chat.completions.create({
         model: model.modelId,
-        max_tokens: 1024,
-        temperature: 0.7,
+        temperature: 1.0,
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userMessage },
