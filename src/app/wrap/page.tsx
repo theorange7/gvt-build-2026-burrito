@@ -3,17 +3,26 @@
  * File role: Deliver the wrap as an immersive, mobile-proportioned review artifact inside a full-screen viewer.
  * Guardrail: The experience should read like a curated report sequence rather than ten isolated cards.
  */
-import { use } from 'react';
+'use client';
+
+import { Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { UnlockGate } from '@/components/unlock/UnlockGate';
 import { WrapViewer } from '@/components/wrap/WrapViewer';
 
-export const dynamic = 'force-static';
-
-export default function WrapPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
+function WrapPageInner() {
+  const id = useSearchParams().get('id') ?? '';
   return (
     <UnlockGate>
       <WrapViewer id={id} />
     </UnlockGate>
+  );
+}
+
+export default function WrapPage() {
+  return (
+    <Suspense fallback={null}>
+      <WrapPageInner />
+    </Suspense>
   );
 }
