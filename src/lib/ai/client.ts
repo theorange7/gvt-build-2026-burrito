@@ -39,8 +39,9 @@ async function callAnthropic(
   }
 
   const payload = {
-    model: model.modelId,
     max_tokens: 1024,
+    ...model.parameters,
+    model: model.modelId,
     system: systemPrompt,
     messages: [{ role: 'user', content: userMessage }],
   };
@@ -84,11 +85,9 @@ async function callAnthropic(
   throw lastError ?? new Error('Anthropic request failed after retries.');
 }
 
-let cachedOpenAIClient: Promise<AzureOpenAI> | null = null;
+const azureClientsByApiVersion = new Map<string, Promise<AzureOpenAI>>();
 
 function getAzureOpenAIClient(model: ModelOption): Promise<AzureOpenAI> {
-  if (cachedOpenAIClient) return cachedOpenAIClient;
-
   const projectEndpoint = process.env.AZURE_FOUNDRY_PROJECT_ENDPOINT;
   if (!projectEndpoint) {
     throw new Error(
@@ -98,9 +97,12 @@ function getAzureOpenAIClient(model: ModelOption): Promise<AzureOpenAI> {
   }
 
   const apiVersion = model.version ?? process.env.AZURE_FOUNDRY_API_VERSION ?? '2025-10-01';
+  const cached = azureClientsByApiVersion.get(apiVersion);
+  if (cached) return cached;
+
   const project = new AIProjectClient(projectEndpoint, new DefaultAzureCredential());
   const pending = project.getAzureOpenAIClient({ apiVersion });
-  cachedOpenAIClient = pending;
+  azureClientsByApiVersion.set(apiVersion, pending);
   return pending;
 }
 
@@ -116,8 +118,8 @@ async function callAzureFoundry(
   for (const [index, delay] of RETRY_DELAYS.entries()) {
     try {
       const response = await openai.chat.completions.create({
+        ...model.parameters,
         model: model.modelId,
-        temperature: 1.0,
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userMessage },
@@ -144,7 +146,7 @@ async function callAzureFoundry(
 
       const hint =
         status === 404
-          ? ` Verify that "${model.modelId}" is the exact deployment name in your Foundry project and that AZURE_FOUNDRY_API_VERSION (currently using a default of 2025-01-01-preview) is supported by that deployment.`
+          ? ` Verify that "${model.modelId}" is the exact deployment name in your Foundry project and that the api-version "${model.version ?? process.env.AZURE_FOUNDRY_API_VERSION ?? '2025-10-01'}" is supported by that deployment.`
           : '';
       throw new Error(`Azure Foundry API error${status ? ` ${status}` : ''}: ${message}${hint}`);
     }
