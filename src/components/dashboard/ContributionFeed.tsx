@@ -56,8 +56,6 @@ function weightDots(weight: number, p: MxPalette) {
   ));
 }
 
-const MONTH_LABELS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
-
 function groupByWeek(items: Contribution[]) {
   const grouped = new Map<string, Contribution[]>();
   items.forEach((item) => {
@@ -78,7 +76,6 @@ function ContributionCard({ item, p }: { item: Contribution; p: MxPalette }) {
   const kind = sourceToKind(item.source);
   const color = categoryColor(item.category, p);
   const needsDarkText = color === p.lime || color === p.accent2;
-  void MONTH_LABELS; // used above in groupByWeek scope
 
   return (
     <article
