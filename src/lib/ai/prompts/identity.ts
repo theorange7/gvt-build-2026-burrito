@@ -1,7 +1,7 @@
 import type { Contribution, SliceContent, WrapMode } from '@/lib/types';
 import { createSlice } from '../shared';
 
-export function generateIdentity(contributions: Contribution[], mode: WrapMode): Promise<SliceContent> {
+export function generateIdentity(contributions: Contribution[], mode: WrapMode, modelId?: string): Promise<SliceContent> {
   return createSlice({
     sliceKey: 'identity',
     sliceName: 'Identity',
@@ -12,5 +12,6 @@ export function generateIdentity(contributions: Contribution[], mode: WrapMode):
     limit: 5,
     extraInstructions: 'Synthesize the top five contributions into a concise description of how this person is experienced by their team.',
     statHint: '"5 signature signals"',
+    modelId,
   });
 }

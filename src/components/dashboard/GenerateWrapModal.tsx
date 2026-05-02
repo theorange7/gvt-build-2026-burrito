@@ -11,12 +11,14 @@ import { useMemo, useState } from 'react';
 import type { SliceContent, WrapMode } from '@/lib/types';
 import { listContributionsInRange } from '@/lib/local-store/contributions';
 import { saveWrap } from '@/lib/local-store/wraps';
+import { DEFAULT_MODEL_ID, MODEL_OPTIONS } from '@/lib/ai/models';
 
 export function GenerateWrapModal() {
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<WrapMode>('snapshot');
   const [windowStart, setWindowStart] = useState('2025-04-01');
   const [windowEnd, setWindowEnd] = useState('2025-06-30');
+  const [modelId, setModelId] = useState<string>(DEFAULT_MODEL_ID);
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [wrapId, setWrapId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -55,6 +57,7 @@ export function GenerateWrapModal() {
           mode,
           windowStart: start.toISOString(),
           windowEnd: end.toISOString(),
+          modelId,
         }),
       });
 
@@ -160,6 +163,24 @@ export function GenerateWrapModal() {
               ) : (
                 <div className="mt-6 rounded-[22px] border border-white/8 bg-black/15 px-4 py-4 text-sm text-[color:var(--muted)]">Year-End automatically uses the full 2025 calendar year.</div>
               )}
+
+              <label className="mt-6 grid gap-2 text-sm text-[color:var(--muted)]">
+                Model
+                <select
+                  value={modelId}
+                  onChange={(event) => setModelId(event.target.value)}
+                  className="rounded-[18px] border border-white/10 bg-black/20 px-4 py-3 text-[color:var(--foreground)] outline-none focus:border-[color:var(--accent)]"
+                >
+                  {MODEL_OPTIONS.map((option) => (
+                    <option key={option.id} value={option.id} className="bg-[#111118]">
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <span className="text-xs text-[color:var(--muted)]">
+                  Anthropic models use ANTHROPIC_API_KEY. Azure Foundry options call your project&apos;s Azure OpenAI deployment of the same name via AZURE_FOUNDRY_PROJECT_ENDPOINT and DefaultAzureCredential (Entra ID). Override AZURE_FOUNDRY_API_VERSION if your deployment requires a different api-version.
+                </span>
+              </label>
 
               <div className="mt-6 rounded-[24px] border border-white/8 bg-black/20 p-5">
                 {status === 'idle' ? <p className="text-sm text-[color:var(--muted)]">Your contributions are sent to the AI proxy without identifiers; the result is stored encrypted on this device.</p> : null}

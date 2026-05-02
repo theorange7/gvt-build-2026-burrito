@@ -1,7 +1,7 @@
 import type { Contribution, SliceContent, WrapMode } from '@/lib/types';
 import { createSlice } from '../shared';
 
-export function generateMentorship(contributions: Contribution[], mode: WrapMode): Promise<SliceContent> {
+export function generateMentorship(contributions: Contribution[], mode: WrapMode, modelId?: string): Promise<SliceContent> {
   return createSlice({
     sliceKey: 'mentorship',
     sliceName: 'Mentorship',
@@ -10,5 +10,6 @@ export function generateMentorship(contributions: Contribution[], mode: WrapMode
     contributions,
     categories: ['mentorship'],
     statHint: '"9 teammates supported"',
+    modelId,
   });
 }

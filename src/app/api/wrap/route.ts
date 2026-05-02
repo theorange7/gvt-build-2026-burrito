@@ -26,6 +26,7 @@ const schema = z.object({
   mode: z.enum(['snapshot', 'year-end']),
   windowStart: z.string(),
   windowEnd: z.string(),
+  modelId: z.string().optional(),
 });
 
 export async function POST(request: NextRequest) {
@@ -48,6 +49,7 @@ export async function POST(request: NextRequest) {
       mode: body.mode as WrapMode,
       windowStart: new Date(body.windowStart),
       windowEnd: new Date(body.windowEnd),
+      modelId: body.modelId,
     });
 
     return NextResponse.json({ sliceContent });

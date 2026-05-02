@@ -29,10 +29,11 @@ export async function generateWrap(input: {
   mode: WrapMode;
   windowStart: Date;
   windowEnd: Date;
+  modelId?: string;
 }): Promise<SliceContent[]> {
   const startedAt = Date.now();
   const settled = await Promise.allSettled(
-    sliceEntries.map(([_, generator]) => generator(input.contributions, input.mode)),
+    sliceEntries.map(([_, generator]) => generator(input.contributions, input.mode, input.modelId)),
   );
 
   const succeeded: string[] = [];
@@ -50,6 +51,7 @@ export async function generateWrap(input: {
 
   console.log('Wrapped generation complete', {
     mode: input.mode,
+    model: input.modelId ?? 'default',
     success: succeeded,
     fallback: fellBack,
     totalMs: Date.now() - startedAt,
