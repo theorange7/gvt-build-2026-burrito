@@ -9,6 +9,7 @@ import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useMemo, useRef, useState } from 'react';
 import type { SliceContent, WrapMode } from '@/lib/types';
+import { WrapDesktop } from '@/components/wrap/WrapDesktop';
 import { LaunchesShipped } from '@/components/slides/LaunchesShipped';
 import { Velocity } from '@/components/slides/Velocity';
 import { CrossTeamImpact } from '@/components/slides/CrossTeamImpact';
@@ -46,6 +47,7 @@ export function WrapExperience({
 }) {
   const sectionRefs = useRef<Array<HTMLElement | null>>([]);
   const [activeSlide, setActiveSlide] = useState(0);
+  const [showDesktop, setShowDesktop] = useState(false);
 
   const totalPanels = useMemo(() => slices.length + 1, [slices.length]);
 
@@ -64,9 +66,13 @@ export function WrapExperience({
 
   return (
     <div className="h-screen overflow-y-auto scroll-smooth snap-y snap-mandatory scrollbar-hidden bg-[#08080d]">
+      {showDesktop && <WrapDesktop onClose={() => setShowDesktop(false)} />}
       <div className="pointer-events-none fixed inset-x-0 top-0 z-30 flex items-center justify-between px-4 py-4 md:px-8">
         <Link href="/dashboard" className="pointer-events-auto rounded-full border border-white/10 bg-black/30 px-4 py-2 text-sm text-white/75 backdrop-blur">← Back</Link>
         <div className="flex items-center gap-3">
+          {mode === 'year-end' && (
+            <button onClick={() => setShowDesktop(true)} className="pointer-events-auto rounded-full border border-white/10 bg-black/30 px-4 py-2 text-sm text-white/75 backdrop-blur">Maximalist view</button>
+          )}
           <button onClick={exportJson} className="pointer-events-auto rounded-full border border-white/10 bg-black/30 px-4 py-2 text-sm text-white/75 backdrop-blur">Export</button>
           <div className="rounded-full border border-white/10 bg-black/30 px-4 py-2 text-sm text-white/75 backdrop-blur">{Math.min(activeSlide + 1, totalPanels)} / {totalPanels}</div>
         </div>

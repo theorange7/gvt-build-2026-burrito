@@ -14,6 +14,12 @@ import { ManualInputForm } from '@/components/dashboard/ManualInputForm';
 import { useContributions } from '@/components/dashboard/useContributions';
 import { isSeeded, markSeeded, seedFromBundledDemo } from '@/lib/local-store/seed';
 
+const DEFAULT_MX_PALETTE = {
+  id: 'tomato', label: 'Tomato', sub: 'default', swatch: ['#FF4D2E', '#C6FF3B', '#0A0A0A', '#6B3DFF', '#7BE3FF'],
+  hot: '#FF4D2E', lime: '#C6FF3B', ink: '#0A0A0A', cream: '#FFF4DE', paper: '#FBF5E5',
+  accent: '#6B3DFF', accent2: '#7BE3FF', accent3: '#FFB3C7',
+};
+
 export function DashboardShell() {
   const { data: contributions } = useContributions();
   const [seedChecked, setSeedChecked] = useState(false);
@@ -108,7 +114,7 @@ export function DashboardShell() {
             </section>
           ) : null}
 
-          <ContributionFeed contributions={contributions ?? []} />
+          <ContributionFeed contributions={contributions ?? []} p={DEFAULT_MX_PALETTE} />
         </div>
 
         <aside className="space-y-6 lg:sticky lg:top-6 lg:self-start">
