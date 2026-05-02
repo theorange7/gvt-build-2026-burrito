@@ -6,3 +6,5 @@ src-tauri/target
 src-tauri/gen
 src-tauri/Cargo.lock
 tsconfig.tsbuildinfo
+test-results
+playwright-report
