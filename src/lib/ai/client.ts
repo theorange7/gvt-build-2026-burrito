@@ -24,9 +24,22 @@ export async function callModel(
   return callAnthropic(systemPrompt, userMessage, model);
 }
 
-/** @deprecated Use callModel. Retained for any older imports. */
+/**
+ * @deprecated Use callModel. Retained for older callers (notably classify.ts
+ * and the unit-test suite) that historically targeted Anthropic directly.
+ * Always hits the Anthropic provider regardless of the configured default
+ * model, so MSW-mocked tests remain stable.
+ */
+const ANTHROPIC_FALLBACK_MODEL: ModelOption = {
+  id: 'anthropic:fallback',
+  label: 'Anthropic fallback',
+  provider: 'anthropic',
+  modelId: 'claude-sonnet-4-20250514',
+  parameters: { max_tokens: 1024 },
+};
+
 export const callClaude = (systemPrompt: string, userMessage: string) =>
-  callModel(systemPrompt, userMessage);
+  callAnthropic(systemPrompt, userMessage, ANTHROPIC_FALLBACK_MODEL);
 
 async function callAnthropic(
   systemPrompt: string,
