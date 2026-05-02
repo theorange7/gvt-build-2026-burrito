@@ -1,0 +1,11 @@
+{
+  "providers": [
+    {
+      "id": "gitlab-dedicated",
+      "label": "GitLab Dedicated",
+      "authMethods": ["api-token"],
+      "scopes": ["read_api", "read_user"],
+      "requiresInstanceUrl": true
+    }
+  ]
+}

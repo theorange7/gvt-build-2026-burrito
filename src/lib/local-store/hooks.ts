@@ -1,24 +1,25 @@
 'use client';
 
 import { useLiveQuery } from 'dexie-react-hooks';
-import { useQuery } from '@tanstack/react-query';
 import type { Contribution } from '@/lib/types';
 import { listContributions } from './contributions';
 import { getWrap, type StoredWrap } from './wraps';
 import { hasActiveKey } from './crypto';
 
-export function useLocalContributions() {
+/**
+ * Reactive contributions feed. Driven by Dexie's live query so writes from
+ * any component (manual entry, provider sync, backfill) propagate without an
+ * explicit cache invalidation. The previous implementation wrapped this in
+ * `useQuery({ enabled: false, initialData })`, but React Query freezes
+ * `initialData` after the first call — live updates after the first non-
+ * undefined value were silently dropped.
+ */
+export function useLocalContributions(): { data: Contribution[] | undefined } {
   const data = useLiveQuery<Contribution[] | undefined>(async () => {
     if (!hasActiveKey()) return undefined;
     return listContributions();
   }, []);
-
-  return useQuery<Contribution[]>({
-    queryKey: ['contributions'],
-    queryFn: async () => listContributions(),
-    enabled: false,
-    initialData: data,
-  });
+  return { data };
 }
 
 export function useLocalWrap(id: string) {

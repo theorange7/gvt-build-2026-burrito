@@ -6,6 +6,7 @@
  * Guardrail: Preserve the publication-like structure while enabling immediate interaction feedback.
  */
 import { useMutation } from '@tanstack/react-query';
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { ContributionFeed } from '@/components/dashboard/ContributionFeed';
 import { GenerateWrapModal } from '@/components/dashboard/GenerateWrapModal';
@@ -53,7 +54,13 @@ export function DashboardShell() {
                 A year of contribution, staged like a record worth keeping.
               </h1>
             </div>
-            <div className="flex items-start justify-end lg:pt-1">
+            <div className="flex flex-wrap items-start justify-end gap-3 lg:pt-1">
+              <Link
+                href="/dashboard/settings"
+                className="rounded-full border border-white/10 px-4 py-2 text-sm text-[color:var(--foreground)] hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]"
+              >
+                Provider settings
+              </Link>
               <GenerateWrapModal />
             </div>
             <div className="grid gap-4 border-t border-white/6 pt-6 md:grid-cols-3 lg:col-span-2">
