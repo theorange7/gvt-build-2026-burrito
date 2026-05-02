@@ -86,7 +86,7 @@ async function callAnthropic(
 
 let cachedOpenAIClient: Promise<AzureOpenAI> | null = null;
 
-function getAzureOpenAIClient(): Promise<AzureOpenAI> {
+function getAzureOpenAIClient(model: ModelOption): Promise<AzureOpenAI> {
   if (cachedOpenAIClient) return cachedOpenAIClient;
 
   const projectEndpoint = process.env.AZURE_FOUNDRY_PROJECT_ENDPOINT;
@@ -97,7 +97,7 @@ function getAzureOpenAIClient(): Promise<AzureOpenAI> {
     );
   }
 
-  const apiVersion = process.env.AZURE_FOUNDRY_API_VERSION ?? '2025-01-01-preview';
+  const apiVersion = model.version ?? process.env.AZURE_FOUNDRY_API_VERSION ?? '2025-10-01';
   const project = new AIProjectClient(projectEndpoint, new DefaultAzureCredential());
   const pending = project.getAzureOpenAIClient({ apiVersion });
   cachedOpenAIClient = pending;
@@ -109,7 +109,7 @@ async function callAzureFoundry(
   userMessage: string,
   model: ModelOption,
 ): Promise<string> {
-  const openai = await getAzureOpenAIClient();
+  const openai = await getAzureOpenAIClient(model);
 
   let lastError: Error | null = null;
 

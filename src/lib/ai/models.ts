@@ -6,6 +6,8 @@ export type ModelOption = {
   provider: ModelProvider;
   /** Provider-specific model identifier or Azure deployment name. */
   modelId: string;
+  /** Optional version for Azure Foundry models. */
+  version?: string;
 };
 
 /**
@@ -20,28 +22,18 @@ export type ModelOption = {
  */
 export const MODEL_OPTIONS: ModelOption[] = [
   {
-    id: 'anthropic:claude-sonnet-4',
-    label: 'Claude Sonnet 4 (Anthropic)',
-    provider: 'anthropic',
-    modelId: 'claude-sonnet-4-20250514',
+    id: 'azure:claude-haiku-4-5',
+    label: 'claude-haiku-4-5 (Azure Foundry)',
+    provider: 'azure-foundry',
+    modelId: 'claude-haiku-4-5',
+    version: '2025-10-01'
   },
   {
-    id: 'azure:gpt-4o',
-    label: 'GPT-4o (Azure Foundry deployment)',
+    id: 'azure:gpt-5.5-1',
+    label: 'gpt-5.5-1 (Azure Foundry)',
     provider: 'azure-foundry',
-    modelId: 'gpt-4o',
-  },
-  {
-    id: 'azure:gpt-4o-mini',
-    label: 'GPT-4o mini (Azure Foundry deployment)',
-    provider: 'azure-foundry',
-    modelId: 'gpt-4o-mini',
-  },
-  {
-    id: 'azure:gpt-4.1',
-    label: 'GPT-4.1 (Azure Foundry deployment)',
-    provider: 'azure-foundry',
-    modelId: 'gpt-4.1',
+    modelId: 'gpt-5.5-1',
+    version: '2024-12-01-preview'
   },
 ];
 
