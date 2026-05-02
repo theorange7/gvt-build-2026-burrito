@@ -14,8 +14,9 @@
     "test:e2e": "playwright test",
     "test:e2e:install": "playwright install chromium",
     "export:demo": "node scripts/export-demo.mjs",
-    "tauri:dev": "TAURI=1 pnpm dev & cd src-tauri && cargo tauri dev",
-    "tauri:build": "TAURI=1 next build && cd src-tauri && cargo tauri build",
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build",
     "ai:test": "vitest run test/integration/wrap.test.ts",
     "ai:test:live": "INTEGRATION_LIVE=1 vitest run test/integration/wrap.test.ts"
   },
@@ -35,6 +36,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.49.0",
+    "@tauri-apps/cli": "^2.1.0",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.1.0",
     "@testing-library/user-event": "^14.5.2",

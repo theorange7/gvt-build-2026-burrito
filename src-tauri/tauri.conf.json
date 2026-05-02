@@ -7,7 +7,7 @@
     "frontendDist": "../out",
     "devUrl": "http://localhost:3000",
     "beforeDevCommand": "TAURI=1 pnpm dev",
-    "beforeBuildCommand": "TAURI=1 pnpm build"
+    "beforeBuildCommand": "node scripts/tauri-export.mjs"
   },
   "app": {
     "windows": [

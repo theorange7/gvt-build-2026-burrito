@@ -199,7 +199,7 @@ export function GenerateWrapModal() {
                 {status === 'success' && wrapId ? (
                   <div className="space-y-3 text-sm">
                     <p className="text-[color:var(--foreground)]">Your wrap is ready. Saved on this device.</p>
-                    <Link href={`/wrap/${wrapId}`} className="inline-flex rounded-full bg-[color:var(--accent)] px-4 py-2 text-black">View Wrap →</Link>
+                    <Link href={`/wrap?id=${wrapId}`} className="inline-flex rounded-full bg-[color:var(--accent)] px-4 py-2 text-black">View Wrap →</Link>
                   </div>
                 ) : null}
               </div>
