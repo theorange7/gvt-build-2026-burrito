@@ -25,6 +25,10 @@ afterEach(async () => {
     await instance.contributions.clear();
     await instance.wraps.clear();
     await instance.meta.clear();
+    await instance.identities.clear();
+    await instance.tokens.clear();
+    await instance.syncState.clear();
+    await instance.importedRanges.clear();
   } catch {
     // db may not have been opened
   }

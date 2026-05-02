@@ -4,3 +4,7 @@ export * from './contributions';
 export * from './wraps';
 export * from './seed';
 export * from './platform';
+export * from './identities';
+export * from './tokens';
+export * from './syncState';
+export * from './importedRanges';

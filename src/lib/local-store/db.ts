@@ -5,9 +5,12 @@ import type { EncryptedEnvelope } from './crypto';
  * Local persistence layer (IndexedDB via Dexie).
  *
  * Each row is an encrypted envelope. Sensitive fields (signal, rawData,
- * sliceContent) live in `ciphertext`. Indexed fields (id, occurredAt,
- * category, source, weight, mode, createdAt) stay plaintext so queries
- * can use IndexedDB indexes — that is a deliberate trade-off.
+ * sliceContent, token sets, identity profile, sync cursor) live in
+ * `ciphertext`. Indexed fields (id, occurredAt, category, source, weight,
+ * mode, createdAt, providerId, instanceUrl, externalUserId, identityId,
+ * externalKey) stay plaintext so queries can use IndexedDB indexes — that
+ * is a deliberate trade-off documented in
+ * `docs/decisions/contribution-provider-pattern.md`.
  */
 
 export type ContributionRow = {
@@ -17,6 +20,8 @@ export type ContributionRow = {
   category: string;
   weight: number;
   createdAt: string;
+  identityId?: string;
+  externalKey?: string;
   iv: Uint8Array;
   ct: Uint8Array;
 };
@@ -36,10 +41,45 @@ export type MetaRow = {
   value: unknown;
 };
 
+export type IdentityRow = {
+  id: string;
+  providerId: string;
+  instanceUrl: string;
+  externalUserId: string;
+  iv: Uint8Array;
+  ct: Uint8Array;
+};
+
+export type TokenRow = {
+  id: string;
+  identityId: string;
+  iv: Uint8Array;
+  ct: Uint8Array;
+};
+
+export type SyncStateRow = {
+  identityId: string;
+  lastSyncAt: number | null;
+  lastError: string | null;
+  iv: Uint8Array | null;
+  ct: Uint8Array | null;
+};
+
+export type ImportedRangeRow = {
+  id: string;
+  identityId: string;
+  start: string;
+  end: string;
+};
+
 export class WrappedDB extends Dexie {
   contributions!: Table<ContributionRow, string>;
   wraps!: Table<WrapRow, string>;
   meta!: Table<MetaRow, string>;
+  identities!: Table<IdentityRow, string>;
+  tokens!: Table<TokenRow, string>;
+  syncState!: Table<SyncStateRow, string>;
+  importedRanges!: Table<ImportedRangeRow, string>;
 
   constructor() {
     super('wrapped-for-work');
@@ -47,6 +87,16 @@ export class WrappedDB extends Dexie {
       contributions: 'id, occurredAt, category, source, weight, createdAt',
       wraps: 'id, mode, createdAt',
       meta: 'key',
+    });
+    this.version(2).stores({
+      contributions:
+        'id, occurredAt, category, source, weight, createdAt, identityId, externalKey, [identityId+externalKey]',
+      wraps: 'id, mode, createdAt',
+      meta: 'key',
+      identities: 'id, &[providerId+instanceUrl+externalUserId], providerId, instanceUrl',
+      tokens: 'id, &identityId',
+      syncState: 'identityId, lastSyncAt',
+      importedRanges: 'id, identityId, [identityId+start]',
     });
   }
 }

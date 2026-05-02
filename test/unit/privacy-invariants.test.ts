@@ -13,6 +13,8 @@ import { dirname, join, relative } from 'node:path';
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(here, '..', '..');
 const apiDir = join(repoRoot, 'src', 'app', 'api');
+const providersDir = join(repoRoot, 'src', 'lib', 'providers');
+const orchestratorPath = join(providersDir, 'orchestrator.ts');
 
 function walk(dir: string): string[] {
   const out: string[] = [];
@@ -89,6 +91,74 @@ describe('privacy invariants — local-store is not imported by API/server code'
           /from ['"]@\/lib\/local-store/,
         );
       }
+    }
+  });
+});
+
+describe('privacy invariants — provider modules are storage-pure', () => {
+  const files = walk(providersDir);
+
+  it('finds at least the gitlab-dedicated provider and the orchestrator', () => {
+    const names = files.map((f) => relative(repoRoot, f));
+    expect(names).toEqual(
+      expect.arrayContaining([
+        join('src', 'lib', 'providers', 'orchestrator.ts'),
+        join('src', 'lib', 'providers', 'gitlab-dedicated', 'index.ts'),
+      ]),
+    );
+  });
+
+  it('only the orchestrator may import from local-store', () => {
+    for (const file of files) {
+      const source = readFileSync(file, 'utf8');
+      const importsLocalStore = /from ['"]@\/lib\/local-store/.test(source);
+      if (file === orchestratorPath) {
+        expect(importsLocalStore, `${file} is the bridge and must import local-store`).toBe(true);
+      } else {
+        expect(
+          importsLocalStore,
+          `${file} must not import local-store — providers are storage-pure`,
+        ).toBe(false);
+      }
+    }
+  });
+
+  it('never logs tokens, refresh tokens, Authorization headers, or full request/response bodies', () => {
+    const banned = [
+      /console\.[a-z]+\([^)]*['"`]?accessToken/i,
+      /console\.[a-z]+\([^)]*['"`]?refreshToken/i,
+      /console\.[a-z]+\([^)]*['"`]?Authorization/i,
+      /console\.[a-z]+\([^)]*\bbody\b/i,
+      /console\.[a-z]+\([^)]*\bpayload\b/i,
+    ];
+    for (const file of files) {
+      const source = readFileSync(file, 'utf8');
+      for (const re of banned) {
+        expect(source, `${file} must not log secrets via ${re}`).not.toMatch(re);
+      }
+    }
+  });
+
+  it('every provider index.ts carries a PRIVACY banner', () => {
+    const indexFiles = files.filter(
+      (f) => f.endsWith(`/index.ts`) && f !== join(providersDir, 'index.ts'),
+    );
+    expect(indexFiles.length).toBeGreaterThan(0);
+    for (const file of indexFiles) {
+      const source = readFileSync(file, 'utf8');
+      expect(source, `${file} must include a PRIVACY banner`).toMatch(/PRIVACY/);
+    }
+  });
+});
+
+describe('privacy invariants — API routes never import providers', () => {
+  const files = walk(apiDir);
+  it('nobody under /api pulls in src/lib/providers', () => {
+    for (const file of files) {
+      const source = readFileSync(file, 'utf8');
+      expect(source, `${file} must not import @/lib/providers`).not.toMatch(
+        /from ['"]@\/lib\/providers/,
+      );
     }
   });
 });
