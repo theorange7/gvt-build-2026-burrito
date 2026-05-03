@@ -48,8 +48,8 @@ function weightDots(weight: number, p: MxPalette) {
       key={index}
       style={{
         display: 'inline-block', width: 6, height: 6, borderRadius: '50%',
-        background: index < weight ? p.hot : `${p.ink}22`,
-        border: `1px solid ${index < weight ? p.hot : p.ink}`,
+        background: index < weight ? p.hot : p.ink + '22',
+        border: '1px solid ' + (index < weight ? p.hot : p.ink),
         opacity: index < weight ? 1 : 0.3,
       }}
     />
@@ -73,7 +73,7 @@ function groupByWeek(items: Contribution[]) {
 // Single contribution card
 // ---------------------------------------------------------------------------
 
-function ContributionCard({ item, p }: { item: Contribution; p: MxPalette }) {
+function ContributionCard({ item, p, onOpen }: { item: Contribution; p: MxPalette; onOpen?: (c: Contribution) => void }) {
   const [hovered, setHovered] = useState(false);
   const kind = sourceToKind(item.source);
   const color = categoryColor(item.category, p);
@@ -81,28 +81,33 @@ function ContributionCard({ item, p }: { item: Contribution; p: MxPalette }) {
 
   return (
     <article
+      role={onOpen ? 'button' : undefined}
+      tabIndex={onOpen ? 0 : undefined}
+      onClick={() => onOpen?.(item)}
+      onKeyDown={(e) => e.key === 'Enter' && onOpen?.(item)}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
+        cursor: onOpen ? 'pointer' : 'default',
         display: 'grid', gridTemplateColumns: 'auto 1fr auto', alignItems: 'start', gap: 14,
-        background: '#fff', border: `2px solid ${p.ink}`, borderRadius: 14,
-        boxShadow: hovered ? `2px 2px 0 ${p.ink}` : `3px 3px 0 ${p.ink}`,
+        background: '#fff', border: '2px solid ' + p.ink, borderRadius: 14,
+        boxShadow: hovered ? '2px 2px 0 ' + p.ink : '3px 3px 0 ' + p.ink,
         padding: '14px 16px',
         transform: hovered ? 'translate(-1px, -1px)' : 'translate(0, 0)',
         transition: 'transform 0.12s ease, box-shadow 0.12s ease',
       }}
     >
       <div style={{ paddingTop: 2 }}>
-        <span style={{ display: 'inline-block', fontFamily: 'JetBrains Mono, monospace', fontSize: 9, fontWeight: 700, color: needsDarkText ? p.ink : '#fff', background: color, border: `1.5px solid ${p.ink}`, borderRadius: 5, padding: '2px 7px', letterSpacing: '0.1em', whiteSpace: 'nowrap' }}>
+        <span style={{ display: 'inline-block', fontFamily: 'JetBrains Mono, monospace', fontSize: 9, fontWeight: 700, color: needsDarkText ? p.ink : '#fff', background: color, border: '1.5px solid ' + p.ink, borderRadius: 5, padding: '2px 7px', letterSpacing: '0.1em', whiteSpace: 'nowrap' }}>
           {kind}
         </span>
       </div>
       <div style={{ minWidth: 0 }}>
-        <p style={{ fontFamily: 'Space Grotesk, sans-serif', fontSize: 14, fontWeight: 500, color: p.ink, lineHeight: 1.5, marginBottom: 8, margin: '0 0 8px' }}>
+        <p style={{ fontFamily: 'Space Grotesk, sans-serif', fontSize: 14, fontWeight: 500, color: p.ink, lineHeight: 1.5, margin: '0 0 8px' }}>
           {item.signal}
         </p>
         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, color: p.ink, border: `1.5px solid ${p.ink}`, borderRadius: 5, padding: '1px 6px', opacity: 0.55, letterSpacing: '0.08em' }}>
+          <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, color: p.ink, border: '1.5px solid ' + p.ink, borderRadius: 5, padding: '1px 6px', opacity: 0.55, letterSpacing: '0.08em' }}>
             #{item.category}
           </span>
           <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, color: p.ink, opacity: 0.4 }}>
@@ -121,17 +126,17 @@ function ContributionCard({ item, p }: { item: Contribution; p: MxPalette }) {
 // Main feed component
 // ---------------------------------------------------------------------------
 
-export function ContributionFeed({ contributions, p }: { contributions: Contribution[]; p: MxPalette }) {
+export function ContributionFeed({ contributions, p, onOpen }: { contributions: Contribution[]; p: MxPalette; onOpen?: (c: Contribution) => void }) {
   const [visibleWeeks, setVisibleWeeks] = useState(8);
   const groups = useMemo(() => groupByWeek(contributions), [contributions]);
   const visibleGroups = groups.slice(0, visibleWeeks);
 
   return (
-    <div style={{ background: p.cream, border: `2px solid ${p.ink}`, borderRadius: 18, boxShadow: `4px 4px 0 ${p.ink}`, padding: '20px 24px' }}>
+    <div style={{ background: p.cream, border: '2px solid ' + p.ink, borderRadius: 18, boxShadow: '4px 4px 0 ' + p.ink, padding: '20px 24px' }}>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16, borderBottom: `2px solid ${p.ink}`, paddingBottom: 14, marginBottom: 20 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16, borderBottom: '2px solid ' + p.ink, paddingBottom: 14, marginBottom: 20 }}>
         <div>
-          <p style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, fontWeight: 700, color: p.ink, letterSpacing: '0.14em', marginBottom: 4, opacity: 0.6 }}>
+          <p style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, fontWeight: 700, color: p.ink, letterSpacing: '0.14em', margin: '0 0 4px', opacity: 0.6 }}>
             CONTRIBUTION TIMELINE
           </p>
           <h2 style={{ fontFamily: 'Space Grotesk, sans-serif', fontSize: 'clamp(1.4rem, 2.5vw, 2rem)', fontWeight: 700, color: p.ink, lineHeight: 1.1, margin: 0 }}>
@@ -156,17 +161,17 @@ export function ContributionFeed({ contributions, p }: { contributions: Contribu
               transition={{ duration: 0.3, delay: groupIndex * 0.04 }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-                <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, fontWeight: 700, color: p.ink, background: p.paper, border: `1.5px solid ${p.ink}`, borderRadius: 5, padding: '2px 7px', letterSpacing: '0.1em' }}>
+                <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, fontWeight: 700, color: p.ink, background: p.paper, border: '1.5px solid ' + p.ink, borderRadius: 5, padding: '2px 7px', letterSpacing: '0.1em' }}>
                   {format(new Date(weekKey), "'WK OF' d MMM").toUpperCase()}
                 </span>
                 <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, color: p.ink, opacity: 0.4 }}>
                   {items.length} contribution{items.length !== 1 ? 's' : ''}
                 </span>
-                <div style={{ flex: 1, height: 1, background: `${p.ink}18` }} />
+                <div style={{ flex: 1, height: 1, background: p.ink + '18' }} />
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {items.map((item) => (
-                  <ContributionCard key={item.id} item={item} p={p} />
+                  <ContributionCard key={item.id} item={item} p={p} onOpen={onOpen} />
                 ))}
               </div>
             </motion.section>
@@ -178,7 +183,7 @@ export function ContributionFeed({ contributions, p }: { contributions: Contribu
         <button
           type="button"
           onClick={() => setVisibleWeeks((current) => current + 4)}
-          style={{ marginTop: 20, background: p.paper, border: `2px solid ${p.ink}`, borderRadius: 10, boxShadow: `3px 3px 0 ${p.ink}`, padding: '10px 22px', fontFamily: 'JetBrains Mono, monospace', fontSize: 11, fontWeight: 700, color: p.ink, cursor: 'pointer', letterSpacing: '0.1em' }}
+          style={{ marginTop: 20, background: p.paper, border: '2px solid ' + p.ink, borderRadius: 10, boxShadow: '3px 3px 0 ' + p.ink, padding: '10px 22px', fontFamily: 'JetBrains Mono, monospace', fontSize: 11, fontWeight: 700, color: p.ink, cursor: 'pointer', letterSpacing: '0.1em' }}
         >
           LOAD MORE WEEKS
         </button>

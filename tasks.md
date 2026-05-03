@@ -7,26 +7,26 @@ Base branch: `claude/burrito-maximalist-prototype-YGwhk`
 
 ## Active Component PRs
 
-| # | Component | Branch | Status | Notes |
-|---|-----------|--------|--------|-------|
-| 1 | Theme & Design System | `claude/mx-theme` | 🔄 In Progress | Fonts, palette module, CSS vars, MxBadge, MxButton |
-| 2 | Dashboard Shell Redesign | `claude/mx-dashboard` | 🔄 In Progress | Nav, hero, year-rhythm chart, events feed, sidebar |
-| 3 | Event Detail Drawer | `claude/mx-event-detail` | 🔄 In Progress | Slide-in drawer on contribution click |
-| 4 | Connect Tools Modal | `claude/mx-settings` | 🔄 In Progress | Onboarding overlay — GitHub/Jira/Slack/Confluence |
-| 5 | Wrap Phone Player | `claude/mx-wrap-phone` | 🔄 In Progress | Phone-frame wrap with 7 slide types |
-| 6 | Wrap Desktop Player | `claude/mx-wrap-desktop` | 🔄 In Progress | Full-screen 16:9 canvas with 8 slide types |
+| # | Component | Branch | PR | Status |
+|---|-----------|--------|----|--------|
+| 1 | Theme & Design System | `claude/mx-theme` | [#14](https://github.com/theorange7/gvt-build-2026-burrito/pull/14) | 🟢 Open |
+| 2 | Dashboard Shell Redesign | `claude/mx-dashboard` | [#17](https://github.com/theorange7/gvt-build-2026-burrito/pull/17) | 🟢 Open |
+| 3 | Event Detail Drawer | `claude/mx-event-detail` | [#13](https://github.com/theorange7/gvt-build-2026-burrito/pull/13) | 🟢 Open |
+| 4 | Connect Tools Modal | `claude/mx-settings` | [#12](https://github.com/theorange7/gvt-build-2026-burrito/pull/12) | 🟢 Open |
+| 5 | Wrap Phone Player | `claude/mx-wrap-phone` | [#15](https://github.com/theorange7/gvt-build-2026-burrito/pull/15) | 🟢 Open |
+| 6 | Wrap Desktop Player | `claude/mx-wrap-desktop` | [#16](https://github.com/theorange7/gvt-build-2026-burrito/pull/16) | 🟢 Open |
 
 ## Suggested Merge Order
 
 Components 2–6 depend on the palette module that component 1 creates.
 Merge in this order to minimise conflict resolution:
 
-1. `claude/mx-theme` — foundational (layout, CSS, palette module)
-2. `claude/mx-dashboard`
-3. `claude/mx-event-detail`
-4. `claude/mx-settings`
-5. `claude/mx-wrap-phone`
-6. `claude/mx-wrap-desktop`
+1. `claude/mx-theme` (PR #14) — foundational (layout, CSS, palette module)
+2. `claude/mx-dashboard` (PR #17)
+3. `claude/mx-event-detail` (PR #13)
+4. `claude/mx-settings` (PR #12)
+5. `claude/mx-wrap-phone` (PR #15)
+6. `claude/mx-wrap-desktop` (PR #16)
 
 ---
 
