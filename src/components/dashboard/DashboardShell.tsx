@@ -333,6 +333,7 @@ export function DashboardShell() {
   const [showFirstRun, setShowFirstRun] = useState(false);
   const [showManualInput, setShowManualInput] = useState(false);
   const [openEvent, setOpenEvent] = useState<DrawerEvent | null>(null);
+  const [showWrap, setShowWrap] = useState(false);
 
   const p = MX_PALETTES[paletteId] ?? MX_PALETTES.tomato;
   const allContributions = contributions ?? [];
@@ -383,7 +384,7 @@ export function DashboardShell() {
   }
 
   function handleWrap(_mode: 'phone' | 'desktop') {
-    // wire to GenerateWrapModal trigger when needed
+    setShowWrap(true);
   }
 
   return (
@@ -452,7 +453,7 @@ export function DashboardShell() {
             </div>
           </div>
 
-          <ContributionFeed contributions={allContributions} p={p} />
+          <ContributionFeed contributions={allContributions} p={p} onOpen={handleOpenEvent} />
         </div>
 
         {/* Right column (sidebar) */}
@@ -475,7 +476,7 @@ export function DashboardShell() {
               <div style={{ marginTop: 12 }}><ManualInputForm /></div>
             )}
           </div>
-          <GenerateWrapModal />
+          <GenerateWrapModal open={showWrap} onOpenChange={setShowWrap} />
           <p style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, color: p.ink, opacity: 0.4, lineHeight: 1.6, paddingTop: 4, margin: 0 }}>
             a mirror, not a judge. burrito drafts. you edit. you own it.
           </p>

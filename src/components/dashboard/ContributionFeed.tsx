@@ -71,7 +71,7 @@ function groupByWeek(items: Contribution[]) {
 // Single contribution card
 // ---------------------------------------------------------------------------
 
-function ContributionCard({ item, p }: { item: Contribution; p: MxPalette }) {
+function ContributionCard({ item, p, onOpen }: { item: Contribution; p: MxPalette; onOpen?: (c: Contribution) => void }) {
   const [hovered, setHovered] = useState(false);
   const kind = sourceToKind(item.source);
   const color = categoryColor(item.category, p);
@@ -79,9 +79,14 @@ function ContributionCard({ item, p }: { item: Contribution; p: MxPalette }) {
 
   return (
     <article
+      role={onOpen ? 'button' : undefined}
+      tabIndex={onOpen ? 0 : undefined}
+      onClick={() => onOpen?.(item)}
+      onKeyDown={(e) => e.key === 'Enter' && onOpen?.(item)}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
+        cursor: onOpen ? 'pointer' : 'default',
         display: 'grid', gridTemplateColumns: 'auto 1fr auto', alignItems: 'start', gap: 14,
         background: '#fff', border: '2px solid ' + p.ink, borderRadius: 14,
         boxShadow: hovered ? '2px 2px 0 ' + p.ink : '3px 3px 0 ' + p.ink,
@@ -119,7 +124,7 @@ function ContributionCard({ item, p }: { item: Contribution; p: MxPalette }) {
 // Main feed component
 // ---------------------------------------------------------------------------
 
-export function ContributionFeed({ contributions, p }: { contributions: Contribution[]; p: MxPalette }) {
+export function ContributionFeed({ contributions, p, onOpen }: { contributions: Contribution[]; p: MxPalette; onOpen?: (c: Contribution) => void }) {
   const [visibleWeeks, setVisibleWeeks] = useState(8);
   const groups = useMemo(() => groupByWeek(contributions), [contributions]);
   const visibleGroups = groups.slice(0, visibleWeeks);
@@ -164,7 +169,7 @@ export function ContributionFeed({ contributions, p }: { contributions: Contribu
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {items.map((item) => (
-                  <ContributionCard key={item.id} item={item} p={p} />
+                  <ContributionCard key={item.id} item={item} p={p} onOpen={onOpen} />
                 ))}
               </div>
             </motion.section>
