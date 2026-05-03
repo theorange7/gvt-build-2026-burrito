@@ -1,7 +1,7 @@
 'use client';
 
 /*
- * Design philosophy: Maximalist editorial - bold borders, hard shadows, cream backgrounds.
+ * Design philosophy: Maximalist editorial — bold borders, hard shadows, cream backgrounds.
  * File role: Render the contribution history as week-grouped maximalist cards.
  * Guardrail: Visual density should feel composed, never like a generic task list.
  */
@@ -11,7 +11,7 @@ import { useMemo, useState } from 'react';
 import type { Contribution } from '@/lib/types';
 
 // ---------------------------------------------------------------------------
-// Palette type (inlined - must stay in sync with DashboardShell)
+// Palette type (inlined — must stay in sync with DashboardShell)
 // ---------------------------------------------------------------------------
 
 interface MxPalette {
@@ -55,6 +55,8 @@ function weightDots(weight: number, p: MxPalette) {
     />
   ));
 }
+
+const MONTH_LABELS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
 
 function groupByWeek(items: Contribution[]) {
   const grouped = new Map<string, Contribution[]>();
