@@ -1,35 +1,3 @@
-# Burrito Maximalist — Implementation Tasks
-
-Reference design: `docs/designs/Burrito Maximalist Prototype.html`  
-Base branch: `claude/burrito-maximalist-prototype-YGwhk`
-
----
-
-## Active Component PRs
-
-| # | Component | Branch | PR | Status |
-|---|-----------|--------|----|--------|
-| 1 | Theme & Design System | `claude/mx-theme` | [#14](https://github.com/theorange7/gvt-build-2026-burrito/pull/14) | 🟢 Open |
-| 2 | Dashboard Shell Redesign | `claude/mx-dashboard` | [#17](https://github.com/theorange7/gvt-build-2026-burrito/pull/17) | 🟢 Open |
-| 3 | Event Detail Drawer | `claude/mx-event-detail` | [#13](https://github.com/theorange7/gvt-build-2026-burrito/pull/13) | 🟢 Open |
-| 4 | Connect Tools Modal | `claude/mx-settings` | [#12](https://github.com/theorange7/gvt-build-2026-burrito/pull/12) | 🟢 Open |
-| 5 | Wrap Phone Player | `claude/mx-wrap-phone` | [#15](https://github.com/theorange7/gvt-build-2026-burrito/pull/15) | 🟢 Open |
-| 6 | Wrap Desktop Player | `claude/mx-wrap-desktop` | [#16](https://github.com/theorange7/gvt-build-2026-burrito/pull/16) | 🟢 Open |
-
-## Suggested Merge Order
-
-Components 2–6 depend on the palette module that component 1 creates.
-Merge in this order to minimise conflict resolution:
-
-1. `claude/mx-theme` (PR #14) — foundational (layout, CSS, palette module)
-2. `claude/mx-dashboard` (PR #17)
-3. `claude/mx-event-detail` (PR #13)
-4. `claude/mx-settings` (PR #12)
-5. `claude/mx-wrap-phone` (PR #15)
-6. `claude/mx-wrap-desktop` (PR #16)
-
----
-
 ## Unimplemented / Future Features (from design)
 
 Features visible in the Maximalist Prototype that are **not** addressed by the
