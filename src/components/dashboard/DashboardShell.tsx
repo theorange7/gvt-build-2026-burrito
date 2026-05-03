@@ -326,6 +326,12 @@ function FirstRunPanel({
 // Main shell
 // ---------------------------------------------------------------------------
 
+const DEFAULT_MX_PALETTE = {
+  id: 'tomato', label: 'Tomato', sub: 'default', swatch: ['#FF4D2E', '#C6FF3B', '#0A0A0A', '#6B3DFF', '#7BE3FF'],
+  hot: '#FF4D2E', lime: '#C6FF3B', ink: '#0A0A0A', cream: '#FFF4DE', paper: '#FBF5E5',
+  accent: '#6B3DFF', accent2: '#7BE3FF', accent3: '#FFB3C7',
+};
+
 export function DashboardShell() {
   const { data: contributions } = useContributions();
   const [paletteId, setPaletteId] = useState<string>('tomato');
