@@ -13,8 +13,18 @@ import { listContributionsInRange } from '@/lib/local-store/contributions';
 import { saveWrap } from '@/lib/local-store/wraps';
 import { DEFAULT_MODEL_ID, MODEL_OPTIONS } from '@/lib/ai/models';
 
-export function GenerateWrapModal() {
-  const [open, setOpen] = useState(false);
+interface GenerateWrapModalProps {
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+}
+
+export function GenerateWrapModal({ open: controlledOpen, onOpenChange }: GenerateWrapModalProps = {}) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = controlledOpen ?? internalOpen;
+  const setOpen = (val: boolean) => {
+    setInternalOpen(val);
+    onOpenChange?.(val);
+  };
   const [mode, setMode] = useState<WrapMode>('snapshot');
   const [windowStart, setWindowStart] = useState('2025-04-01');
   const [windowEnd, setWindowEnd] = useState('2025-06-30');
