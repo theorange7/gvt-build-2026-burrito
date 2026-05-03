@@ -241,7 +241,7 @@ function WrapCtaCard({ p, onWrap }: { p: MxPalette; onWrap?: (mode: 'phone' | 'd
       <p style={{ fontFamily: 'Space Grotesk, sans-serif', fontSize: 14, color: p.cream, opacity: 0.85, margin: '0 0 20px', lineHeight: 1.5 }}>7 highlight slides. ready in 60 seconds...</p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <button type="button" onClick={() => onWrap?.('desktop')} style={{ background: p.lime, border: '2px solid ' + p.ink, borderRadius: 10, boxShadow: '3px 3px 0 ' + p.ink, padding: '12px 20px', fontFamily: 'Space Grotesk, sans-serif', fontSize: 15, fontWeight: 700, color: p.ink, cursor: 'pointer', letterSpacing: '0.02em' }}>
-          WRAP IT &#9654;
+          WRAP IT &#127791;
         </button>
         <button type="button" onClick={() => onWrap?.('phone')} style={{ background: '#fff', border: '2px solid ' + p.ink, borderRadius: 10, padding: '10px 20px', fontFamily: 'Space Grotesk, sans-serif', fontSize: 13, fontWeight: 600, color: p.ink, cursor: 'pointer' }}>
           watch full-screen &#9654;
