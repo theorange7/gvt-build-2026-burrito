@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { hasActiveKey } from '@/lib/local-store/crypto';
 import { listIdentities, type StoredIdentity } from '@/lib/local-store/identities';
@@ -35,14 +36,38 @@ function formatRelative(ts: number | null): string {
   return `${Math.floor(diff / 86_400_000)}d ago`;
 }
 
+const sectionStyle: React.CSSProperties = {
+  background: '#FBF5E5',
+  border: '2px solid #0A0A0A',
+  boxShadow: '4px 4px 0 #0A0A0A',
+  borderRadius: '20px',
+  padding: '24px',
+};
+
+const monoLabelStyle: React.CSSProperties = {
+  fontFamily: "'JetBrains Mono', monospace",
+  fontSize: '10px',
+  textTransform: 'uppercase',
+  letterSpacing: '0.12em',
+  color: '#0A0A0A',
+  opacity: 0.7,
+};
+
 export function ProvidersList() {
   const identities = useLiveQuery(loadIdentitiesWithState, [], [] as IdentityRow[]);
 
   if (!identities || identities.length === 0) {
     return (
-      <section className="rounded-[28px] border border-[color:var(--border)] bg-[color:var(--surface)]/78 p-6">
-        <p className="text-xs uppercase tracking-[0.32em] text-[color:var(--muted)]">Connected providers</p>
-        <p className="mt-3 text-sm text-[color:var(--muted)]">
+      <section style={sectionStyle}>
+        <p style={monoLabelStyle}>Connected providers</p>
+        <p
+          className="mt-3 text-sm"
+          style={{
+            fontFamily: "'Space Grotesk', sans-serif",
+            color: '#0A0A0A',
+            opacity: 0.65,
+          }}
+        >
           No providers connected yet. Add one to import contribution events from
           GitLab and other sources.
         </p>
@@ -51,29 +76,82 @@ export function ProvidersList() {
   }
 
   return (
-    <section className="rounded-[28px] border border-[color:var(--border)] bg-[color:var(--surface)]/78 p-6">
-      <p className="text-xs uppercase tracking-[0.32em] text-[color:var(--muted)]">Connected providers</p>
+    <section style={sectionStyle}>
+      <p style={monoLabelStyle}>Connected providers</p>
       <ul className="mt-4 grid gap-4">
         {identities.map((identity) => (
           <li
             key={identity.id}
             data-testid={`identity-${identity.id}`}
-            className="rounded-[22px] border border-white/10 bg-black/20 p-4"
+            style={{
+              background: '#ffffff',
+              border: '2px solid #0A0A0A',
+              boxShadow: '3px 3px 0 #0A0A0A',
+              borderRadius: '14px',
+              padding: '16px',
+            }}
           >
             <div className="flex flex-wrap items-baseline justify-between gap-3">
               <div>
-                <p className="text-xs uppercase tracking-[0.28em] text-[color:var(--muted)]">
+                <span
+                  style={{
+                    fontFamily: "'JetBrains Mono', monospace",
+                    fontSize: '9px',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.12em',
+                    background: '#C6FF3B',
+                    border: '1px solid #0A0A0A',
+                    borderRadius: '50px',
+                    padding: '2px 8px',
+                    color: '#0A0A0A',
+                    display: 'inline-block',
+                  }}
+                >
                   {identity.providerId}
-                </p>
-                <p className="mt-1 font-display text-xl text-[color:var(--foreground)]">
+                </span>
+                <p
+                  className="mt-2"
+                  style={{
+                    fontFamily: "'Space Grotesk', sans-serif",
+                    fontSize: '1.2rem',
+                    fontWeight: 700,
+                    color: '#0A0A0A',
+                  }}
+                >
                   {identity.displayName ?? identity.username ?? identity.externalUserId}
                 </p>
-                <p className="text-xs text-[color:var(--muted)]">{identity.instanceUrl}</p>
+                <p
+                  style={{
+                    fontFamily: "'JetBrains Mono', monospace",
+                    fontSize: '11px',
+                    color: '#0A0A0A',
+                    opacity: 0.55,
+                  }}
+                >
+                  {identity.instanceUrl}
+                </p>
               </div>
-              <div className="text-right text-xs text-[color:var(--muted)]">
-                <p>Last sync: {formatRelative(identity.lastSyncAt)}</p>
+              <div className="text-right">
+                <p
+                  style={{
+                    fontFamily: "'JetBrains Mono', monospace",
+                    fontSize: '10px',
+                    color: '#0A0A0A',
+                    opacity: 0.55,
+                  }}
+                >
+                  Last sync: {formatRelative(identity.lastSyncAt)}
+                </p>
                 {identity.lastError ? (
-                  <p className="text-[rgb(255,193,168)]">{identity.lastError}</p>
+                  <p
+                    style={{
+                      fontFamily: "'JetBrains Mono', monospace",
+                      fontSize: '10px',
+                      color: '#FF4D2E',
+                    }}
+                  >
+                    {identity.lastError}
+                  </p>
                 ) : null}
               </div>
             </div>

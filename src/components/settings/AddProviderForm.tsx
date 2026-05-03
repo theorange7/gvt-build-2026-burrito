@@ -1,7 +1,7 @@
 'use client';
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { PROVIDERS_CONFIG } from '@/lib/providers/config';
 import { connectIdentityWithApiToken } from '@/lib/providers/orchestrator';
 
@@ -48,13 +48,56 @@ export function AddProviderForm({ onConnected }: AddProviderFormProps) {
   const submitDisabled =
     mutation.isPending || token.trim().length < 1 || instanceUrl.trim().length < 1;
 
+  const inputStyle: React.CSSProperties = {
+    background: '#ffffff',
+    border: '2px solid #0A0A0A',
+    borderRadius: '8px',
+    padding: '10px 14px',
+    color: '#0A0A0A',
+    fontFamily: "'Space Grotesk', sans-serif",
+    fontSize: '14px',
+    outline: 'none',
+    width: '100%',
+  };
+
+  const monoLabelStyle: React.CSSProperties = {
+    fontFamily: "'JetBrains Mono', monospace",
+    fontSize: '10px',
+    textTransform: 'uppercase',
+    letterSpacing: '0.12em',
+    color: '#0A0A0A',
+    opacity: 0.7,
+  };
+
   return (
-    <section className="rounded-[28px] border border-[color:var(--border)] bg-[color:var(--surface)]/78 p-6">
-      <p className="text-xs uppercase tracking-[0.32em] text-[color:var(--muted)]">Connect provider</p>
-      <h3 className="mt-2 font-display text-2xl text-[color:var(--foreground)]">
+    <section
+      className="rounded-[20px] p-6"
+      style={{
+        background: '#FBF5E5',
+        border: '2px solid #0A0A0A',
+        boxShadow: '4px 4px 0 #0A0A0A',
+      }}
+    >
+      <p style={monoLabelStyle}>Connect provider</p>
+      <h3
+        className="mt-2"
+        style={{
+          fontFamily: "'Space Grotesk', sans-serif",
+          fontSize: '1.5rem',
+          fontWeight: 700,
+          color: '#0A0A0A',
+        }}
+      >
         Add a contribution source.
       </h3>
-      <p className="mt-2 text-sm leading-6 text-[color:var(--muted)]">
+      <p
+        className="mt-2 text-sm leading-6"
+        style={{
+          fontFamily: "'Space Grotesk', sans-serif",
+          color: '#0A0A0A',
+          opacity: 0.65,
+        }}
+      >
         Tokens stay encrypted on this device. We only send the token in the
         Authorization header to the instance URL you specify, over HTTPS.
       </p>
@@ -74,11 +117,11 @@ export function AddProviderForm({ onConnected }: AddProviderFormProps) {
         }}
       >
         <label className="grid gap-2 text-sm">
-          <span className="text-[color:var(--muted)]">Provider</span>
+          <span style={monoLabelStyle}>Provider</span>
           <select
             value={providerId}
             onChange={(event) => setProviderId(event.target.value)}
-            className="rounded-[18px] border border-white/10 bg-black/20 px-4 py-3 text-[color:var(--foreground)] outline-none focus:border-[color:var(--accent)]"
+            style={inputStyle}
           >
             {providers.map((p) => (
               <option key={p.id} value={p.id}>
@@ -89,43 +132,86 @@ export function AddProviderForm({ onConnected }: AddProviderFormProps) {
         </label>
 
         <label className="grid gap-2 text-sm">
-          <span className="text-[color:var(--muted)]">Instance URL</span>
+          <span style={monoLabelStyle}>Instance URL</span>
           <input
             type="url"
             value={instanceUrl}
             onChange={(event) => setInstanceUrl(event.target.value)}
             placeholder="https://gitlab.example.com"
-            className="rounded-[18px] border border-white/10 bg-black/20 px-4 py-3 text-[color:var(--foreground)] outline-none focus:border-[color:var(--accent)]"
+            style={inputStyle}
             required
           />
         </label>
 
         <label className="grid gap-2 text-sm">
-          <span className="text-[color:var(--muted)]">Personal access token</span>
+          <span style={monoLabelStyle}>Personal access token</span>
           <input
             type="password"
             autoComplete="off"
             value={token}
             onChange={(event) => setToken(event.target.value)}
             placeholder="glpat-…"
-            className="rounded-[18px] border border-white/10 bg-black/20 px-4 py-3 text-[color:var(--foreground)] outline-none focus:border-[color:var(--accent)]"
+            style={inputStyle}
             required
           />
         </label>
 
-        <p className="text-xs leading-5 text-[color:var(--muted)]">
+        <p
+          className="text-xs leading-5"
+          style={{
+            fontFamily: "'Space Grotesk', sans-serif",
+            color: '#0A0A0A',
+            opacity: 0.6,
+          }}
+        >
           Generate a PAT in your GitLab profile with{' '}
-          <code className="rounded bg-black/30 px-1 py-0.5">read_api</code> and{' '}
-          <code className="rounded bg-black/30 px-1 py-0.5">read_user</code>.
+          <code
+            style={{
+              fontFamily: "'JetBrains Mono', monospace",
+              background: '#ffffff',
+              border: '1px solid #0A0A0A',
+              borderRadius: '4px',
+              padding: '1px 5px',
+            }}
+          >
+            read_api
+          </code>{' '}
+          and{' '}
+          <code
+            style={{
+              fontFamily: "'JetBrains Mono', monospace",
+              background: '#ffffff',
+              border: '1px solid #0A0A0A',
+              borderRadius: '4px',
+              padding: '1px 5px',
+            }}
+          >
+            read_user
+          </code>
+          .
         </p>
 
         {validationError ? (
-          <p role="alert" className="text-sm text-[rgb(255,193,168)]">
+          <p
+            role="alert"
+            style={{
+              fontSize: '13px',
+              color: '#FF4D2E',
+              fontFamily: "'Space Grotesk', sans-serif",
+            }}
+          >
             {validationError}
           </p>
         ) : null}
         {mutation.isError ? (
-          <p role="alert" className="text-sm text-[rgb(255,193,168)]">
+          <p
+            role="alert"
+            style={{
+              fontSize: '13px',
+              color: '#FF4D2E',
+              fontFamily: "'Space Grotesk', sans-serif",
+            }}
+          >
             {mutation.error instanceof Error ? mutation.error.message : 'Failed to connect.'}
           </p>
         ) : null}
@@ -133,7 +219,19 @@ export function AddProviderForm({ onConnected }: AddProviderFormProps) {
         <button
           type="submit"
           disabled={submitDisabled}
-          className="rounded-full bg-[color:var(--accent)] px-5 py-3 text-sm font-medium text-black transition hover:translate-y-[-1px] disabled:cursor-not-allowed disabled:opacity-60"
+          className="transition hover:translate-y-[-1px] disabled:cursor-not-allowed disabled:opacity-60"
+          style={{
+            background: '#FF4D2E',
+            border: '2px solid #0A0A0A',
+            boxShadow: '3px 3px 0 #0A0A0A',
+            borderRadius: '8px',
+            padding: '12px 20px',
+            fontFamily: "'Space Grotesk', sans-serif",
+            fontSize: '14px',
+            fontWeight: 700,
+            color: '#0A0A0A',
+            cursor: submitDisabled ? 'not-allowed' : 'pointer',
+          }}
         >
           {mutation.isPending ? 'Connecting…' : 'Connect'}
         </button>
