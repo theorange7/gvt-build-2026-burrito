@@ -10,6 +10,8 @@
 import { useMutation } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { ContributionFeed } from '@/components/dashboard/ContributionFeed';
+import { EventDetailDrawer } from '@/components/dashboard/EventDetailDrawer';
+import type { DrawerEvent } from '@/components/dashboard/EventDetailDrawer';
 import { GenerateWrapModal } from '@/components/dashboard/GenerateWrapModal';
 import { ManualInputForm } from '@/components/dashboard/ManualInputForm';
 import { useContributions } from '@/components/dashboard/useContributions';
@@ -25,6 +27,7 @@ interface MxPalette {
   hot: string; lime: string; ink: string; cream: string; paper: string;
   accent: string; accent2: string; accent3: string;
   swatch: string[];
+  [key: string]: unknown;
 }
 
 const MX_PALETTES: Record<string, MxPalette> = {
@@ -238,7 +241,7 @@ function WrapCtaCard({ p, onWrap }: { p: MxPalette; onWrap?: (mode: 'phone' | 'd
       <p style={{ fontFamily: 'Space Grotesk, sans-serif', fontSize: 14, color: p.cream, opacity: 0.85, margin: '0 0 20px', lineHeight: 1.5 }}>7 highlight slides. ready in 60 seconds...</p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <button type="button" onClick={() => onWrap?.('desktop')} style={{ background: p.lime, border: '2px solid ' + p.ink, borderRadius: 10, boxShadow: '3px 3px 0 ' + p.ink, padding: '12px 20px', fontFamily: 'Space Grotesk, sans-serif', fontSize: 15, fontWeight: 700, color: p.ink, cursor: 'pointer', letterSpacing: '0.02em' }}>
-          WRAP IT &#127806; &#8594;
+          WRAP IT &#9654;
         </button>
         <button type="button" onClick={() => onWrap?.('phone')} style={{ background: '#fff', border: '2px solid ' + p.ink, borderRadius: 10, padding: '10px 20px', fontFamily: 'Space Grotesk, sans-serif', fontSize: 13, fontWeight: 600, color: p.ink, cursor: 'pointer' }}>
           watch full-screen &#9654;
@@ -329,6 +332,7 @@ export function DashboardShell() {
   const [seedChecked, setSeedChecked] = useState(false);
   const [showFirstRun, setShowFirstRun] = useState(false);
   const [showManualInput, setShowManualInput] = useState(false);
+  const [openEvent, setOpenEvent] = useState<DrawerEvent | null>(null);
 
   const p = MX_PALETTES[paletteId] ?? MX_PALETTES.tomato;
   const allContributions = contributions ?? [];
@@ -357,8 +361,25 @@ export function DashboardShell() {
     .sort((a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime())
     .slice(0, 5);
 
-  function handleOpenEvent(_contribution: Contribution) {
-    // reserved for future detail drawer
+  function handleOpenEvent(contribution: Contribution) {
+    const kind = sourceToKind(contribution.source);
+    const color = categoryColor(contribution.category, p);
+    const d = new Date(contribution.occurredAt);
+    const dateStr = String(d.getDate()).padStart(2, '0') + ' ' + MONTH_LABELS[d.getMonth()];
+    setOpenEvent({
+      id: contribution.id,
+      m: dateStr,
+      kind,
+      title: contribution.signal,
+      tag: contribution.category,
+      color,
+      detail: {
+        source: contribution.source,
+        refs: contribution.externalId ? [contribution.externalId] : [],
+        body: contribution.signal,
+        weight: Math.min(contribution.weight / 5, 1),
+      },
+    });
   }
 
   function handleWrap(_mode: 'phone' | 'desktop') {
@@ -460,6 +481,8 @@ export function DashboardShell() {
           </p>
         </div>
       </div>
+
+      <EventDetailDrawer p={p} event={openEvent} onClose={() => setOpenEvent(null)} />
     </div>
   );
 }
