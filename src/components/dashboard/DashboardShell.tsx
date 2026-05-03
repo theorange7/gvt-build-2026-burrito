@@ -114,7 +114,7 @@ export function DashboardShell() {
             </section>
           ) : null}
 
-          <ContributionFeed contributions={contributions ?? []} p={DEFAULT_MX_PALETTE} />
+          <ContributionFeed contributions={contributions ?? []} />
         </div>
 
         <aside className="space-y-6 lg:sticky lg:top-6 lg:self-start">
