@@ -1,9 +1,15 @@
 // @vitest-environment node
 /*
- * Static-analysis privacy invariants. These tests encode the trust boundary
- * documented in the architecture: the API routes must not import server-side
- * persistence, must not log payloads, and must not pull from the local-store
- * (which is browser-only and would expose us to leaks if accidentally bundled).
+ * Static-analysis privacy invariants for the **client** package. The backend
+ * lives in `server/` and has its own privacy-invariants test under
+ * `server/test/unit/privacy-invariants.test.ts`. These rules verify that:
+ *
+ * - The Next.js app no longer hosts an `/api` directory (queue/auth moved to
+ *   the backend).
+ * - The client-side `lib/ai/` is now thin HTTP wrappers and must not import
+ *   any LLM/Azure SDK or persist anything to the wire beyond the typed shape.
+ * - The browser-only local-store remains isolated from any server bundle
+ *   pathway.
  */
 import { describe, expect, it } from 'vitest';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
@@ -12,9 +18,11 @@ import { dirname, join, relative } from 'node:path';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(here, '..', '..');
+const clientAiDir = join(repoRoot, 'src', 'lib', 'ai');
 const apiDir = join(repoRoot, 'src', 'app', 'api');
 const providersDir = join(repoRoot, 'src', 'lib', 'providers');
 const orchestratorPath = join(providersDir, 'orchestrator.ts');
+const sharedDir = join(repoRoot, 'shared', 'src');
 
 function walk(dir: string): string[] {
   const out: string[] = [];
@@ -26,70 +34,110 @@ function walk(dir: string): string[] {
   return out;
 }
 
-describe('privacy invariants — API routes', () => {
-  const files = walk(apiDir);
+function dirExists(path: string): boolean {
+  try {
+    return statSync(path).isDirectory();
+  } catch {
+    return false;
+  }
+}
 
-  it('finds at least the classify and wrap routes', () => {
+describe('privacy invariants — Next.js no longer hosts API routes', () => {
+  it('src/app/api/ does not exist (moved to server/)', () => {
+    expect(dirExists(apiDir)).toBe(false);
+  });
+});
+
+describe('privacy invariants — client AI wrappers stay thin', () => {
+  const files = walk(clientAiDir);
+
+  it('finds the expected wrapper files', () => {
     const names = files.map((f) => relative(repoRoot, f));
     expect(names).toEqual(
       expect.arrayContaining([
-        join('src', 'app', 'api', 'classify', 'route.ts'),
-        join('src', 'app', 'api', 'wrap', 'route.ts'),
+        join('src', 'lib', 'ai', 'classify.ts'),
+        join('src', 'lib', 'ai', 'generate.ts'),
+        join('src', 'lib', 'ai', 'endpoint.ts'),
+        join('src', 'lib', 'ai', 'models.ts'),
       ]),
     );
   });
 
-  it('never imports @prisma/client', () => {
+  it('never imports any LLM or Azure SDK', () => {
+    const banned = [
+      /from ['"]@anthropic-ai\/sdk['"]/,
+      /from ['"]@azure\/ai-projects['"]/,
+      /from ['"]@azure\/identity['"]/,
+      /from ['"]@azure\/service-bus['"]/,
+      /from ['"]@azure\/data-tables['"]/,
+      /from ['"]openai['"]/,
+      /from ['"]jose['"]/,
+    ];
     for (const file of files) {
       const source = readFileSync(file, 'utf8');
-      expect(source, `${file} must not import @prisma/client`).not.toMatch(/@prisma\/client/);
+      for (const re of banned) {
+        expect(source, `${file} must not import via ${re}`).not.toMatch(re);
+      }
     }
   });
 
-  it('never imports a server-side db.ts', () => {
+  it('never reads server-only env (ANTHROPIC_API_KEY, AZURE_*, WRAP_JWT_SECRET)', () => {
+    const banned = [
+      /process\.env\.ANTHROPIC_API_KEY/,
+      /process\.env\.AZURE_FOUNDRY_PROJECT_ENDPOINT/,
+      /process\.env\.AZURE_SERVICE_BUS_NAMESPACE/,
+      /process\.env\.AZURE_TABLES_ENDPOINT/,
+      /process\.env\.WRAP_JWT_SECRET/,
+    ];
     for (const file of files) {
       const source = readFileSync(file, 'utf8');
-      expect(source, `${file} must not import @/lib/db`).not.toMatch(/from ['"]@\/lib\/db['"]/);
+      for (const re of banned) {
+        expect(source, `${file} must not read ${re}`).not.toMatch(re);
+      }
     }
   });
 
-  it('never imports the browser-only local-store', () => {
+  it('never logs tokens, request bodies, or signal text', () => {
+    const banned = [
+      /console\.[a-z]+\([^)]*\bauthorization\b/i,
+      /console\.[a-z]+\([^)]*\btoken\b/i,
+      /console\.[a-z]+\([^)]*\bsliceContent\b/,
+      /console\.[a-z]+\([^)]*\bcontributions\b/,
+      /console\.[a-z]+\([^)]*\bfreeText\b/,
+    ];
     for (const file of files) {
       const source = readFileSync(file, 'utf8');
-      expect(source, `${file} must not import @/lib/local-store/*`).not.toMatch(/from ['"]@\/lib\/local-store/);
-    }
-  });
-
-  it('never reads or writes filesystem paths under user data dirs', () => {
-    for (const file of files) {
-      const source = readFileSync(file, 'utf8');
-      // Allow reading bundled JSON via fetch in seed.ts (browser); API routes
-      // shouldn't touch fs at all.
-      expect(source, `${file} should not import node:fs`).not.toMatch(/from ['"]node:fs['"]|from ['"]fs['"]/);
-    }
-  });
-
-  it('carries a privacy banner comment', () => {
-    for (const file of files) {
-      const source = readFileSync(file, 'utf8');
-      expect(source, `${file} must include a PRIVACY banner`).toMatch(/PRIVACY/);
+      for (const re of banned) {
+        expect(source, `${file} must not log via ${re}`).not.toMatch(re);
+      }
     }
   });
 });
 
-describe('privacy invariants — local-store is not imported by API/server code', () => {
-  const serverDirs = [
-    join(repoRoot, 'src', 'app', 'api'),
-    join(repoRoot, 'src', 'lib', 'ai'),
-  ];
+describe('privacy invariants — shared package is types-only', () => {
+  const files = walk(sharedDir);
 
-  it('nobody under /api or src/lib/ai pulls in local-store', () => {
-    for (const dir of serverDirs) {
-      for (const file of walk(dir)) {
-        const source = readFileSync(file, 'utf8');
-        expect(source, `${file} must not import local-store`).not.toMatch(
-          /from ['"]@\/lib\/local-store/,
-        );
+  it('shared/ does not import any project source from src/ or server/', () => {
+    for (const file of files) {
+      const source = readFileSync(file, 'utf8');
+      expect(source, `${file} must not import @/`).not.toMatch(/from ['"]@\//);
+      expect(source, `${file} must not import server modules`).not.toMatch(
+        /from ['"]\.\.\/\.\.\/(server|src)\b/,
+      );
+    }
+  });
+
+  it('shared/ does not import any LLM or Azure SDK', () => {
+    const banned = [
+      /from ['"]@anthropic-ai\/sdk['"]/,
+      /from ['"]@azure\//,
+      /from ['"]openai['"]/,
+      /from ['"]jose['"]/,
+    ];
+    for (const file of files) {
+      const source = readFileSync(file, 'utf8');
+      for (const re of banned) {
+        expect(source, `${file} must not import via ${re}`).not.toMatch(re);
       }
     }
   });
@@ -147,18 +195,6 @@ describe('privacy invariants — provider modules are storage-pure', () => {
     for (const file of indexFiles) {
       const source = readFileSync(file, 'utf8');
       expect(source, `${file} must include a PRIVACY banner`).toMatch(/PRIVACY/);
-    }
-  });
-});
-
-describe('privacy invariants — API routes never import providers', () => {
-  const files = walk(apiDir);
-  it('nobody under /api pulls in src/lib/providers', () => {
-    for (const file of files) {
-      const source = readFileSync(file, 'utf8');
-      expect(source, `${file} must not import @/lib/providers`).not.toMatch(
-        /from ['"]@\/lib\/providers/,
-      );
     }
   });
 });

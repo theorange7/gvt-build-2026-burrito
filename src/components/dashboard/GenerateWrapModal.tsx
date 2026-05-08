@@ -8,9 +8,10 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
-import type { SliceContent, WrapMode } from '@/lib/types';
+import type { WrapMode } from '@/lib/types';
 import { listContributionsInRange } from '@/lib/local-store/contributions';
-import { saveWrap } from '@/lib/local-store/wraps';
+import { addPendingWrap } from '@/lib/local-store/pendingWraps';
+import { enqueueWrap } from '@/lib/ai/generate';
 import { DEFAULT_MODEL_ID, MODEL_OPTIONS } from '@/lib/ai/models';
 
 export function GenerateWrapModal() {
@@ -19,8 +20,9 @@ export function GenerateWrapModal() {
   const [windowStart, setWindowStart] = useState('2025-04-01');
   const [windowEnd, setWindowEnd] = useState('2025-06-30');
   const [modelId, setModelId] = useState<string>(DEFAULT_MODEL_ID);
-  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-  const [wrapId, setWrapId] = useState<string | null>(null);
+  const [status, setStatus] = useState<'idle' | 'loading' | 'queued' | 'error'>('idle');
+  const [jobId, setJobId] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const range = useMemo(() => {
@@ -49,38 +51,31 @@ export function GenerateWrapModal() {
         weight: c.weight,
       }));
 
-      const response = await fetch('/api/wrap', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          contributions: stripped,
-          mode,
-          windowStart: start.toISOString(),
-          windowEnd: end.toISOString(),
-          modelId,
-        }),
+      const newJobId = crypto.randomUUID();
+
+      const result = await enqueueWrap({
+        jobId: newJobId,
+        contributions: stripped,
+        mode,
+        windowStart: start.toISOString(),
+        windowEnd: end.toISOString(),
+        modelId,
       });
 
-      const body = await response.json().catch(() => ({}));
-
-      if (!response.ok) {
-        setStatus('error');
-        setErrorMessage(body.error || 'Wrap generation failed.');
-        return;
-      }
-
-      const sliceContent = body.sliceContent as SliceContent[];
-      const title = mode === 'year-end' ? 'Your year, wrapped for work.' : 'Your recent momentum, wrapped.';
-      const stored = await saveWrap({
+      await addPendingWrap({
+        id: newJobId,
         mode,
         windowStart: start,
         windowEnd: end,
-        title,
-        sliceContent,
+        requestedAt: new Date(),
+        status: result.status,
+        busy: !!result.busy,
+        modelId,
       });
 
-      setWrapId(stored.id);
-      setStatus('success');
+      setJobId(newJobId);
+      setBusy(!!result.busy);
+      setStatus('queued');
     } catch (error) {
       setStatus('error');
       setErrorMessage(error instanceof Error ? error.message : 'Wrap generation failed.');
@@ -178,16 +173,16 @@ export function GenerateWrapModal() {
                   ))}
                 </select>
                 <span className="text-xs text-[color:var(--muted)]">
-                  Anthropic models use ANTHROPIC_API_KEY. Azure Foundry options call your project&apos;s Azure OpenAI deployment of the same name via AZURE_FOUNDRY_PROJECT_ENDPOINT and DefaultAzureCredential (Entra ID). Override AZURE_FOUNDRY_API_VERSION if your deployment requires a different api-version.
+                  Generation runs on the Wrapped backing service. The selected model id is forwarded; provider credentials live in the service&apos;s settings, not in this app.
                 </span>
               </label>
 
               <div className="mt-6 rounded-[24px] border border-white/8 bg-black/20 p-5">
-                {status === 'idle' ? <p className="text-sm text-[color:var(--muted)]">Your contributions are sent to the AI proxy without identifiers; the result is stored encrypted on this device.</p> : null}
+                {status === 'idle' ? <p className="text-sm text-[color:var(--muted)]">Your contributions are sent to the backing service without identifiers; the result is stored encrypted on this device.</p> : null}
                 {status === 'loading' ? (
                   <div className="flex items-center gap-3 text-sm text-[color:var(--foreground)]">
                     <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-[color:var(--accent)]" />
-                    Generating your wrap… <span className="text-[color:var(--muted)]">~20 seconds</span>
+                    Submitting to the queue…
                   </div>
                 ) : null}
                 {status === 'error' ? (
@@ -196,10 +191,14 @@ export function GenerateWrapModal() {
                     <button type="button" onClick={generate} className="rounded-full border border-white/10 px-4 py-2 text-[color:var(--foreground)]">Retry</button>
                   </div>
                 ) : null}
-                {status === 'success' && wrapId ? (
+                {status === 'queued' && jobId ? (
                   <div className="space-y-3 text-sm">
-                    <p className="text-[color:var(--foreground)]">Your wrap is ready. Saved on this device.</p>
-                    <Link href={`/wrap?id=${wrapId}`} className="inline-flex rounded-full bg-[color:var(--accent)] px-4 py-2 text-black">View Wrap →</Link>
+                    <p className="text-[color:var(--foreground)]">
+                      {busy
+                        ? 'Queued — the service is a little busy, so this may take a bit longer.'
+                        : 'Queued — your wrap is being generated.'}
+                    </p>
+                    <Link href={`/wrap?id=${jobId}`} className="inline-flex rounded-full bg-[color:var(--accent)] px-4 py-2 text-black">View status →</Link>
                   </div>
                 ) : null}
               </div>
