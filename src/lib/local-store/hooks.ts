@@ -48,6 +48,7 @@ export type PendingPollState =
   | { phase: 'loading' }
   | { phase: 'queued' | 'running'; busy: boolean }
   | { phase: 'failed'; error: string }
+  | { phase: 'paused-locked' }
   | { phase: 'complete' };
 
 const BACKOFF_MS = [2000, 4000, 8000, 10000];
@@ -68,6 +69,11 @@ export function usePendingWrap(id: string): PendingPollState {
     let attempt = 0;
 
     const tick = async () => {
+      if (!hasActiveKey()) {
+        if (!cancelled.current) setState({ phase: 'paused-locked' });
+        return;
+      }
+
       try {
         const pending = await getPendingWrap(id);
         if (!pending) {
@@ -117,11 +123,18 @@ export function usePendingWrap(id: string): PendingPollState {
       }
     };
 
+    const onUnlock = () => {
+      if (timer.current) clearTimeout(timer.current);
+      if (!cancelled.current) void tick();
+    };
+
+    window.addEventListener('wrapped:unlocked', onUnlock);
     void tick();
 
     return () => {
       cancelled.current = true;
       if (timer.current) clearTimeout(timer.current);
+      window.removeEventListener('wrapped:unlocked', onUnlock);
     };
   }, [id]);
 

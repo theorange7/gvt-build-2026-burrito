@@ -20,8 +20,18 @@ export function PendingWrapView({ id, mode }: { id: string; mode: WrapMode }) {
           {mode === 'year-end' ? 'Year-End wrap' : 'Snapshot wrap'}
         </p>
         <h1 className="mt-4 font-display text-4xl">
-          {state.phase === 'failed' ? 'Generation failed.' : 'Generating your wrap…'}
+          {state.phase === 'failed'
+            ? 'Generation failed.'
+            : state.phase === 'paused-locked'
+              ? 'Unlock to continue.'
+              : 'Generating your wrap…'}
         </h1>
+
+        {state.phase === 'paused-locked' ? (
+          <p className="mt-6 text-sm text-white/65">
+            Your wrap is still being generated. Unlock your local store to save it when it&apos;s ready.
+          </p>
+        ) : null}
 
         {state.phase === 'loading' || state.phase === 'queued' || state.phase === 'running' ? (
           <div className="mt-6 flex items-center justify-center gap-3 text-sm text-white/65">

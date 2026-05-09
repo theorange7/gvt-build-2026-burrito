@@ -954,8 +954,8 @@ export function DashboardShell() {
         </div>
       </div>}
 
-      <ManualInputForm open={showManualInput} onClose={() => setShowManualInput(false)} />
-      <GenerateWrapModal open={showWrap} onOpenChange={setShowWrap} />
+      <ManualInputForm />
+      <GenerateWrapModal />
       <EventDetailDrawer p={p} event={openEvent} onClose={() => setOpenEvent(null)} />
     </div>
   );

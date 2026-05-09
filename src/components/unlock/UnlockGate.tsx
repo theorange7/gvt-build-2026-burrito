@@ -67,6 +67,7 @@ export function UnlockGate({ children }: { children: React.ReactNode }) {
       if (typeof navigator !== 'undefined' && navigator.storage?.persist) {
         navigator.storage.persist().catch(() => undefined);
       }
+      window.dispatchEvent(new CustomEvent('wrapped:unlocked'));
       setPassphrase('');
       setConfirm('');
       setStatus('unlocked');
@@ -101,6 +102,7 @@ export function UnlockGate({ children }: { children: React.ReactNode }) {
       } else {
         setActiveKey(key);
       }
+      window.dispatchEvent(new CustomEvent('wrapped:unlocked'));
       setPassphrase('');
       setStatus('unlocked');
       queryClient.invalidateQueries({ queryKey: ['contributions'] });
