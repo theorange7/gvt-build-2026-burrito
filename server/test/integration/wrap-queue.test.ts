@@ -1,78 +1,16 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('@azure/data-tables', () => {
-  type Entity = Record<string, unknown> & { partitionKey: string; rowKey: string };
-  const tables = new Map<string, Map<string, Entity>>();
-
-  function key(p: string, r: string) {
-    return `${p}::${r}`;
-  }
-  function tableFor(name: string) {
-    let t = tables.get(name);
-    if (!t) {
-      t = new Map();
-      tables.set(name, t);
-    }
-    return t;
-  }
-
-  class TableClient {
-    constructor(public endpoint: string, public name: string, public _credential: unknown) {}
-    async upsertEntity(entity: Entity) {
-      tableFor(this.name).set(key(entity.partitionKey, entity.rowKey), { ...entity });
-    }
-    async getEntity(partitionKey: string, rowKey: string) {
-      const e = tableFor(this.name).get(key(partitionKey, rowKey));
-      if (!e) {
-        const err = new Error('not found') as Error & { statusCode: number };
-        err.statusCode = 404;
-        throw err;
-      }
-      return { ...e };
-    }
-    async deleteEntity(partitionKey: string, rowKey: string) {
-      tableFor(this.name).delete(key(partitionKey, rowKey));
-    }
-    listEntities({ queryOptions }: { queryOptions: { filter: string; select?: string[] } }) {
-      const filter = queryOptions.filter;
-      const partitionMatch = filter.match(/PartitionKey eq '([^']+)'/);
-      const rows = [...tableFor(this.name).values()].filter((entity) => {
-        const status = String(entity.status);
-        const statusMatches = status === 'queued' || status === 'running';
-        if (!statusMatches) return false;
-        if (partitionMatch && entity.partitionKey !== partitionMatch[1]) return false;
-        return true;
-      });
-      return (async function* () {
-        for (const row of rows) yield row;
-      })();
-    }
-  }
-
-  return {
-    TableClient,
-    __reset() {
-      tables.clear();
-    },
-  };
+vi.mock('@azure/data-tables', async () => {
+  const m = await import('../fakes/azure');
+  return { TableClient: m.FakeTableClient };
 });
-
-vi.mock('@azure/identity', () => ({
-  DefaultAzureCredential: class {},
-}));
-
-vi.mock('@azure/service-bus', () => {
-  return {
-    ServiceBusClient: class {
-      constructor(public namespace: string, public _credential: unknown) {}
-      createSender(_queue: string) {
-        return {
-          sendMessages: async () => undefined,
-        };
-      }
-      async close() {}
-    },
-  };
+vi.mock('@azure/identity', async () => {
+  const m = await import('../fakes/azure');
+  return { DefaultAzureCredential: m.FakeDefaultAzureCredential };
+});
+vi.mock('@azure/service-bus', async () => {
+  const m = await import('../fakes/azure');
+  return { ServiceBusClient: m.FakeServiceBusClient };
 });
 
 import type { HttpRequest, InvocationContext } from '@azure/functions';
@@ -81,6 +19,7 @@ import { wrapEnqueueHandler } from '../../src/functions/wrapEnqueue';
 import { wrapGetHandler } from '../../src/functions/wrapGet';
 import { upsertJobRow } from '../../src/queue/jobs';
 import { putResult } from '../../src/queue/results';
+import { resetAzureFakes } from '../fakes/azure';
 import type { EnqueueWrapRequest } from '@wrapped/shared';
 
 beforeAll(() => {
@@ -93,9 +32,8 @@ beforeAll(() => {
   process.env.WRAP_PER_INSTALL_LIMIT = '1';
 });
 
-beforeEach(async () => {
-  const tables = (await import('@azure/data-tables')) as unknown as { __reset: () => void };
-  tables.__reset();
+beforeEach(() => {
+  resetAzureFakes();
 });
 
 afterEach(() => {
