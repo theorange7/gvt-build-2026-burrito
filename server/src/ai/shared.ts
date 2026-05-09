@@ -1,5 +1,6 @@
 import { format } from 'date-fns';
 import { callModel } from './client';
+import { safeError } from '../privacy';
 import type { Contribution, ContributionCategory, SliceContent, WrapMode } from '@wrapped/shared';
 
 export const SLICE_SYSTEM_PROMPT = `You are writing a slide for "Wrapped for Work" — a Spotify Wrapped-style
@@ -111,7 +112,7 @@ export const createSlice = async (args: {
       supporting: args.mode === 'year-end' ? parsed.supporting ?? null : null,
     };
   } catch (error) {
-    console.error(`Slice generation failed for ${args.sliceKey}:`, (error as Error).name, (error as Error).message);
+    console.error(`Slice generation failed for ${args.sliceKey}:`, safeError(error).code);
     return fallbackForSlice(args.sliceKey);
   }
 };

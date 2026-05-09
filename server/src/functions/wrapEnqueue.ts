@@ -3,7 +3,11 @@
  * The contributions payload is forwarded as the Service Bus message body and
  * never persisted in our infra (only the worker reads it once). The job row
  * stores {installId, jobId, status, busy, timestamps} — no contributions, no
- * IPs, no tokens. Logs only {jobId, status} on errors.
+ * IPs, no tokens. The Service Bus message metadata carries an opaque per-job
+ * `jobLookupToken` instead of installId; the worker resolves the token via a
+ * lookup row in the same wrapJobs table so installId never appears in queue
+ * metadata, the DLQ, or App Insights trace correlation. Logs only
+ * {jobId, code} on errors.
  */
 import { app, type HttpRequest, type HttpResponseInit, type InvocationContext } from '@azure/functions';
 import { enqueueWrapRequestSchema } from '@wrapped/shared';
@@ -11,7 +15,9 @@ import { requireInstallToken, HttpAuthError } from '../auth/middleware';
 import {
   countInflight,
   createJobRow,
+  createLookupRow,
   deleteJobRow,
+  deleteLookupRow,
   getJobRow,
   isConflictError,
   upsertJobRow,
@@ -31,14 +37,18 @@ export async function wrapEnqueueHandler(
     if (err instanceof HttpAuthError) {
       return { status: err.status, jsonBody: { error: err.message } };
     }
-    throw err;
+    // Unexpected token-verification failure. Don't `throw` — that auto-captures
+    // into App Insights with err.message verbatim. Log the safe code and return
+    // a generic 500.
+    context.error('wrapEnqueue auth failed', safeError(err));
+    return { status: 500, jsonBody: { error: 'auth-error' } };
   }
 
   let body: ReturnType<typeof enqueueWrapRequestSchema.parse>;
   try {
     body = enqueueWrapRequestSchema.parse(await request.json());
-  } catch (err) {
-    return { status: 400, jsonBody: { error: 'invalid-payload', details: safeError(err).message } };
+  } catch {
+    return { status: 400, jsonBody: { error: 'invalid-payload' } };
   }
 
   try {
@@ -104,7 +114,27 @@ export async function wrapEnqueueHandler(
       });
     }
 
-    await enqueueWrapJob(body, installId);
+    // Mint an opaque per-job lookup token. The worker uses this — not
+    // installId — to find the job row, so installId stays out of Service Bus
+    // metadata, the DLQ, and any auto-captured trace correlation.
+    const jobLookupToken = crypto.randomUUID();
+    try {
+      await createLookupRow({ jobLookupToken, installId, jobId: body.jobId });
+    } catch (lookupErr) {
+      // Almost impossible (UUID collision); unwind the job row and surface 503.
+      await deleteJobRow(installId, body.jobId);
+      context.error('wrapEnqueue lookup-row create failed', { jobId: body.jobId, ...safeError(lookupErr) });
+      return { status: 500, jsonBody: { error: 'enqueue-failed' } };
+    }
+
+    try {
+      await enqueueWrapJob(body, jobLookupToken);
+    } catch (enqueueErr) {
+      // Unwind both rows so the caller can retry with a new jobId.
+      await deleteLookupRow(jobLookupToken);
+      await deleteJobRow(installId, body.jobId);
+      throw enqueueErr;
+    }
 
     return { status: 200, jsonBody: { jobId: body.jobId, status: 'queued', busy } };
   } catch (err) {

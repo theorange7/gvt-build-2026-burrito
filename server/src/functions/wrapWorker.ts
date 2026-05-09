@@ -10,6 +10,7 @@ import { generateWrap } from '../ai/generate';
 import {
   getJobRowWithEtag,
   isPreconditionFailed,
+  resolveInstallIdFromToken,
   updateJobRow,
 } from '../queue/jobs';
 import { putResult } from '../queue/results';
@@ -35,19 +36,26 @@ export async function wrapWorker(message: unknown, context: InvocationContext): 
   const { jobId } = payload;
   const startedAt = Date.now();
 
-  // Locate the job row to find the partition key (installId). Partial scan via
-  // the message itself would be ideal, but the message intentionally omits
-  // installId — we look it up by jobId.
-  // Simpler: store installId alongside the message via applicationProperties.
-  // For now, rely on context.triggerMetadata or fall back to a marker scan.
-  const installId = (context.triggerMetadata?.applicationProperties as Record<string, unknown> | undefined)?.installId as
-    | string
-    | undefined;
+  // The Service Bus message carries an opaque jobLookupToken — never the
+  // caller's installId. Resolving it goes through a lookup row keyed by token
+  // in the same wrapJobs table so the install identifier stays out of queue
+  // metadata, the DLQ, and any auto-captured trace correlation.
+  const props = context.triggerMetadata?.applicationProperties as Record<string, unknown> | undefined;
+  const jobLookupToken = props?.jobLookupToken as string | undefined;
 
-  if (!installId) {
-    context.error('wrapWorker missing installId in applicationProperties', { jobId });
+  if (!jobLookupToken) {
+    context.error('wrapWorker missing jobLookupToken in applicationProperties', { jobId });
     return;
   }
+
+  const lookup = await resolveInstallIdFromToken(jobLookupToken);
+  if (!lookup) {
+    // Lookup row was already cleaned up (terminal poll completed) or the
+    // token was bogus. Either way nothing useful to do; ack the message.
+    context.warn('wrapWorker lookup row missing — job already settled or invalid token', { jobId });
+    return;
+  }
+  const { installId } = lookup;
 
   const deliveryCount = (context.triggerMetadata?.deliveryCount as number | undefined) ?? 1;
 
@@ -74,7 +82,7 @@ export async function wrapWorker(message: unknown, context: InvocationContext): 
       context.warn('wrapWorker max-retries reached; marking failed', { jobId, deliveryCount });
       try {
         await updateJobRow(
-          { ...existing, status: 'failed', errorCode: 'max-retries', updatedAt: new Date().toISOString() },
+          { ...existing, status: 'failed', errorCode: 'max_retries', updatedAt: new Date().toISOString() },
           existing.etag,
         );
       } catch (markErr) {
@@ -108,7 +116,7 @@ export async function wrapWorker(message: unknown, context: InvocationContext): 
       modelId: payload.modelId,
     });
 
-    await putResult(jobId, sliceContent);
+    await putResult(installId, jobId, sliceContent);
 
     // Conditional flip to complete using the ETag from the running write —
     // not a fresh read. If something else mutated the row during generation

@@ -25,12 +25,19 @@ export function _setSenderForTests(sender: EnqueueSender | null): void {
   testSender = sender;
 }
 
-export async function enqueueWrapJob(payload: EnqueueWrapRequest, installId: string): Promise<void> {
+/**
+ * Enqueue a wrap-generation job. The message metadata carries an opaque
+ * `jobLookupToken` rather than the caller's installId — see #7 in the
+ * code-review notes. The worker resolves the token via the lookup row in
+ * `wrapJobs`. This keeps installId out of Service Bus metadata, the DLQ, and
+ * any auto-captured App Insights traces.
+ */
+export async function enqueueWrapJob(payload: EnqueueWrapRequest, jobLookupToken: string): Promise<void> {
   const sender = testSender ?? getSender();
   await sender.sendMessages({
     body: payload,
     messageId: payload.jobId,
     contentType: 'application/json',
-    applicationProperties: { jobId: payload.jobId, installId },
+    applicationProperties: { jobId: payload.jobId, jobLookupToken },
   });
 }

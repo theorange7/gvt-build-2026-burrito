@@ -5,7 +5,7 @@
  */
 import { app, type HttpRequest, type HttpResponseInit, type InvocationContext } from '@azure/functions';
 import { requireInstallToken, HttpAuthError } from '../auth/middleware';
-import { deleteJobRow, getJobRow } from '../queue/jobs';
+import { deleteJobRow, deleteLookupRowsForJob, getJobRow } from '../queue/jobs';
 import { getAndDeleteResult } from '../queue/results';
 import { safeError } from '../privacy';
 
@@ -20,7 +20,8 @@ export async function wrapGetHandler(
     if (err instanceof HttpAuthError) {
       return { status: err.status, jsonBody: { error: err.message } };
     }
-    throw err;
+    context.error('wrapGet auth failed', safeError(err));
+    return { status: 500, jsonBody: { error: 'auth-error' } };
   }
 
   const jobId = request.params.jobId;
@@ -35,8 +36,9 @@ export async function wrapGetHandler(
     }
 
     if (row.status === 'complete') {
-      const sliceContent = await getAndDeleteResult(jobId);
+      const sliceContent = await getAndDeleteResult(installId, jobId);
       await deleteJobRow(installId, jobId);
+      await deleteLookupRowsForJob(installId, jobId);
       if (!sliceContent) {
         return { status: 410, jsonBody: { error: 'result-already-fetched' } };
       }
@@ -45,6 +47,7 @@ export async function wrapGetHandler(
 
     if (row.status === 'failed') {
       await deleteJobRow(installId, jobId);
+      await deleteLookupRowsForJob(installId, jobId);
       return { status: 200, jsonBody: { status: 'failed', error: row.errorCode ?? 'unknown' } };
     }
 

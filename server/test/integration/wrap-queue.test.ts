@@ -176,7 +176,7 @@ describe('POST /wrap (enqueue) → GET /wrap/:jobId (poll)', () => {
 
     // Worker outcome: write result + flip status to complete
     const sliceContent = [{ sliceKey: 'launches_shipped', headline: 'h', body: 'b' }];
-    await putResult(jobId, sliceContent);
+    await putResult(installId, jobId, sliceContent);
     const now = new Date().toISOString();
     await upsertJobRow({
       installId,
@@ -229,6 +229,47 @@ describe('POST /wrap (enqueue) → GET /wrap/:jobId (poll)', () => {
     // Only one row should have been created — the other two are idempotent reads.
     const stored = await getJobRow(installId, jobId);
     expect(stored).not.toBeNull();
+  });
+
+  it('result rows are isolated by install — install B cannot fetch install A’s payload (#8)', async () => {
+    const a = await signInstallToken();
+    const b = await signInstallToken();
+    const jobId = crypto.randomUUID();
+
+    // Install A enqueues + worker outcome
+    await wrapEnqueueHandler(
+      makeRequest({ method: 'POST', url: 'http://x/wrap', body: baseBody(jobId), token: a.token }),
+      makeContext(),
+    );
+    const sliceContent = [{ sliceKey: 'launches_shipped', headline: 'h', body: 'b' }];
+    await putResult(a.installId, jobId, sliceContent);
+    const now = new Date().toISOString();
+    await upsertJobRow({
+      installId: a.installId,
+      jobId,
+      status: 'complete',
+      busy: false,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    // Install B knows the jobId but does not own the row → 404 from the job
+    // table layer. (Belt-and-suspenders: even if the job-row guard somehow
+    // passed, the result row's partitionKey is keyed to A so B's read would
+    // also 404 at the storage layer.)
+    const stolen = await wrapGetHandler(
+      makeRequest({ method: 'GET', url: `http://x/wrap/${jobId}`, token: b.token, params: { jobId } }),
+      makeContext(),
+    );
+    expect(stolen.status).toBe(404);
+
+    // A's read still works.
+    const owned = await wrapGetHandler(
+      makeRequest({ method: 'GET', url: `http://x/wrap/${jobId}`, token: a.token, params: { jobId } }),
+      makeContext(),
+    );
+    expect(owned.status).toBe(200);
+    expect((owned.jsonBody as { sliceContent: unknown[] }).sliceContent).toEqual(sliceContent);
   });
 
   it('does not log payload, contributions, or sliceContent (canary spy)', async () => {

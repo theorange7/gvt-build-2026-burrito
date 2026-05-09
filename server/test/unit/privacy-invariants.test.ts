@@ -90,6 +90,12 @@ describe('privacy invariants — no logging of payloads, contributions, or slice
     /context\.(log|info|warn|error)\([^)]*\bsliceContent\b/,
     /context\.(log|info|warn|error)\([^)]*\bcontributions\b/,
     /context\.(log|info|warn|error)\([^)]*\bpayload\b/,
+    // safeError no longer surfaces .message — flag any code that tries to log
+    // it (which would defeat the whole purpose of the allowlist).
+    /safeError\([^)]*\)\.message/,
+    // Direct passthrough of err.message into a log call — a common shape that
+    // bypasses safeError. Allow `.code` only.
+    /(?:console|context)\.[a-z]+\([^)]*\b(?:err|error)\.message\b/,
   ];
 
   it('no banned log expressions appear in any server source', () => {
@@ -102,13 +108,36 @@ describe('privacy invariants — no logging of payloads, contributions, or slice
   });
 });
 
+describe('privacy invariants — installId never enters Service Bus message metadata (#7)', () => {
+  it('queue/serviceBus.ts does not put installId in applicationProperties', () => {
+    const file = join(srcDir, 'queue', 'serviceBus.ts');
+    const source = readFileSync(file, 'utf8');
+    // The applicationProperties object is the only place metadata leaves us;
+    // it must reference jobLookupToken, never installId.
+    const appPropsBlock = source.match(/applicationProperties:\s*\{[^}]*\}/);
+    expect(appPropsBlock).not.toBeNull();
+    expect(appPropsBlock![0]).not.toMatch(/\binstallId\b/);
+    expect(appPropsBlock![0]).toMatch(/\bjobLookupToken\b/);
+  });
+});
+
 describe('privacy invariants — result row contains only sliceContent + jobId + timestamps', () => {
-  it('queue/results.ts persists no installId, IP, token, or contributions', () => {
+  it('queue/results.ts persists no IP, token, or contributions', () => {
     const file = join(srcDir, 'queue', 'results.ts');
     const source = readFileSync(file, 'utf8');
-    expect(source).not.toMatch(/installId/);
     expect(source).not.toMatch(/\bip\b/i);
     expect(source).not.toMatch(/token/i);
     expect(source).not.toMatch(/contributions/);
+  });
+
+  it('the ResultEntity row shape only carries payload + createdAt (no installId column)', () => {
+    const file = join(srcDir, 'queue', 'results.ts');
+    const source = readFileSync(file, 'utf8');
+    // installId may appear as a parameter name (it's now the partition key
+    // owner) but must NOT show up as a row column. The TableEntity literal
+    // is the only place where columns are declared.
+    const entityDecl = source.match(/type ResultEntity = TableEntity<\{[^}]*\}>/);
+    expect(entityDecl).not.toBeNull();
+    expect(entityDecl![0]).not.toMatch(/installId/);
   });
 });
