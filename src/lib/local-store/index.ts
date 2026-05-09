@@ -8,3 +8,5 @@ export * from './identities';
 export * from './tokens';
 export * from './syncState';
 export * from './importedRanges';
+export * from './pendingWraps';
+export * from './auth';

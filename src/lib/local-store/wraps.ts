@@ -18,13 +18,14 @@ export type StoredWrap = {
 };
 
 export async function saveWrap(input: {
+  id?: string;
   mode: WrapMode;
   windowStart: Date;
   windowEnd: Date;
   title: string;
   sliceContent: SliceContent[];
 }): Promise<StoredWrap> {
-  const id = crypto.randomUUID();
+  const id = input.id ?? crypto.randomUUID();
   const createdAt = new Date();
   const env = await encryptJSON({
     sliceContent: input.sliceContent,
@@ -40,7 +41,8 @@ export async function saveWrap(input: {
     ct: env.ct,
   };
   await db().wraps.put(row);
-  return { id, ...input, createdAt };
+  const { id: _ignored, ...rest } = input;
+  return { id, ...rest, createdAt };
 }
 
 export async function getWrap(id: string): Promise<StoredWrap | null> {
