@@ -16,14 +16,9 @@
     "export:demo": "node scripts/export-demo.mjs",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
-    "tauri:build": "tauri build",
-    "ai:test": "vitest run test/integration/wrap.test.ts",
-    "ai:test:live": "INTEGRATION_LIVE=1 vitest run test/integration/wrap.test.ts"
+    "tauri:build": "tauri build"
   },
   "dependencies": {
-    "@azure/ai-projects": "^1.0.0",
-    "@azure/identity": "^4.5.0",
-    "openai": "^6.0.0",
     "@tanstack/react-query": "^5.72.1",
     "date-fns": "^4.1.0",
     "dexie": "^4.0.8",

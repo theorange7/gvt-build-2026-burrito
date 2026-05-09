@@ -9,9 +9,29 @@ import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { UnlockGate } from '@/components/unlock/UnlockGate';
 import { WrapViewer } from '@/components/wrap/WrapViewer';
+import { PendingWrapView } from '@/components/wrap/PendingWrapView';
+import { useLocalPendingWrap } from '@/lib/local-store/hooks';
 
 function WrapPageInner() {
   const id = useSearchParams().get('id') ?? '';
+  const pending = useLocalPendingWrap(id);
+
+  if (pending === undefined) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-[#0a0a0f] text-white">
+        <p className="text-sm text-white/55">Loading…</p>
+      </main>
+    );
+  }
+
+  if (pending) {
+    return (
+      <UnlockGate>
+        <PendingWrapView id={id} mode={pending.mode} />
+      </UnlockGate>
+    );
+  }
+
   return (
     <UnlockGate>
       <WrapViewer id={id} />

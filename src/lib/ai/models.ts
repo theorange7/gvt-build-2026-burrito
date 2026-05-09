@@ -1,58 +1,22 @@
-import { z } from 'zod';
-import modelsConfig from './models.config.json';
-
 /**
- * Model catalog and per-model request parameters.
+ * Public-facing model catalog for the client dropdown. Only `id` and `label`
+ * cross the wire; the canonical config (provider, deployment name,
+ * parameters) lives in the backend at `server/src/ai/models.config.json`.
  *
- * Edit `models.config.json` to add, remove, or retune models. Each entry's
- * `parameters` object is forwarded verbatim into the upstream chat-completions
- * request, so put provider-specific knobs (temperature, max_tokens, top_p, …)
- * there. Validation runs at import time — a malformed entry fails fast.
- *
- * For provider 'azure-foundry', `modelId` is the **deployment name** in your
- * Azure AI Foundry project, not the model family. Only Azure OpenAI–compatible
- * deployments work through @azure/ai-projects' getAzureOpenAIClient. Non-OpenAI
- * Foundry models (Phi, Llama, Mistral) are served by the separate Model
- * Inference API and would need @azure-rest/ai-inference to be wired up.
+ * Keep this list aligned with the server's catalog. The backend silently
+ * falls back to its default when it receives an unknown id, so a drift
+ * here doesn't break generation — it just means the UI may offer a model
+ * the backend doesn't actually have.
  */
+export type PublicModelOption = {
+  id: string;
+  label: string;
+};
 
-const ParameterValueSchema = z.union([z.string(), z.number(), z.boolean()]);
-export type ModelParameterValue = z.infer<typeof ParameterValueSchema>;
-export type ModelParameters = Record<string, ModelParameterValue>;
+export const MODEL_OPTIONS: PublicModelOption[] = [
+  { id: 'azure:claude-haiku-4-5', label: 'claude-haiku-4-5 (Azure Foundry)' },
+  { id: 'azure:gpt-5.5-1', label: 'gpt-5.5-1 (Azure Foundry)' },
+  { id: 'anthropic:claude-sonnet-4', label: 'Claude Sonnet 4 (Anthropic direct)' },
+];
 
-const ModelOptionSchema = z.object({
-  id: z.string().min(1),
-  label: z.string().min(1),
-  provider: z.enum(['anthropic', 'azure-foundry']),
-  modelId: z.string().min(1),
-  version: z.string().optional(),
-  parameters: z.record(ParameterValueSchema).optional(),
-});
-
-const ConfigSchema = z.object({
-  models: z.array(ModelOptionSchema).min(1),
-});
-
-export type ModelProvider = z.infer<typeof ModelOptionSchema>['provider'];
-export type ModelOption = z.infer<typeof ModelOptionSchema>;
-
-const parsed = ConfigSchema.safeParse(modelsConfig);
-if (!parsed.success) {
-  throw new Error(`Invalid models.config.json: ${parsed.error.message}`);
-}
-
-const ids = new Set<string>();
-for (const model of parsed.data.models) {
-  if (ids.has(model.id)) {
-    throw new Error(`Duplicate model id in models.config.json: ${model.id}`);
-  }
-  ids.add(model.id);
-}
-
-export const MODEL_OPTIONS: ModelOption[] = parsed.data.models;
 export const DEFAULT_MODEL_ID = MODEL_OPTIONS[0].id;
-
-export function resolveModel(modelId: string | undefined): ModelOption {
-  if (!modelId) return MODEL_OPTIONS[0];
-  return MODEL_OPTIONS.find((m) => m.id === modelId) ?? MODEL_OPTIONS[0];
-}
