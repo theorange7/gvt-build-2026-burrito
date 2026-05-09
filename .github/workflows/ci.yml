@@ -3,8 +3,9 @@ name: CI
 on:
   push:
     branches: [main]
+  # Run on PRs to any base branch so stacked PRs (e.g. client → server → main)
+  # also get CI. Without this, only PRs targeting main trigger the workflow.
   pull_request:
-    branches: [main]
   workflow_dispatch:
 
 env:
