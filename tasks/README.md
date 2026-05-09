@@ -58,7 +58,17 @@ invariants that hold.
 
 ## Notes
 Cross-references to other specs, prior code-review items, links to discussion.
+
+## Done
+**Completed**: YYYY-MM-DD
+**PR**: #NN
+**Summary**: One paragraph — what shipped, any deviation from the
+"Solution shape" above (and why), and follow-ups raised.
 ```
+
+The `## Done` block is added when the implementing PR is opened (see
+"How an agent should use this directory" below). Until then, the section
+is omitted; specs in flight don't have a `## Done`.
 
 `<id>` is the original code-review item number (10, 11, …) when the spec
 maps to one; otherwise pick the next free number.
@@ -90,7 +100,16 @@ Post-merge (UX + operational hardening):
    not invent a different one. If you think the shape is wrong, raise it
    with the user before changing course.
 3. Treat "No-gos" as hard. Treat "Rabbit holes" as warnings.
-4. Update the `Status` line as you progress (Shaped → In progress → Done).
-   When merging, leave a `Done` row pointing at the PR.
-5. If you discover follow-up work that doesn't fit the current spec, add a
+4. Update the `Status` line as you progress (`Shaped — ready` →
+   `In progress` → `Done`).
+5. **When you open the PR that implements the spec, mark it done in the
+   same PR.** That means four edits, all in the implementing PR — not a
+   follow-up:
+   - Flip `Status` to `Done` on the spec file.
+   - Append a `## Done` block (Completed date / PR / one-paragraph
+     summary, including any deviation from the Solution shape).
+   - Update the spec's row in the Index table above (status column
+     becomes `Done — YYYY-MM-DD (#NN)`).
+   - Add a dated entry to `tasks/CHANGELOG.md` (newest-first).
+6. If you discover follow-up work that doesn't fit the current spec, add a
    bullet under "Notes" instead of doing it inline.

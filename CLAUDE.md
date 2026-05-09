@@ -96,7 +96,13 @@ When the user asks for "task N" or "spec N":
 4. **Update `Status`** in the spec file as you progress (`Shaped — ready`
    → `In progress` → `Done` with a PR link). Update the index table in
    `tasks/README.md` to match.
-5. **Discoveries that don't fit the current spec** go under the spec's
+5. **When you open the PR, mark the spec done in that same PR.** Flip
+   `Status` to `Done`, append a `## Done` block to the spec file
+   (Completed date / PR / one-paragraph summary including any deviation
+   from the shape), update the `tasks/README.md` index row, and add a
+   dated entry to `tasks/CHANGELOG.md`. All four edits land in the PR
+   that implements the spec — not a follow-up.
+6. **Discoveries that don't fit the current spec** go under the spec's
    `Notes` section as bullets, not into the implementation.
 
 `tasks/` is for shaped work; `Tasks.md` (root, separate file) is the
