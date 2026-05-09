@@ -16,12 +16,6 @@ const PAPER = '#FBF5E5';
 const HOT = '#FF4D2E';
 const LIME = '#C6FF3B';
 
-const INK = '#0A0A0A';
-const CREAM = '#FFF4DE';
-const PAPER = '#FBF5E5';
-const HOT = '#FF4D2E';
-const LIME = '#C6FF3B';
-
 const categories: ContributionCategory[] = ['delivery', 'collaboration', 'mentorship', 'process', 'leadership'];
 
 type Classification = {
