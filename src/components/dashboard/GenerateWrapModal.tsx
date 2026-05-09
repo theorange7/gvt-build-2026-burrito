@@ -10,8 +10,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import type { SliceContent, WrapMode } from '@/lib/types';
 import { listContributionsInRange } from '@/lib/local-store/contributions';
-import { addPendingWrap } from '@/lib/local-store/pendingWraps';
-import { enqueueWrap } from '@/lib/ai/generate';
+import { saveWrap } from '@/lib/local-store/wraps';
 import { DEFAULT_MODEL_ID, MODEL_OPTIONS } from '@/lib/ai/models';
 
 const INK = '#0A0A0A';
@@ -35,9 +34,8 @@ export function GenerateWrapModal({ open: controlledOpen, onOpenChange }: Genera
   const [windowStart, setWindowStart] = useState('2025-04-01');
   const [windowEnd, setWindowEnd] = useState('2025-06-30');
   const [modelId, setModelId] = useState<string>(DEFAULT_MODEL_ID);
-  const [status, setStatus] = useState<'idle' | 'loading' | 'queued' | 'error'>('idle');
-  const [jobId, setJobId] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [wrapId, setWrapId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -74,31 +72,38 @@ export function GenerateWrapModal({ open: controlledOpen, onOpenChange }: Genera
         weight: c.weight,
       }));
 
-      const newJobId = crypto.randomUUID();
-
-      const result = await enqueueWrap({
-        jobId: newJobId,
-        contributions: stripped,
-        mode,
-        windowStart: start.toISOString(),
-        windowEnd: end.toISOString(),
-        modelId,
+      const response = await fetch('/api/wrap', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          contributions: stripped,
+          mode,
+          windowStart: start.toISOString(),
+          windowEnd: end.toISOString(),
+          modelId,
+        }),
       });
 
-      await addPendingWrap({
-        id: newJobId,
+      const body = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        setStatus('error');
+        setErrorMessage(body.error || 'Wrap generation failed.');
+        return;
+      }
+
+      const sliceContent = body.sliceContent as SliceContent[];
+      const title = mode === 'year-end' ? 'Your year, wrapped for work.' : 'Your recent momentum, wrapped.';
+      const stored = await saveWrap({
         mode,
         windowStart: start,
         windowEnd: end,
-        requestedAt: new Date(),
-        status: result.status,
-        busy: !!result.busy,
-        modelId,
+        title,
+        sliceContent,
       });
 
-      setJobId(newJobId);
-      setBusy(!!result.busy);
-      setStatus('queued');
+      setWrapId(stored.id);
+      setStatus('success');
     } catch (error) {
       setStatus('error');
       setErrorMessage(error instanceof Error ? error.message : 'Wrap generation failed.');
