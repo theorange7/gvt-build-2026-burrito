@@ -70,10 +70,38 @@ src/
       hooks.ts, platform.ts, index.ts
     types.ts                Domain types
 src-tauri/                  Tauri 2 shell (macOS)
+tasks/                      Shaped task specs (see "Shaped task specs" below)
 test/
   unit/, component/, integration/, e2e/, fixtures/, mocks/, setup/
 public/demo-contributions.json   Bundled demo data (134 entries)
 ```
+
+## Shaped task specs
+
+The `tasks/` directory holds **shaped work** — solution proposals already
+discussed with a human, ready for an agent to pick up. Each spec covers one
+concrete piece of work with its problem, chosen solution shape, explicit
+no-gos, and verification criteria. Format and per-spec status live in
+`tasks/README.md`.
+
+When the user asks for "task N" or "spec N":
+
+1. **Read `tasks/<N>-*.md` end to end before writing any code.** The
+   "Solution shape" section is the agreed design — execute against it.
+2. **Stay inside the shape.** Do not redesign. Do not expand scope. The
+   "Rabbit holes" section calls out specific traps; "No-gos" are hard
+   boundaries.
+3. **Respect the `Branch` field.** Specs say which branch they belong on
+   (server / client / both / docs-only). Don't mix work across branches.
+4. **Update `Status`** in the spec file as you progress (`Shaped — ready`
+   → `In progress` → `Done` with a PR link). Update the index table in
+   `tasks/README.md` to match.
+5. **Discoveries that don't fit the current spec** go under the spec's
+   `Notes` section as bullets, not into the implementation.
+
+`tasks/` is for shaped work; `Tasks.md` (root, separate file) is the
+informal todo parking lot. Promote a `Tasks.md` bullet to a spec only after
+a real design conversation.
 
 ## Hard rules
 
@@ -132,7 +160,8 @@ Edit `src/lib/ai/models.config.json`. Schema:
 
 The Azure path uses `@azure/ai-projects`' `getAzureOpenAIClient`, which
 only handles Azure OpenAI–compatible deployments. Phi/Llama/Mistral need
-`@azure-rest/ai-inference` (not yet wired — see Tasks.md).
+`@azure-rest/ai-inference` (not yet wired — see `Tasks.md` for the parking
+lot of small follow-ups, or `tasks/` for shaped specs that have a design).
 
 ## Testing patterns
 
