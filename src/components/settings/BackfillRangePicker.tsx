@@ -61,51 +61,88 @@ export function BackfillRangePicker({ identityId, onClose }: BackfillRangePicker
     },
   });
 
+  const inputStyle: React.CSSProperties = {
+    fontFamily: "'Space Grotesk', sans-serif",
+    fontSize: 14,
+    background: 'white',
+    border: '2px solid #0A0A0A',
+    borderRadius: 10,
+    padding: '8px 12px',
+    color: '#0A0A0A',
+    outline: 'none',
+    width: '100%',
+    boxSizing: 'border-box',
+  };
+
   return (
-    <div className="rounded-[24px] border border-[color:var(--border)] bg-[color:var(--surface)]/90 p-5">
-      <div className="flex items-center justify-between">
-        <h4 className="font-display text-lg">Backfill historical events</h4>
+    <div
+      style={{
+        background: '#FBF5E5',
+        border: '2px solid #0A0A0A',
+        borderRadius: 16,
+        boxShadow: '3px 3px 0 #0A0A0A',
+        padding: 20,
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+        <h4 style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 16, fontWeight: 700, color: '#0A0A0A', margin: 0 }}>
+          Backfill historical events
+        </h4>
         <button
           type="button"
           onClick={onClose}
-          className="rounded-full border border-white/10 px-3 py-1 text-xs text-[color:var(--muted)]"
+          style={{
+            fontFamily: "'JetBrains Mono', monospace",
+            fontSize: 10,
+            letterSpacing: '0.1em',
+            border: '2px solid #0A0A0A',
+            borderRadius: 50,
+            padding: '4px 12px',
+            background: '#FFF4DE',
+            color: '#0A0A0A',
+            cursor: 'pointer',
+          }}
         >
-          Cancel
+          CANCEL
         </button>
       </div>
       <form
-        className="mt-4 grid gap-3"
+        style={{ display: 'grid', gap: 12 }}
         onSubmit={(event) => {
           event.preventDefault();
           mutation.mutate();
         }}
       >
-        <label className="grid gap-1 text-sm">
-          <span className="text-[color:var(--muted)]">Start date</span>
+        <label style={{ display: 'grid', gap: 6 }}>
+          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#0A0A0A', opacity: 0.6 }}>
+            Start date
+          </span>
           <input
             type="date"
             value={startStr}
             onChange={(event) => setStartStr(event.target.value)}
-            className="rounded-[14px] border border-white/10 bg-black/20 px-3 py-2 text-[color:var(--foreground)] outline-none focus:border-[color:var(--accent)]"
+            style={inputStyle}
           />
         </label>
-        <label className="grid gap-1 text-sm">
-          <span className="text-[color:var(--muted)]">End date</span>
+        <label style={{ display: 'grid', gap: 6 }}>
+          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#0A0A0A', opacity: 0.6 }}>
+            End date
+          </span>
           <input
             type="date"
             value={endStr}
             onChange={(event) => setEndStr(event.target.value)}
-            className="rounded-[14px] border border-white/10 bg-black/20 px-3 py-2 text-[color:var(--foreground)] outline-none focus:border-[color:var(--accent)]"
+            style={inputStyle}
           />
         </label>
 
         {preview && !preview.invalid ? (
           preview.covered ? (
-            <p role="status" className="text-sm text-[color:var(--muted)]">
+            <p role="status" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: '#0A0A0A', opacity: 0.55 }}>
               This range is already covered by stored backfills — will skip.
             </p>
           ) : (
-            <p role="status" className="text-sm text-[color:var(--muted)]">
+            <p role="status" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: '#0A0A0A', opacity: 0.7 }}>
               {preview.gaps.length === 1
                 ? `Will fetch the uncovered window: ${formatDate(preview.gaps[0][0])} → ${formatDate(preview.gaps[0][1])}.`
                 : `Will fetch ${preview.gaps.length} uncovered gap${preview.gaps.length === 1 ? '' : 's'}.`}
@@ -113,13 +150,13 @@ export function BackfillRangePicker({ identityId, onClose }: BackfillRangePicker
           )
         ) : null}
         {preview?.invalid ? (
-          <p role="alert" className="text-sm text-[rgb(255,193,168)]">
+          <p role="alert" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: '#FF4D2E' }}>
             End date must be after start date.
           </p>
         ) : null}
 
         {mutation.isError ? (
-          <p role="alert" className="text-sm text-[rgb(255,193,168)]">
+          <p role="alert" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: '#FF4D2E' }}>
             {mutation.error instanceof Error ? mutation.error.message : 'Backfill failed.'}
           </p>
         ) : null}
@@ -127,9 +164,21 @@ export function BackfillRangePicker({ identityId, onClose }: BackfillRangePicker
         <button
           type="submit"
           disabled={mutation.isPending || preview?.invalid}
-          className="rounded-full bg-[color:var(--accent)] px-4 py-2 text-sm font-medium text-black disabled:cursor-not-allowed disabled:opacity-60"
+          style={{
+            fontFamily: "'JetBrains Mono', monospace",
+            fontSize: 11,
+            fontWeight: 700,
+            letterSpacing: '0.1em',
+            background: mutation.isPending || preview?.invalid ? '#FBF5E5' : '#FF4D2E',
+            color: mutation.isPending || preview?.invalid ? '#0A0A0A' : '#FFF4DE',
+            border: '2px solid #0A0A0A',
+            borderRadius: 50,
+            padding: '10px 20px',
+            cursor: mutation.isPending || preview?.invalid ? 'not-allowed' : 'pointer',
+            opacity: mutation.isPending || preview?.invalid ? 0.6 : 1,
+          }}
         >
-          {mutation.isPending ? 'Backfilling…' : 'Backfill'}
+          {mutation.isPending ? 'BACKFILLING…' : 'BACKFILL'}
         </button>
       </form>
     </div>

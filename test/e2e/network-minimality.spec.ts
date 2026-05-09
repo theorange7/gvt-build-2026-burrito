@@ -28,7 +28,7 @@ test.describe('network minimality', () => {
     await page.getByRole('button', { name: /try with demo data/i }).click();
     await expect(page.getByText(/total signals/i)).toBeVisible({ timeout: 15_000 });
 
-    await page.getByRole('button', { name: /generate wrap/i }).click();
+    await page.getByRole('button', { name: /wrap it/i }).click();
     await page.getByRole('button', { name: /^generate$/i }).click();
     await expect(page.getByRole('link', { name: /view wrap/i })).toBeVisible({ timeout: 30_000 });
 

@@ -10,23 +10,68 @@ import '@/lib/providers';
 
 export function SettingsShell() {
   return (
-    <main className="mx-auto min-h-screen max-w-[1080px] px-4 py-6 md:px-8 md:py-8">
-      <header className="grid gap-4 rounded-[34px] border border-[color:var(--border)] bg-[color:var(--surface)]/78 p-6 md:p-8">
-        <p className="text-xs uppercase tracking-[0.36em] text-[color:var(--muted)]">
+    <main
+      className="mx-auto min-h-screen max-w-[1080px] px-4 py-6 md:px-8 md:py-8"
+      style={{ background: '#FFF4DE' }}
+    >
+      <header
+        className="grid gap-4 rounded-[20px] p-6 md:p-8"
+        style={{
+          background: '#FBF5E5',
+          border: '2px solid #0A0A0A',
+          boxShadow: '4px 4px 0 #0A0A0A',
+        }}
+      >
+        <p
+          style={{
+            fontFamily: "'JetBrains Mono', monospace",
+            fontSize: '10px',
+            textTransform: 'uppercase',
+            letterSpacing: '0.12em',
+            color: '#0A0A0A',
+            opacity: 0.6,
+          }}
+        >
           Wrapped for Work · Settings
         </p>
         <div className="flex flex-wrap items-baseline justify-between gap-4">
-          <h1 className="font-display text-[clamp(2.4rem,5vw,3.6rem)] leading-[0.95] text-[color:var(--foreground)]">
+          <h1
+            className="leading-[0.95]"
+            style={{
+              fontFamily: "'Space Grotesk', sans-serif",
+              fontSize: 'clamp(2.4rem, 5vw, 3.6rem)',
+              fontWeight: 800,
+              color: '#0A0A0A',
+            }}
+          >
             Contribution providers.
           </h1>
           <Link
             href="/dashboard"
-            className="rounded-full border border-white/10 px-4 py-2 text-sm text-[color:var(--foreground)] hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]"
+            className="text-sm transition hover:translate-y-[-1px]"
+            style={{
+              fontFamily: "'Space Grotesk', sans-serif",
+              background: '#FBF5E5',
+              border: '2px solid #0A0A0A',
+              boxShadow: '3px 3px 0 #0A0A0A',
+              borderRadius: '8px',
+              padding: '8px 18px',
+              color: '#0A0A0A',
+              fontWeight: 600,
+              textDecoration: 'none',
+            }}
           >
             ← Back to dashboard
           </Link>
         </div>
-        <p className="text-sm leading-7 text-[color:var(--muted)]">
+        <p
+          className="text-sm leading-7"
+          style={{
+            fontFamily: "'Space Grotesk', sans-serif",
+            color: '#0A0A0A',
+            opacity: 0.65,
+          }}
+        >
           Connect a contribution source, trigger a manual sync, or backfill a
           historical date range. All credentials and contribution data stay
           encrypted on this device — the server never sees them.

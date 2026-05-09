@@ -107,6 +107,24 @@ export async function listContributionsInRange(start: Date, end: Date): Promise<
   return Promise.all(rows.map(rowToContribution));
 }
 
+export async function updateContribution(
+  id: string,
+  changes: { category?: ContributionCategory; signal?: string; weight?: number },
+): Promise<void> {
+  const row = await db().contributions.get(id);
+  if (!row) return;
+  if (changes.category !== undefined) {
+    await db().contributions.update(id, { category: changes.category });
+  }
+  if (changes.signal !== undefined || changes.weight !== undefined) {
+    const secret = await decryptJSON<SecretPayload>(rowToEnvelope(row));
+    if (changes.signal !== undefined) secret.signal = changes.signal;
+    const newWeight = changes.weight ?? row.weight;
+    const env = await encryptJSON(secret);
+    await db().contributions.update(id, { iv: env.iv, ct: env.ct, weight: newWeight });
+  }
+}
+
 export async function deleteContribution(id: string): Promise<void> {
   await db().contributions.delete(id);
 }
