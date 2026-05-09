@@ -20,6 +20,17 @@ export function registerRateLimitPerHour(): number {
   return num(process.env.WRAP_REGISTER_RATE_LIMIT_PER_HOUR, 10);
 }
 
+/**
+ * After this many deliveries, the worker stops retrying and persists
+ * `status='failed'` with `errorCode='max-retries'`. The Service Bus queue
+ * itself also enforces `maxDeliveryCount` (set in Terraform), but we make the
+ * decision here so the client polling sees a terminal status without waiting
+ * for DLQ propagation.
+ */
+export function maxDeliveries(): number {
+  return num(process.env.WRAP_MAX_DELIVERIES, 3);
+}
+
 export function decideBusy(globalInflight: number): boolean {
   return globalInflight >= maxConcurrency();
 }

@@ -18,7 +18,9 @@ type JobEntity = TableEntity<{
   errorCode?: string;
   createdAt: string;
   updatedAt: string;
-}>;
+}> & { etag?: string };
+
+export type JobRowWithEtag = JobRow & { etag: string };
 
 let cachedClient: TableClient | null = null;
 
@@ -63,6 +65,30 @@ export async function upsertJobRow(row: JobRow): Promise<void> {
   await client.upsertEntity(entity, 'Replace');
 }
 
+/**
+ * Atomically inserts a new job row. Throws an error with `statusCode === 409`
+ * if a row already exists for `(installId, jobId)`. Used by `wrapEnqueue` to
+ * close the same-jobId TOCTOU window that `upsertJobRow` opens (see #2 in the
+ * code-review notes).
+ */
+export async function createJobRow(row: JobRow): Promise<void> {
+  const client = getClient();
+  const entity: JobEntity = {
+    partitionKey: row.installId,
+    rowKey: row.jobId,
+    status: row.status,
+    busy: row.busy,
+    errorCode: row.errorCode,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
+  await client.createEntity(entity);
+}
+
+export function isConflictError(err: unknown): boolean {
+  return (err as { statusCode?: number })?.statusCode === 409;
+}
+
 export async function getJobRow(installId: string, jobId: string): Promise<JobRow | null> {
   const client = getClient();
   try {
@@ -73,6 +99,52 @@ export async function getJobRow(installId: string, jobId: string): Promise<JobRo
     if (status === 404) return null;
     throw err;
   }
+}
+
+/**
+ * Same as `getJobRow` but also returns the row's ETag, for callers that need
+ * to make a subsequent conditional write (`updateJobRow`). Used by the worker
+ * to guard status transitions against redelivery races (see #3).
+ */
+export async function getJobRowWithEtag(installId: string, jobId: string): Promise<JobRowWithEtag | null> {
+  const client = getClient();
+  try {
+    const entity = (await client.getEntity(installId, jobId)) as JobEntity;
+    const etag = entity.etag ?? '';
+    return { ...entityToRow(entity), etag };
+  } catch (err) {
+    const status = (err as { statusCode?: number }).statusCode;
+    if (status === 404) return null;
+    throw err;
+  }
+}
+
+/**
+ * Conditionally updates a job row using If-Match on the supplied ETag. Throws
+ * with `statusCode === 412` if the row was modified by someone else since the
+ * read — callers should treat that as "another worker delivery owns this job"
+ * and bail without retrying blindly.
+ *
+ * Returns the new ETag so callers can chain successive transitions without an
+ * intervening read.
+ */
+export async function updateJobRow(row: JobRow, etag: string): Promise<string> {
+  const client = getClient();
+  const entity: JobEntity = {
+    partitionKey: row.installId,
+    rowKey: row.jobId,
+    status: row.status,
+    busy: row.busy,
+    errorCode: row.errorCode,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
+  const result = (await client.updateEntity(entity, 'Replace', { etag })) as { etag?: string } | undefined;
+  return result?.etag ?? '';
+}
+
+export function isPreconditionFailed(err: unknown): boolean {
+  return (err as { statusCode?: number })?.statusCode === 412;
 }
 
 export async function deleteJobRow(installId: string, jobId: string): Promise<void> {

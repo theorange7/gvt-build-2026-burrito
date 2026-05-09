@@ -17,7 +17,7 @@ import type { HttpRequest, InvocationContext } from '@azure/functions';
 import { signInstallToken } from '../../src/auth/jwt';
 import { wrapEnqueueHandler } from '../../src/functions/wrapEnqueue';
 import { wrapGetHandler } from '../../src/functions/wrapGet';
-import { upsertJobRow } from '../../src/queue/jobs';
+import { getJobRow, upsertJobRow } from '../../src/queue/jobs';
 import { putResult } from '../../src/queue/results';
 import { resetAzureFakes } from '../fakes/azure';
 import type { EnqueueWrapRequest } from '@wrapped/shared';
@@ -208,6 +208,27 @@ describe('POST /wrap (enqueue) → GET /wrap/:jobId (poll)', () => {
       makeContext(),
     );
     expect(res.status).toBe(401);
+  });
+
+  it('concurrent POSTs of the same jobId resolve to a single created row (atomic claim, see #2)', async () => {
+    const { token, installId } = await signInstallToken();
+    const jobId = crypto.randomUUID();
+    const body = baseBody(jobId);
+
+    const [a, b, c] = await Promise.all([
+      wrapEnqueueHandler(makeRequest({ method: 'POST', url: 'http://x/wrap', body, token }), makeContext()),
+      wrapEnqueueHandler(makeRequest({ method: 'POST', url: 'http://x/wrap', body, token }), makeContext()),
+      wrapEnqueueHandler(makeRequest({ method: 'POST', url: 'http://x/wrap', body, token }), makeContext()),
+    ]);
+
+    for (const res of [a, b, c]) {
+      expect(res.status).toBe(200);
+      expect((res.jsonBody as { jobId: string }).jobId).toBe(jobId);
+    }
+
+    // Only one row should have been created — the other two are idempotent reads.
+    const stored = await getJobRow(installId, jobId);
+    expect(stored).not.toBeNull();
   });
 
   it('does not log payload, contributions, or sliceContent (canary spy)', async () => {
