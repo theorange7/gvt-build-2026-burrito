@@ -1,6 +1,7 @@
-export type MxPalette = {
+export interface MxPalette {
   id: string;
   label: string;
+  sub: string;
   hot: string;
   lime: string;
   ink: string;
@@ -9,59 +10,38 @@ export type MxPalette = {
   accent: string;
   accent2: string;
   accent3: string;
-};
+  swatch: [string, string, string, string];
+}
 
-export const palettes: Record<string, MxPalette> = {
+export const MX_PALETTES: Record<string, MxPalette> = {
   tomato: {
-    id: 'tomato',
-    label: 'Tomato',
-    hot: '#ff3b1f',
-    lime: '#c8f000',
-    ink: '#1a0a00',
-    cream: '#fff8f5',
-    paper: '#ffeee8',
-    accent: '#ff3b1f',
-    accent2: '#ff8c00',
-    accent3: '#c8f000',
+    id: 'tomato', label: 'Tomato', sub: 'the original — hot + electric',
+    hot: '#FF4D2E', lime: '#C6FF3B', ink: '#0A0A0A', cream: '#FFF4DE', paper: '#FBF5E5',
+    accent: '#6B3DFF', accent2: '#7BE3FF', accent3: '#FFB3C7',
+    swatch: ['#FF4D2E','#C6FF3B','#6B3DFF','#0A0A0A'],
   },
   govtech: {
-    id: 'govtech',
-    label: 'GovTech',
-    hot: '#0052cc',
-    lime: '#36b37e',
-    ink: '#091e42',
-    cream: '#f4f5f7',
-    paper: '#ebecf0',
-    accent: '#0052cc',
-    accent2: '#00b8d9',
-    accent3: '#36b37e',
+    id: 'govtech', label: 'GovTech SG', sub: 'indigo + blue, by the book',
+    hot: '#6137B3', lime: '#3D68BD', ink: '#1A1233', cream: '#F4F1FB', paper: '#E8E2F2',
+    accent: '#9D7FE0', accent2: '#7FA3E8', accent3: '#C9BBED',
+    swatch: ['#6137B3','#3D68BD','#9D7FE0','#1A1233'],
   },
   soft: {
-    id: 'soft',
-    label: 'Soft',
-    hot: '#e040fb',
-    lime: '#b2ff59',
-    ink: '#1a0033',
-    cream: '#fdf6ff',
-    paper: '#f3e5f5',
-    accent: '#e040fb',
-    accent2: '#7c4dff',
-    accent3: '#b2ff59',
+    id: 'soft', label: 'Soft', sub: 'easy on the eyes — muted but warm',
+    hot: '#D97757', lime: '#D6E4B8', ink: '#2A2620', cream: '#F4EFE6', paper: '#EDE7D9',
+    accent: '#7C6FB8', accent2: '#9DC4D8', accent3: '#E8B4B8',
+    swatch: ['#D97757','#D6E4B8','#7C6FB8','#2A2620'],
   },
   sunset: {
-    id: 'sunset',
-    label: 'Sunset',
-    hot: '#ff6d00',
-    lime: '#ffea00',
-    ink: '#1a0a00',
-    cream: '#fff8f0',
-    paper: '#fff3e0',
-    accent: '#ff6d00',
-    accent2: '#f50057',
-    accent3: '#ffea00',
+    id: 'sunset', label: 'Sunset', sub: 'mango + papaya, evening light',
+    hot: '#F25C54', lime: '#FFD166', ink: '#1F0F2E', cream: '#FFF1E0', paper: '#FCE5CC',
+    accent: '#9D4EDD', accent2: '#06A77D', accent3: '#F49AC2',
+    swatch: ['#F25C54','#FFD166','#9D4EDD','#1F0F2E'],
   },
 };
 
+export const DEFAULT_PALETTE_ID = 'tomato';
+
 export function getPalette(id: string): MxPalette {
-  return palettes[id] ?? palettes.tomato;
+  return MX_PALETTES[id] ?? MX_PALETTES[DEFAULT_PALETTE_ID];
 }

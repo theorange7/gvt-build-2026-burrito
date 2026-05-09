@@ -22,6 +22,11 @@ import { isBrowser } from '@/lib/local-store/platform';
 
 type GateStatus = 'checking' | 'setup' | 'unlock' | 'unlocked';
 
+const INK = '#0A0A0A';
+const CREAM = '#FFF4DE';
+const PAPER = '#FBF5E5';
+const HOT = '#FF4D2E';
+
 export function UnlockGate({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
   const [status, setStatus] = useState<GateStatus>('checking');
@@ -111,29 +116,94 @@ export function UnlockGate({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[#08080d] px-4 text-white">
-      <section className="w-full max-w-md rounded-[28px] border border-white/10 bg-[#111118] px-8 py-10 shadow-[0_30px_120px_rgba(0,0,0,0.55)]">
-        <p className="text-xs uppercase tracking-[0.34em] text-white/45">Wrapped for Work · Local-first</p>
-        <h1 className="mt-3 font-display text-3xl">
-          {status === 'setup' ? 'Set a passphrase to encrypt your data.' : status === 'unlock' ? 'Unlock your local data.' : 'Loading…'}
+    <main
+      style={{ backgroundColor: CREAM }}
+      className="flex min-h-screen items-center justify-center px-4"
+    >
+      <section
+        style={{
+          backgroundColor: PAPER,
+          border: `2px solid ${INK}`,
+          boxShadow: `6px 6px 0 ${INK}`,
+          borderRadius: '24px',
+          padding: '32px',
+          maxWidth: '400px',
+          width: '100%',
+        }}
+      >
+        {/* Top label */}
+        <p
+          style={{
+            fontFamily: 'JetBrains Mono, monospace',
+            fontSize: '10px',
+            textTransform: 'uppercase',
+            letterSpacing: '0.12em',
+            color: INK,
+            opacity: 0.5,
+          }}
+        >
+          Wrapped for Work · Local-first
+        </p>
+
+        {/* Title */}
+        <h1
+          style={{
+            fontFamily: 'Space Grotesk, sans-serif',
+            fontSize: '28px',
+            fontWeight: 700,
+            color: INK,
+            marginTop: '12px',
+            lineHeight: 1.15,
+          }}
+        >
+          {status === 'setup'
+            ? 'Create your passphrase.'
+            : status === 'unlock'
+              ? 'Welcome back.'
+              : 'Loading…'}
         </h1>
 
+        {/* Checking state */}
         {status === 'checking' ? (
-          <p className="mt-4 text-sm text-white/55">Checking local storage…</p>
+          <p
+            style={{
+              fontFamily: 'JetBrains Mono, monospace',
+              fontSize: '12px',
+              color: INK,
+              opacity: 0.55,
+              marginTop: '16px',
+            }}
+          >
+            Checking local storage…
+          </p>
         ) : null}
 
+        {/* Setup form */}
         {status === 'setup' ? (
           <form
-            className="mt-6 grid gap-4"
+            style={{ marginTop: '24px', display: 'grid', gap: '16px' }}
             onSubmit={(e) => {
               e.preventDefault();
               handleSetup();
             }}
           >
-            <p className="text-sm leading-6 text-white/55">
-              Your contributions and wraps stay on this device, encrypted with a key derived from this passphrase.
-              <strong className="text-white/80"> If you forget it, the data is unrecoverable.</strong> The server never sees your passphrase or your data at rest.
+            <p
+              style={{
+                fontFamily: 'Space Grotesk, sans-serif',
+                fontSize: '14px',
+                lineHeight: 1.6,
+                color: INK,
+                opacity: 0.7,
+              }}
+            >
+              Your contributions and wraps stay on this device, encrypted with a
+              key derived from this passphrase.{' '}
+              <strong style={{ opacity: 1, fontWeight: 700 }}>
+                If you forget it, the data is unrecoverable.
+              </strong>{' '}
+              The server never sees your passphrase or your data at rest.
             </p>
+
             <input
               type="password"
               autoFocus
@@ -141,30 +211,94 @@ export function UnlockGate({ children }: { children: React.ReactNode }) {
               placeholder="Passphrase (min 8 chars)"
               value={passphrase}
               onChange={(e) => setPassphrase(e.target.value)}
-              className="rounded-[18px] border border-white/10 bg-black/30 px-4 py-3 text-white outline-none focus:border-[color:var(--accent)]"
+              style={{
+                background: 'white',
+                border: `2px solid ${INK}`,
+                borderRadius: '10px',
+                padding: '12px 16px',
+                fontFamily: 'Space Grotesk, sans-serif',
+                fontSize: '15px',
+                color: INK,
+                outline: 'none',
+                width: '100%',
+                boxSizing: 'border-box',
+              }}
+              onFocus={(e) => { e.currentTarget.style.borderColor = HOT; }}
+              onBlur={(e) => { e.currentTarget.style.borderColor = INK; }}
             />
+
             <input
               type="password"
               autoComplete="new-password"
               placeholder="Confirm passphrase"
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
-              className="rounded-[18px] border border-white/10 bg-black/30 px-4 py-3 text-white outline-none focus:border-[color:var(--accent)]"
+              style={{
+                background: 'white',
+                border: `2px solid ${INK}`,
+                borderRadius: '10px',
+                padding: '12px 16px',
+                fontFamily: 'Space Grotesk, sans-serif',
+                fontSize: '15px',
+                color: INK,
+                outline: 'none',
+                width: '100%',
+                boxSizing: 'border-box',
+              }}
+              onFocus={(e) => { e.currentTarget.style.borderColor = HOT; }}
+              onBlur={(e) => { e.currentTarget.style.borderColor = INK; }}
             />
-            {error ? <p className="text-sm text-[rgb(255,193,168)]">{error}</p> : null}
+
+            {error ? (
+              <p
+                style={{
+                  fontFamily: 'JetBrains Mono, monospace',
+                  fontSize: '12px',
+                  color: HOT,
+                  fontWeight: 600,
+                }}
+              >
+                {error}
+              </p>
+            ) : null}
+
             <button
               type="submit"
               disabled={busy}
-              className="rounded-full bg-[color:var(--accent)] px-5 py-3 text-sm font-medium text-black disabled:opacity-60"
+              style={{
+                background: busy ? '#ccc' : HOT,
+                border: `2px solid ${INK}`,
+                boxShadow: busy ? 'none' : `3px 3px 0 ${INK}`,
+                borderRadius: '10px',
+                padding: '13px 20px',
+                fontFamily: 'Space Grotesk, sans-serif',
+                fontSize: '15px',
+                fontWeight: 700,
+                color: busy ? INK : CREAM,
+                cursor: busy ? 'not-allowed' : 'pointer',
+                transition: 'transform 0.1s, box-shadow 0.1s',
+                width: '100%',
+              }}
+              onMouseEnter={(e) => {
+                if (!busy) {
+                  e.currentTarget.style.transform = 'translate(-1px,-1px)';
+                  e.currentTarget.style.boxShadow = `4px 4px 0 ${INK}`;
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translate(0,0)';
+                e.currentTarget.style.boxShadow = busy ? 'none' : `3px 3px 0 ${INK}`;
+              }}
             >
               {busy ? 'Setting up…' : 'Set passphrase'}
             </button>
           </form>
         ) : null}
 
+        {/* Unlock form */}
         {status === 'unlock' ? (
           <form
-            className="mt-6 grid gap-4"
+            style={{ marginTop: '24px', display: 'grid', gap: '16px' }}
             onSubmit={(e) => {
               e.preventDefault();
               handleUnlock();
@@ -177,13 +311,62 @@ export function UnlockGate({ children }: { children: React.ReactNode }) {
               placeholder="Passphrase"
               value={passphrase}
               onChange={(e) => setPassphrase(e.target.value)}
-              className="rounded-[18px] border border-white/10 bg-black/30 px-4 py-3 text-white outline-none focus:border-[color:var(--accent)]"
+              style={{
+                background: 'white',
+                border: `2px solid ${INK}`,
+                borderRadius: '10px',
+                padding: '12px 16px',
+                fontFamily: 'Space Grotesk, sans-serif',
+                fontSize: '15px',
+                color: INK,
+                outline: 'none',
+                width: '100%',
+                boxSizing: 'border-box',
+              }}
+              onFocus={(e) => { e.currentTarget.style.borderColor = HOT; }}
+              onBlur={(e) => { e.currentTarget.style.borderColor = INK; }}
             />
-            {error ? <p className="text-sm text-[rgb(255,193,168)]">{error}</p> : null}
+
+            {error ? (
+              <p
+                style={{
+                  fontFamily: 'JetBrains Mono, monospace',
+                  fontSize: '12px',
+                  color: HOT,
+                  fontWeight: 600,
+                }}
+              >
+                {error}
+              </p>
+            ) : null}
+
             <button
               type="submit"
               disabled={busy}
-              className="rounded-full bg-[color:var(--accent)] px-5 py-3 text-sm font-medium text-black disabled:opacity-60"
+              style={{
+                background: busy ? '#ccc' : HOT,
+                border: `2px solid ${INK}`,
+                boxShadow: busy ? 'none' : `3px 3px 0 ${INK}`,
+                borderRadius: '10px',
+                padding: '13px 20px',
+                fontFamily: 'Space Grotesk, sans-serif',
+                fontSize: '15px',
+                fontWeight: 700,
+                color: busy ? INK : CREAM,
+                cursor: busy ? 'not-allowed' : 'pointer',
+                transition: 'transform 0.1s, box-shadow 0.1s',
+                width: '100%',
+              }}
+              onMouseEnter={(e) => {
+                if (!busy) {
+                  e.currentTarget.style.transform = 'translate(-1px,-1px)';
+                  e.currentTarget.style.boxShadow = `4px 4px 0 ${INK}`;
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translate(0,0)';
+                e.currentTarget.style.boxShadow = busy ? 'none' : `3px 3px 0 ${INK}`;
+              }}
             >
               {busy ? 'Unlocking…' : 'Unlock'}
             </button>

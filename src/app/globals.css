@@ -32,6 +32,16 @@
   --cyan: #06b6d4;
   --lime: #84cc16;
   --purple: #8b5cf6;
+
+  /* Maximalist palette — default: tomato */
+  --mx-hot: #FF4D2E;
+  --mx-lime: #C6FF3B;
+  --mx-ink: #0A0A0A;
+  --mx-cream: #FFF4DE;
+  --mx-paper: #FBF5E5;
+  --mx-accent: #6B3DFF;
+  --mx-accent2: #7BE3FF;
+  --mx-accent3: #FFB3C7;
 }
 
 * {
@@ -109,4 +119,11 @@ select {
 
 .scrollbar-hidden::-webkit-scrollbar {
   display: none;
+}
+
+.mx-font-display {
+  font-family: var(--font-space-grotesk), "Space Grotesk", system-ui, sans-serif;
+}
+.mx-font-mono {
+  font-family: var(--font-jetbrains-mono), "JetBrains Mono", ui-monospace, monospace;
 }

@@ -137,7 +137,13 @@ async function unlock(page: Page) {
   await fields.nth(0).fill(PASSPHRASE);
   await fields.nth(1).fill(PASSPHRASE);
   await page.getByRole('button', { name: /set passphrase/i }).click();
-  await expect(page.getByRole('heading', { name: /A year of contribution/i })).toBeVisible();
+  await expect(page.getByText(/contributions caught/i)).toBeVisible();
+}
+
+async function goToSettings(page: Page) {
+  await page.getByRole('button', { name: /^settings$/i }).click();
+  await expect(page.getByRole('heading', { name: /connect your tools/i })).toBeVisible();
+  await page.getByRole('button', { name: /GitLab Dedicated/i }).click();
 }
 
 test.use({ viewport: { width: 1440, height: 900 } });
@@ -145,13 +151,13 @@ test.use({ viewport: { width: 1440, height: 900 } });
 test.describe('UI screenshots', () => {
   test('01 — passphrase setup gate', async ({ page }) => {
     await page.goto('/dashboard');
-    await expect(page.getByRole('heading', { name: /set a passphrase/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /create your passphrase/i })).toBeVisible();
     await shot(page, '01-setup-passphrase');
   });
 
   test('02 — dashboard, first-launch chrome', async ({ page }) => {
     await unlock(page);
-    await expect(page.getByText(/Start with a clean year/i)).toBeVisible();
+    await expect(page.getByText(/Start fresh or load demo data/i)).toBeVisible();
     await shot(page, '02-dashboard-first-launch');
   });
 
@@ -168,16 +174,16 @@ test.describe('UI screenshots', () => {
 
   test('04 — provider settings, empty state', async ({ page }) => {
     await unlock(page);
-    await page.getByRole('link', { name: /provider settings/i }).click();
-    await expect(page.getByRole('heading', { name: /Contribution providers/i })).toBeVisible();
-    await expect(page.getByText(/No providers connected yet/i)).toBeVisible();
+    await page.getByRole('button', { name: /^settings$/i }).click();
+    await expect(page.getByRole('heading', { name: /connect your tools/i })).toBeVisible();
+    await expect(page.getByText(/\+ LINK/)).toBeVisible();
     await shot(page, '04-settings-empty');
   });
 
   test('05 — provider settings, HTTPS rejection', async ({ page }) => {
     await mockGitLab(page);
     await unlock(page);
-    await page.getByRole('link', { name: /provider settings/i }).click();
+    await goToSettings(page);
     await page.getByLabel(/instance url/i).fill('http://gitlab.test.example.com');
     await page.getByLabel(/personal access token/i).fill(PAT);
     await page.getByRole('button', { name: /connect/i }).click();
@@ -188,7 +194,7 @@ test.describe('UI screenshots', () => {
   test('06 — provider settings, after connecting', async ({ page }) => {
     await mockGitLab(page);
     await unlock(page);
-    await page.getByRole('link', { name: /provider settings/i }).click();
+    await goToSettings(page);
     await page.getByLabel(/instance url/i).fill(INSTANCE);
     await page.getByLabel(/personal access token/i).fill(PAT);
     await page.getByRole('button', { name: /connect/i }).click();
@@ -199,7 +205,7 @@ test.describe('UI screenshots', () => {
   test('07 — provider settings, after sync', async ({ page }) => {
     await mockGitLab(page);
     await unlock(page);
-    await page.getByRole('link', { name: /provider settings/i }).click();
+    await goToSettings(page);
     await page.getByLabel(/instance url/i).fill(INSTANCE);
     await page.getByLabel(/personal access token/i).fill(PAT);
     await page.getByRole('button', { name: /connect/i }).click();
@@ -214,15 +220,13 @@ test.describe('UI screenshots', () => {
   test('08 — backfill range picker with coverage preview', async ({ page }) => {
     await mockGitLab(page);
     await unlock(page);
-    await page.getByRole('link', { name: /provider settings/i }).click();
+    await goToSettings(page);
     await page.getByLabel(/instance url/i).fill(INSTANCE);
     await page.getByLabel(/personal access token/i).fill(PAT);
     await page.getByRole('button', { name: /connect/i }).click();
     await expect(page.getByText(/Alice Example/)).toBeVisible({ timeout: 10_000 });
     await page.getByRole('button', { name: /backfill range/i }).click();
     await expect(page.getByRole('heading', { name: /Backfill historical events/i })).toBeVisible();
-    // The default 1-year range against an empty importedRanges set shows
-    // the "will fetch the uncovered window" preview.
     await expect(page.getByText(/Will fetch the uncovered window/i)).toBeVisible();
     await shot(page, '08-settings-backfill-picker');
   });
@@ -230,7 +234,7 @@ test.describe('UI screenshots', () => {
   test('09 — dashboard feed populated by GitLab sync', async ({ page }) => {
     await mockGitLab(page);
     await unlock(page);
-    await page.getByRole('link', { name: /provider settings/i }).click();
+    await goToSettings(page);
     await page.getByLabel(/instance url/i).fill(INSTANCE);
     await page.getByLabel(/personal access token/i).fill(PAT);
     await page.getByRole('button', { name: /connect/i }).click();
@@ -239,8 +243,8 @@ test.describe('UI screenshots', () => {
     await expect(page.getByText(/Last sync: \+\s*[1-9]\d*\s*new/i)).toBeVisible({
       timeout: 15_000,
     });
-    await page.getByRole('link', { name: /back to dashboard/i }).click();
-    await expect(page.getByText(/Migrate auth to OAuth2/i)).toBeVisible({ timeout: 15_000 });
+    await page.getByRole('button', { name: /^timeline$/i }).click();
+    await expect(page.getByText(/Migrate auth to OAuth2/i).first()).toBeVisible({ timeout: 15_000 });
     await shot(page, '09-dashboard-with-gitlab-data');
   });
 });

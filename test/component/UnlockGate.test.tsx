@@ -28,7 +28,7 @@ describe('<UnlockGate />', () => {
   it('shows the setup form on first launch (no salt yet)', async () => {
     renderGate();
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: /set a passphrase/i })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: /create your passphrase/i })).toBeInTheDocument();
     });
     expect(screen.queryByTestId('protected')).not.toBeInTheDocument();
   });
@@ -37,7 +37,7 @@ describe('<UnlockGate />', () => {
     const user = userEvent.setup();
     renderGate();
 
-    await screen.findByRole('heading', { name: /set a passphrase/i });
+    await screen.findByRole('heading', { name: /create your passphrase/i });
     const fields = screen.getAllByPlaceholderText(/passphrase/i);
     await user.type(fields[0], 'a-strong-pass');
     await user.type(fields[1], 'a-strong-pass');
@@ -54,7 +54,7 @@ describe('<UnlockGate />', () => {
     const user = userEvent.setup();
     renderGate();
 
-    await screen.findByRole('heading', { name: /set a passphrase/i });
+    await screen.findByRole('heading', { name: /create your passphrase/i });
     const fields = screen.getAllByPlaceholderText(/passphrase/i);
     await user.type(fields[0], 'a-strong-pass');
     await user.type(fields[1], 'different-pass');
@@ -69,7 +69,7 @@ describe('<UnlockGate />', () => {
     const user = userEvent.setup();
     renderGate();
 
-    await screen.findByRole('heading', { name: /set a passphrase/i });
+    await screen.findByRole('heading', { name: /create your passphrase/i });
     const fields = screen.getAllByPlaceholderText(/passphrase/i);
     await user.type(fields[0], 'short');
     await user.type(fields[1], 'short');
@@ -85,7 +85,7 @@ describe('<UnlockGate />', () => {
     lock();
 
     renderGate();
-    await waitFor(() => expect(screen.getByRole('heading', { name: /unlock your local data/i })).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole('heading', { name: /welcome back/i })).toBeInTheDocument());
   });
 
   it('rejects the wrong passphrase against existing encrypted data', async () => {

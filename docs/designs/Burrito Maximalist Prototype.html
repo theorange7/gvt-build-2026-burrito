@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Burrito · Maximalist Prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  html, body { margin: 0; padding: 0; background: #0a0a0a; }
+  body { font-family: "Space Grotesk", system-ui, sans-serif; }
+  #root { min-height: 100vh; }
+</style>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" src="prototypes/mx-data.jsx"></script>
+<script type="text/babel" src="prototypes/mx-desktop.jsx"></script>
+<script type="text/babel" src="prototypes/mx-dashboard.jsx"></script>
+<script type="text/babel" src="prototypes/mx-wrap.jsx"></script>
+<script type="text/babel" src="prototypes/mx-wrap-desktop.jsx"></script>
+<script type="text/babel">
+function App() {
+  const [paletteId, setPaletteId] = React.useState('tomato');
+  const p = MX_PALETTES[paletteId];
+  const [showOnboarding, setShowOnboarding] = React.useState(true);
+  const [showWrap, setShowWrap] = React.useState(false);
+  const [wrapMode, setWrapMode] = React.useState('desktop'); // 'desktop' | 'phone'
+  const [openEvent, setOpenEvent] = React.useState(null);
+  const [connected, setConnected] = React.useState({ github: true, jira: false, slack: false, confluence: false });
+
+  return (
+    <div data-screen-label="Maximalist · Dashboard" style={{ position: 'relative', minHeight: '100vh', overflow: 'hidden' }}>
+      <MxDashboardView
+        p={p}
+        palettes={MX_PALETTES}
+        paletteId={paletteId}
+        setPaletteId={setPaletteId}
+        onOpen={setOpenEvent}
+        onWrap={(mode) => { setWrapMode(mode || 'desktop'); setShowWrap(true); }}
+        onSettings={() => setShowOnboarding(true)}
+      />
+      {openEvent && <MxDetail p={p} event={openEvent} onClose={() => setOpenEvent(null)} />}
+      {showOnboarding && <MxOnboarding p={p} connected={connected} setConnected={setConnected} onClose={() => setShowOnboarding(false)} />}
+      {showWrap && wrapMode === 'phone' && <MxWrapPhone p={p} onClose={() => setShowWrap(false)} />}
+      {showWrap && wrapMode === 'desktop' && <MxdWrapDesktop p={p} onClose={() => setShowWrap(false)} />}
+
+      {/* corner badge linking back to chooser */}
+      <a href="Burrito Visual Directions.html" style={{
+        position: 'fixed', bottom: 14, left: 14, zIndex: 100,
+        fontFamily: '"JetBrains Mono", monospace', fontSize: 10, padding: '6px 10px',
+        background: p.ink, color: p.cream, borderRadius: 999, textDecoration: 'none',
+        border: `2px solid ${p.lime}`, letterSpacing: '0.1em',
+      }}>← ALL DIRECTIONS</a>
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

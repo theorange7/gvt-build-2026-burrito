@@ -6,24 +6,44 @@
  * Guardrail: The form should feel intentional and lightweight, not like a noisy admin widget.
  */
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { motion } from 'framer-motion';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { Contribution, ContributionCategory } from '@/lib/types';
 import { addContribution } from '@/lib/local-store/contributions';
-import { classify } from '@/lib/ai/classify';
+
+const INK = '#0A0A0A';
+const CREAM = '#FFF4DE';
+const PAPER = '#FBF5E5';
+const HOT = '#FF4D2E';
+const LIME = '#C6FF3B';
 
 const categories: ContributionCategory[] = ['delivery', 'collaboration', 'mentorship', 'process', 'leadership'];
 
-export function ManualInputForm() {
+type Classification = {
+  signal: string;
+  category: ContributionCategory;
+  weight: number;
+};
+
+export function ManualInputForm({ open, onClose }: { open: boolean; onClose: () => void }) {
   const queryClient = useQueryClient();
-  const [open, setOpen] = useState(false);
   const [freeText, setFreeText] = useState('');
   const [occurredAt, setOccurredAt] = useState(new Date().toISOString().slice(0, 10));
   const [category, setCategory] = useState('');
 
   const mutation = useMutation({
     mutationFn: async () => {
-      const classified = await classify({ source: 'manual', freeText });
+      const response = await fetch('/api/classify', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ freeText, source: 'manual' }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ error: 'Classification failed.' }));
+        throw new Error(error.error || 'Classification failed.');
+      }
+
+      const classified = (await response.json()) as Classification;
 
       return addContribution({
         source: 'manual',
@@ -39,75 +59,200 @@ export function ManualInputForm() {
       queryClient.setQueryData<Contribution[]>(['contributions'], (current = []) => [created, ...current]);
       setFreeText('');
       setCategory('');
-      setOpen(true);
     },
   });
 
-  return (
-    <section className="rounded-[28px] border border-[color:var(--border)] bg-[color:var(--surface)]/78 p-5 md:p-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <p className="text-xs uppercase tracking-[0.32em] text-[color:var(--muted)]">Manual note</p>
-          <h3 className="mt-2 font-display text-2xl text-[color:var(--foreground)]">Add the work that systems miss.</h3>
-        </div>
-        <button
-          type="button"
-          onClick={() => setOpen((current) => !current)}
-          className="rounded-full border border-white/10 px-4 py-2 text-sm text-[color:var(--foreground)] transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]"
-        >
-          {open ? 'Hide form' : 'Add contribution'}
-        </button>
-      </div>
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [open, onClose]);
 
-      {open ? (
-        <motion.form
-          initial={{ opacity: 0, height: 0 }}
-          animate={{ opacity: 1, height: 'auto' }}
-          className="mt-5 grid gap-4"
-          onSubmit={(event) => {
-            event.preventDefault();
-            mutation.mutate();
-          }}
-        >
-          <textarea
-            required
-            value={freeText}
-            onChange={(event) => setFreeText(event.target.value)}
-            placeholder="Describe a contribution..."
-            rows={4}
-            className="min-h-[140px] rounded-[22px] border border-white/10 bg-black/20 px-4 py-4 text-[color:var(--foreground)] outline-none transition placeholder:text-white/30 focus:border-[color:var(--accent)]"
-          />
-          <div className="grid gap-4 md:grid-cols-2">
-            <input
-              type="date"
-              value={occurredAt}
-              onChange={(event) => setOccurredAt(event.target.value)}
-              className="rounded-[18px] border border-white/10 bg-black/20 px-4 py-3 text-[color:var(--foreground)] outline-none transition focus:border-[color:var(--accent)]"
-            />
-            <select
-              value={category}
-              onChange={(event) => setCategory(event.target.value)}
-              className="rounded-[18px] border border-white/10 bg-black/20 px-4 py-3 text-[color:var(--foreground)] outline-none transition focus:border-[color:var(--accent)]"
-            >
-              <option value="">Let AI classify it</option>
-              {categories.map((item) => (
-                <option key={item} value={item}>{item}</option>
-              ))}
-            </select>
+  // Reset success state when modal opens
+  useEffect(() => {
+    if (open) mutation.reset();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  if (!open) return null;
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 200,
+        background: 'rgba(10,10,10,0.55)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: '24px 16px',
+      }}
+    >
+      <div style={{
+        background: PAPER,
+        border: `2px solid ${INK}`,
+        boxShadow: `6px 6px 0 ${INK}`,
+        borderRadius: 20,
+        padding: '28px 32px',
+        width: '100%',
+        maxWidth: 560,
+        maxHeight: '90vh',
+        overflowY: 'auto',
+      }}>
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24 }}>
+          <div>
+            <p style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.12em', color: INK, opacity: 0.5, margin: '0 0 6px' }}>
+              Manual note
+            </p>
+            <h3 style={{ fontFamily: 'Space Grotesk, sans-serif', fontSize: 22, fontWeight: 700, color: INK, margin: 0 }}>
+              Add the work that systems miss.
+            </h3>
           </div>
-          <div className="flex items-center justify-between gap-4">
-            <p className="text-sm text-[color:var(--muted)]">Entries are classified on save and added straight into the timeline. Stored only on this device.</p>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            style={{
+              background: CREAM, border: `2px solid ${INK}`, boxShadow: `2px 2px 0 ${INK}`,
+              borderRadius: 8, width: 36, height: 36, cursor: 'pointer',
+              fontFamily: 'JetBrains Mono, monospace', fontSize: 16, color: INK,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+            }}
+          >
+            ✕
+          </button>
+        </div>
+
+        <form
+          style={{ display: 'grid', gap: 14 }}
+          onSubmit={(e) => { e.preventDefault(); mutation.mutate(); }}
+        >
+          <div style={{ display: 'grid', gap: 6 }}>
+            <label style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.12em', color: INK, opacity: 0.55 }}>
+              Contribution
+            </label>
+            <textarea
+              required
+              value={freeText}
+              onChange={(e) => setFreeText(e.target.value)}
+              placeholder="Describe a contribution..."
+              rows={4}
+              style={{
+                minHeight: 140, background: 'white', border: `2px solid ${INK}`,
+                borderRadius: 8, padding: '12px 14px',
+                fontFamily: 'Space Grotesk, sans-serif', fontSize: 14, color: INK,
+                outline: 'none', resize: 'vertical',
+              }}
+              onFocus={(e) => { e.currentTarget.style.borderColor = HOT; }}
+              onBlur={(e) => { e.currentTarget.style.borderColor = INK; }}
+            />
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div style={{ display: 'grid', gap: 6 }}>
+              <label style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.12em', color: INK, opacity: 0.55 }}>
+                Date
+              </label>
+              <input
+                type="date"
+                value={occurredAt}
+                onChange={(e) => setOccurredAt(e.target.value)}
+                style={{
+                  background: 'white', border: `2px solid ${INK}`, borderRadius: 8,
+                  padding: '10px 14px', fontFamily: 'Space Grotesk, sans-serif',
+                  fontSize: 14, color: INK, outline: 'none',
+                }}
+                onFocus={(e) => { e.currentTarget.style.borderColor = HOT; }}
+                onBlur={(e) => { e.currentTarget.style.borderColor = INK; }}
+              />
+            </div>
+
+            <div style={{ display: 'grid', gap: 6 }}>
+              <label style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.12em', color: INK, opacity: 0.55 }}>
+                Category
+              </label>
+              <select
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                style={{
+                  background: 'white', border: `2px solid ${INK}`, borderRadius: 8,
+                  padding: '10px 14px', fontFamily: 'Space Grotesk, sans-serif',
+                  fontSize: 14, color: INK, outline: 'none',
+                }}
+                onFocus={(e) => { e.currentTarget.style.borderColor = HOT; }}
+                onBlur={(e) => { e.currentTarget.style.borderColor = INK; }}
+              >
+                <option value="">Let AI classify it</option>
+                {categories.map((item) => (
+                  <option key={item} value={item}>{item}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Category quick-select badges */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {categories.map((item) => {
+              const selected = category === item;
+              return (
+                <button
+                  key={item}
+                  type="button"
+                  onClick={() => setCategory(selected ? '' : item)}
+                  style={{
+                    background: selected ? HOT : CREAM,
+                    border: `2px solid ${INK}`,
+                    boxShadow: selected ? `2px 2px 0 ${INK}` : 'none',
+                    borderRadius: 5, padding: '4px 10px',
+                    fontFamily: 'JetBrains Mono, monospace', fontSize: 10,
+                    textTransform: 'uppercase', letterSpacing: '0.1em',
+                    color: selected ? CREAM : INK, cursor: 'pointer',
+                  }}
+                >
+                  {item}
+                </button>
+              );
+            })}
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', marginTop: 4 }}>
+            <p style={{ fontFamily: 'Space Grotesk, sans-serif', fontSize: 12, color: INK, opacity: 0.55, margin: 0, flex: 1 }}>
+              Classified on save. Stored only on this device.
+            </p>
             <button
               type="submit"
               disabled={mutation.isPending || !freeText.trim()}
-              className="rounded-full bg-[color:var(--accent)] px-5 py-3 text-sm font-medium text-black transition hover:translate-y-[-1px] disabled:cursor-not-allowed disabled:opacity-60"
+              style={{
+                background: HOT, border: `2px solid ${INK}`, boxShadow: `3px 3px 0 ${INK}`,
+                borderRadius: 8, padding: '10px 20px',
+                fontFamily: 'Space Grotesk, sans-serif', fontSize: 14, fontWeight: 700,
+                color: CREAM, cursor: mutation.isPending || !freeText.trim() ? 'not-allowed' : 'pointer',
+                opacity: mutation.isPending || !freeText.trim() ? 0.6 : 1, flexShrink: 0,
+              }}
             >
               {mutation.isPending ? 'Adding…' : 'Add Contribution'}
             </button>
           </div>
-          {mutation.isError ? <p className="text-sm text-[rgb(255,193,168)]">{mutation.error.message}</p> : null}
-        </motion.form>
-      ) : null}
-    </section>
+
+          {mutation.isError && (
+            <p style={{ fontFamily: 'Space Grotesk, sans-serif', fontSize: 13, color: HOT, margin: 0 }}>
+              {mutation.error.message}
+            </p>
+          )}
+
+          {mutation.isSuccess && (
+            <div style={{
+              background: LIME, border: `2px solid ${INK}`, borderRadius: 8,
+              padding: '10px 14px', fontFamily: 'Space Grotesk, sans-serif',
+              fontSize: 13, fontWeight: 600, color: INK,
+            }}>
+              Contribution saved. Add another or close.
+            </div>
+          )}
+        </form>
+      </div>
+    </div>
   );
 }

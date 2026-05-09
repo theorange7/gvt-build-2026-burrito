@@ -1,27 +1,31 @@
+'use client';
 import type { MxPalette } from '@/lib/palette';
 
-type Props = {
-  label: string;
-  palette?: MxPalette;
-  className?: string;
-};
+interface MxBadgeProps {
+  p: MxPalette;
+  children: React.ReactNode;
+  bg?: string;
+  color?: string;
+}
 
-export function MxBadge({ label, palette, className = '' }: Props) {
-  const style = palette
-    ? ({ '--badge-bg': palette.ink, '--badge-color': palette.lime } as React.CSSProperties)
-    : undefined;
-
+export function MxBadge({ p, children, bg, color }: MxBadgeProps) {
   return (
     <span
-      className={`mx-font-mono inline-block px-2 py-0.5 text-xs font-medium tracking-widest uppercase rounded-sm ${className}`}
-      style={
-        style ?? {
-          backgroundColor: 'var(--mx-ink)',
-          color: 'var(--mx-lime)',
-        }
-      }
+      style={{
+        fontFamily: 'var(--font-jetbrains-mono), "JetBrains Mono", ui-monospace, monospace',
+        fontSize: 10,
+        fontWeight: 800,
+        padding: '3px 8px',
+        borderRadius: 4,
+        background: bg ?? p.lime,
+        color: color ?? p.ink,
+        letterSpacing: '0.05em',
+        border: `1.5px solid ${p.ink}`,
+        display: 'inline-block',
+        whiteSpace: 'nowrap',
+      }}
     >
-      {label}
+      {children}
     </span>
   );
 }
