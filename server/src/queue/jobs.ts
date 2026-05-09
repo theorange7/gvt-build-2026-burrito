@@ -147,6 +147,74 @@ export function isPreconditionFailed(err: unknown): boolean {
   return (err as { statusCode?: number })?.statusCode === 412;
 }
 
+// ── Job-lookup table (#7) ────────────────────────────────────────────────────
+//
+// The Service Bus message carries an opaque `jobLookupToken` instead of the
+// caller's `installId`. The worker resolves the token to an installId via a
+// row in the same `wrapJobs` table under a reserved partition. Without this
+// indirection, `installId` would persist in queue metadata, the dead-letter
+// queue, and any auto-captured Application Insights traces — a per-install
+// linkability surface the privacy banner forbids.
+
+const LOOKUP_PARTITION = '__lookup__';
+
+type LookupEntity = TableEntity<{ installId: string; jobId: string; createdAt: string }>;
+
+export async function createLookupRow(args: {
+  jobLookupToken: string;
+  installId: string;
+  jobId: string;
+}): Promise<void> {
+  const client = getClient();
+  const entity: LookupEntity = {
+    partitionKey: LOOKUP_PARTITION,
+    rowKey: args.jobLookupToken,
+    installId: args.installId,
+    jobId: args.jobId,
+    createdAt: new Date().toISOString(),
+  };
+  await client.createEntity(entity);
+}
+
+export async function resolveInstallIdFromToken(
+  jobLookupToken: string,
+): Promise<{ installId: string; jobId: string } | null> {
+  const client = getClient();
+  try {
+    const entity = (await client.getEntity(LOOKUP_PARTITION, jobLookupToken)) as LookupEntity;
+    return { installId: entity.installId, jobId: entity.jobId };
+  } catch (err) {
+    if ((err as { statusCode?: number }).statusCode === 404) return null;
+    throw err;
+  }
+}
+
+export async function deleteLookupRow(jobLookupToken: string): Promise<void> {
+  const client = getClient();
+  try {
+    await client.deleteEntity(LOOKUP_PARTITION, jobLookupToken);
+  } catch (err) {
+    if ((err as { statusCode?: number }).statusCode !== 404) throw err;
+  }
+}
+
+/**
+ * Find and delete the lookup row(s) for a given job. Used by wrapGet when the
+ * client fetches a terminal status — at that point both the job row and the
+ * lookup row are dropped together. Returns the number of rows removed.
+ */
+export async function deleteLookupRowsForJob(installId: string, jobId: string): Promise<number> {
+  const client = getClient();
+  const filter =
+    `PartitionKey eq '${LOOKUP_PARTITION}' and jobId eq '${jobId.replace(/'/g, "''")}' and installId eq '${installId.replace(/'/g, "''")}'`;
+  let removed = 0;
+  for await (const entity of client.listEntities<LookupEntity>({ queryOptions: { filter } })) {
+    await client.deleteEntity(LOOKUP_PARTITION, entity.rowKey);
+    removed += 1;
+  }
+  return removed;
+}
+
 export async function deleteJobRow(installId: string, jobId: string): Promise<void> {
   const client = getClient();
   try {

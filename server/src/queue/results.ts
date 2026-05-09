@@ -4,8 +4,6 @@ import type { SliceContent } from '@wrapped/shared';
 
 type ResultEntity = TableEntity<{ payload: string; createdAt: string }>;
 
-const PARTITION_KEY = 'wrap';
-
 let cachedClient: TableClient | null = null;
 
 function getClient(): TableClient {
@@ -23,10 +21,21 @@ export function _setResultsClientForTests(client: TableClient | null): void {
   cachedClient = client;
 }
 
-export async function putResult(jobId: string, sliceContent: SliceContent[]): Promise<void> {
+/**
+ * Result rows are partitioned by the owning install (the same install whose
+ * job row authored them). Cross-install reads naturally 404 — ownership is
+ * intrinsic to the storage layout rather than a check the application has to
+ * remember to make. PartitionKey is intentionally not persisted as a column;
+ * it lives only as the row's location.
+ */
+export async function putResult(
+  partitionKey: string,
+  jobId: string,
+  sliceContent: SliceContent[],
+): Promise<void> {
   const client = getClient();
   const entity: ResultEntity = {
-    partitionKey: PARTITION_KEY,
+    partitionKey,
     rowKey: jobId,
     payload: JSON.stringify(sliceContent),
     createdAt: new Date().toISOString(),
@@ -34,18 +43,21 @@ export async function putResult(jobId: string, sliceContent: SliceContent[]): Pr
   await client.upsertEntity(entity, 'Replace');
 }
 
-export async function getAndDeleteResult(jobId: string): Promise<SliceContent[] | null> {
+export async function getAndDeleteResult(
+  partitionKey: string,
+  jobId: string,
+): Promise<SliceContent[] | null> {
   const client = getClient();
   let entity: ResultEntity | null = null;
   try {
-    entity = (await client.getEntity(PARTITION_KEY, jobId)) as ResultEntity;
+    entity = (await client.getEntity(partitionKey, jobId)) as ResultEntity;
   } catch (err) {
     const status = (err as { statusCode?: number }).statusCode;
     if (status === 404) return null;
     throw err;
   }
   try {
-    await client.deleteEntity(PARTITION_KEY, jobId);
+    await client.deleteEntity(partitionKey, jobId);
   } catch {
     // Best-effort delete; the row will TTL anyway. Swallow to avoid leaking
     // result content twice.

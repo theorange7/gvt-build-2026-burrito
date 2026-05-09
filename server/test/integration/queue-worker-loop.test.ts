@@ -127,10 +127,14 @@ describe('queue → worker → complete (full loop)', () => {
     );
     expect((queued.jsonBody as { status: string }).status).toBe('queued');
 
-    // 3) Service Bus delivers the message to the worker
+    // 3) Service Bus delivers the message to the worker. Metadata must carry
+    // the opaque token, NOT installId — that's the whole #7 invariant.
     const message = popSentServiceBusMessage();
     expect(message).toBeDefined();
-    expect(message?.applicationProperties).toMatchObject({ jobId, installId });
+    expect(message?.applicationProperties).toMatchObject({ jobId });
+    expect(message?.applicationProperties?.jobLookupToken).toEqual(expect.any(String));
+    expect(message?.applicationProperties).not.toHaveProperty('installId');
+    void installId;
 
     await wrapWorker(message!.body, makeServiceBusTriggerContext(message!));
 

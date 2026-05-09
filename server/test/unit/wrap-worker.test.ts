@@ -20,7 +20,7 @@ vi.mock('../../src/ai/generate', () => ({
 import type { EnqueueWrapRequest, SliceContent } from '@wrapped/shared';
 import { wrapWorker } from '../../src/functions/wrapWorker';
 import { generateWrap } from '../../src/ai/generate';
-import { getJobRow, upsertJobRow } from '../../src/queue/jobs';
+import { createLookupRow, getJobRow, upsertJobRow } from '../../src/queue/jobs';
 import { getAndDeleteResult } from '../../src/queue/results';
 import {
   getTableEntities,
@@ -71,7 +71,7 @@ function makeMessage(overrides: Partial<EnqueueWrapRequest> = {}): EnqueueWrapRe
   };
 }
 
-async function seedQueuedJob(installId: string, jobId: string): Promise<void> {
+async function seedQueuedJob(installId: string, jobId: string): Promise<{ jobLookupToken: string }> {
   const now = new Date().toISOString();
   await upsertJobRow({
     installId,
@@ -81,14 +81,34 @@ async function seedQueuedJob(installId: string, jobId: string): Promise<void> {
     createdAt: now,
     updatedAt: now,
   });
+  // The lookup row is what the worker uses to recover installId from the
+  // opaque token in the queue message. Tests that bypass wrapEnqueueHandler
+  // have to seed it explicitly.
+  const jobLookupToken = crypto.randomUUID();
+  await createLookupRow({ jobLookupToken, installId, jobId });
+  return { jobLookupToken };
 }
 
+/**
+ * Build the queue envelope a real Service Bus delivery would carry. Looks up
+ * the jobLookupToken seeded by `seedQueuedJob` for the given installId+jobId
+ * so test bodies don't have to thread the token through. Tests that need a
+ * specific (or missing) token should hand-build the envelope and call
+ * `makeServiceBusTriggerContext` directly.
+ */
 function envelope(message: EnqueueWrapRequest, installId: string): SentServiceBusMessage {
+  const seeded = getTableEntities('wrapJobs').find(
+    (e) =>
+      e.partitionKey === '__lookup__' &&
+      e.installId === installId &&
+      e.jobId === message.jobId,
+  );
+  const jobLookupToken = (seeded?.rowKey as string | undefined) ?? '__missing-token__';
   return {
     body: message,
     messageId: message.jobId,
     contentType: 'application/json',
-    applicationProperties: { jobId: message.jobId, installId },
+    applicationProperties: { jobId: message.jobId, jobLookupToken },
   };
 }
 
@@ -106,11 +126,11 @@ describe('wrapWorker', () => {
     const finalRow = await getJobRow(installId, message.jobId);
     expect(finalRow?.status).toBe('complete');
 
-    const result = await getAndDeleteResult(message.jobId);
+    const result = await getAndDeleteResult(installId, message.jobId);
     expect(result).toEqual(SLICE_FIXTURE);
   });
 
-  it('returns early without throwing when applicationProperties.installId is missing', async () => {
+  it('returns early without throwing when applicationProperties.jobLookupToken is missing', async () => {
     const message = makeMessage();
     const logs: LogEntry[] = [];
     const ctx = makeServiceBusTriggerContext(
@@ -124,34 +144,56 @@ describe('wrapWorker', () => {
     expect(logs.some((e) => e.level === 'error')).toBe(true);
   });
 
-  it('warns and returns when the job row was already cleaned up', async () => {
-    const installId = 'install-A';
+  it('warns and returns when the lookup row no longer exists (job already settled)', async () => {
     const message = makeMessage();
-    // No seed — the row is intentionally absent.
-
     const logs: LogEntry[] = [];
-    const ctx = makeServiceBusTriggerContext(envelope(message, installId), (e) => logs.push(e));
+    // The token is real-shape but no lookup row was ever created — simulates
+    // the case where a successful poll already cleaned everything up before
+    // Service Bus delivered a redelivery.
+    const ctx = makeServiceBusTriggerContext(
+      envelope(message, crypto.randomUUID()),
+      (e) => logs.push(e),
+    );
     await wrapWorker(message, ctx);
 
     expect(vi.mocked(generateWrap)).not.toHaveBeenCalled();
     expect(logs.some((e) => e.level === 'warn')).toBe(true);
   });
 
-  it('marks the job failed with an errorCode when generateWrap throws', async () => {
+  it('marks the job failed with an allowlisted errorCode when generateWrap throws', async () => {
     const installId = 'install-A';
     const message = makeMessage();
     await seedQueuedJob(installId, message.jobId);
-    vi.mocked(generateWrap).mockRejectedValue(Object.assign(new Error('boom'), { name: 'UpstreamError' }));
+    const { UpstreamError } = await import('../../src/privacy');
+    vi.mocked(generateWrap).mockRejectedValue(new UpstreamError('upstream_5xx', 502));
 
     const ctx = makeServiceBusTriggerContext(envelope(message, installId));
     await wrapWorker(message, ctx);
 
     const row = await getJobRow(installId, message.jobId);
     expect(row?.status).toBe('failed');
-    expect(row?.errorCode).toBe('UpstreamError');
+    expect(row?.errorCode).toBe('upstream_5xx');
 
     // The result row must NOT have been written when generation failed.
-    expect(await getAndDeleteResult(message.jobId)).toBeNull();
+    expect(await getAndDeleteResult(installId, message.jobId)).toBeNull();
+  });
+
+  it('does not surface upstream Error.message into context.error logs (#6)', async () => {
+    const installId = 'install-A';
+    const message = makeMessage();
+    await seedQueuedJob(installId, message.jobId);
+    const upstreamCanary = 'leaked-prompt-fragment-CANARY-x9k4';
+    vi.mocked(generateWrap).mockRejectedValue(new Error(upstreamCanary));
+
+    const logs: LogEntry[] = [];
+    const ctx = makeServiceBusTriggerContext(envelope(message, installId), (e) => logs.push(e));
+    await wrapWorker(message, ctx);
+
+    expect(JSON.stringify(logs)).not.toContain(upstreamCanary);
+    const row = await getJobRow(installId, message.jobId);
+    // Plain Error → safeError returns 'unknown' (not in allowlist of typed
+    // errors), proving the message text didn't survive into errorCode either.
+    expect(row?.errorCode).toBe('unknown');
   });
 
   it('does not log the message body, contributions, or sliceContent (canary)', async () => {
@@ -228,7 +270,7 @@ describe('wrapWorker', () => {
     expect(vi.mocked(generateWrap)).not.toHaveBeenCalled();
     const row = await getJobRow(installId, message.jobId);
     expect(row?.status).toBe('failed');
-    expect(row?.errorCode).toBe('max-retries');
+    expect(row?.errorCode).toBe('max_retries');
   });
 
   it('skips generateWrap when another delivery already flipped the row to running (#3)', async () => {
@@ -271,6 +313,26 @@ describe('wrapWorker', () => {
     const final = await getJobRow(installId, message.jobId);
     expect(final?.status).toBe('failed');
     expect(final?.errorCode).toBe('parallel-takeover');
+  });
+
+  it('resolves installId via the lookup row (token, not installId, in metadata) (#7)', async () => {
+    const installId = 'install-A';
+    const message = makeMessage();
+    const { jobLookupToken } = await seedQueuedJob(installId, message.jobId);
+    vi.mocked(generateWrap).mockResolvedValue(SLICE_FIXTURE);
+
+    // Build the envelope manually to assert that the worker reaches installId
+    // through the token alone — no installId field in applicationProperties.
+    const env: SentServiceBusMessage = {
+      body: message,
+      messageId: message.jobId,
+      applicationProperties: { jobId: message.jobId, jobLookupToken },
+    };
+    expect(env.applicationProperties).not.toHaveProperty('installId');
+
+    await wrapWorker(message, makeServiceBusTriggerContext(env));
+    const finalRow = await getJobRow(installId, message.jobId);
+    expect(finalRow?.status).toBe('complete');
   });
 
   it('logs failure and does not throw when marking-failed itself fails', async () => {

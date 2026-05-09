@@ -7,6 +7,7 @@ import { AIProjectClient } from '@azure/ai-projects';
 import { DefaultAzureCredential } from '@azure/identity';
 import type { AzureOpenAI } from 'openai';
 import { resolveModel, type ModelOption } from './models';
+import { UpstreamError } from '../privacy';
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -48,7 +49,7 @@ async function callAnthropic(
 ): Promise<string> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
-    throw new Error('ANTHROPIC_API_KEY is not set. Configure it in the Functions app settings.');
+    throw new UpstreamError('config_missing');
   }
 
   const payload = {
@@ -59,7 +60,7 @@ async function callAnthropic(
     messages: [{ role: 'user', content: userMessage }],
   };
 
-  let lastError: Error | null = null;
+  let lastError: UpstreamError | null = null;
 
   for (const [index, delay] of RETRY_DELAYS.entries()) {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -78,24 +79,35 @@ async function callAnthropic(
       };
       const text = data.content?.find((item) => item.type === 'text')?.text;
       if (!text) {
-        throw new Error('Anthropic returned no text content in the first response block.');
+        // Drain the body so connection-reuse isn't blocked, but never log it.
+        throw new UpstreamError('parse_failed');
       }
       return text;
     }
 
-    const body = await response.text();
+    // We deliberately don't read response.text() — the upstream body can carry
+    // prompt fragments or request-IDs that would land verbatim in the thrown
+    // error and, by extension, in App Insights. The allowlisted code is
+    // sufficient for routing.
     if (response.status === 429 || response.status === 529) {
-      lastError = new Error(`Anthropic transient error ${response.status}: ${body}`);
+      lastError = new UpstreamError('rate_limited', response.status);
       if (index < RETRY_DELAYS.length - 1) {
         await sleep(delay);
         continue;
       }
     }
 
-    throw new Error(`Anthropic API error ${response.status}: ${body}`);
+    if (response.status >= 500) throw new UpstreamError('upstream_5xx', response.status);
+    if (response.status === 408 || response.status === 504) {
+      throw new UpstreamError('upstream_timeout', response.status);
+    }
+    if (response.status === 401 || response.status === 403) {
+      throw new UpstreamError('auth_failed', response.status);
+    }
+    throw new UpstreamError('upstream_4xx', response.status);
   }
 
-  throw lastError ?? new Error('Anthropic request failed after retries.');
+  throw lastError ?? new UpstreamError('rate_limited');
 }
 
 const azureClientsByApiVersion = new Map<string, Promise<AzureOpenAI>>();
@@ -103,10 +115,7 @@ const azureClientsByApiVersion = new Map<string, Promise<AzureOpenAI>>();
 function getAzureOpenAIClient(model: ModelOption): Promise<AzureOpenAI> {
   const projectEndpoint = process.env.AZURE_FOUNDRY_PROJECT_ENDPOINT;
   if (!projectEndpoint) {
-    throw new Error(
-      'AZURE_FOUNDRY_PROJECT_ENDPOINT is not set. Configure it in the Functions app settings to use Azure Foundry models. ' +
-        'Format: https://<account>.services.ai.azure.com/api/projects/<project>',
-    );
+    throw new UpstreamError('config_missing');
   }
 
   const apiVersion = model.version ?? process.env.AZURE_FOUNDRY_API_VERSION ?? '2025-10-01';
@@ -126,7 +135,7 @@ async function callAzureFoundry(
 ): Promise<string> {
   const openai = await getAzureOpenAIClient(model);
 
-  let lastError: Error | null = null;
+  let lastError: UpstreamError | null = null;
 
   for (const [index, delay] of RETRY_DELAYS.entries()) {
     try {
@@ -141,29 +150,39 @@ async function callAzureFoundry(
 
       const text = response.choices?.[0]?.message?.content;
       if (!text) {
-        throw new Error('Azure Foundry returned no message content.');
+        throw new UpstreamError('parse_failed');
       }
       return text;
     } catch (error) {
+      // Re-throw our own errors unchanged.
+      if (error instanceof UpstreamError) throw error;
+
       const status = (error as { status?: number; statusCode?: number }).status
         ?? (error as { statusCode?: number }).statusCode;
-      const message = error instanceof Error ? error.message : String(error);
 
+      // openai's APIError exposes `.status` and embeds the upstream response
+      // body in `.message`. We deliberately do not read or include `.message`,
+      // `.headers`, or `.request_id` — anything keyed on those should be
+      // looked up via App Insights' request correlation, not this thrown error.
       if (status === 429 || (typeof status === 'number' && status >= 500)) {
-        lastError = new Error(`Azure Foundry transient error ${status}: ${message}`);
+        lastError = new UpstreamError(status === 429 ? 'rate_limited' : 'upstream_5xx', status);
         if (index < RETRY_DELAYS.length - 1) {
           await sleep(delay);
           continue;
         }
       }
-
-      const hint =
-        status === 404
-          ? ` Verify that "${model.modelId}" is the exact deployment name in your Foundry project and that the api-version "${model.version ?? process.env.AZURE_FOUNDRY_API_VERSION ?? '2025-10-01'}" is supported by that deployment.`
-          : '';
-      throw new Error(`Azure Foundry API error${status ? ` ${status}` : ''}: ${message}${hint}`);
+      if (status === 408 || status === 504) {
+        throw new UpstreamError('upstream_timeout', status);
+      }
+      if (status === 401 || status === 403) {
+        throw new UpstreamError('auth_failed', status);
+      }
+      if (status === 404) {
+        throw new UpstreamError('not_found', status);
+      }
+      throw new UpstreamError('upstream_4xx', typeof status === 'number' ? status : undefined);
     }
   }
 
-  throw lastError ?? new Error('Azure Foundry request failed after retries.');
+  throw lastError ?? new UpstreamError('rate_limited');
 }

@@ -112,8 +112,27 @@ export class FakeTableClient {
     queryOptions: { filter: string; select?: string[] };
   }): AsyncIterable<T> {
     const filter = queryOptions.filter;
+    // Parse the OData-ish filters the server actually emits today:
+    //   PartitionKey eq 'X'
+    //   <column> eq '<value>'        (arbitrary column equality)
+    //   status eq 'queued' or status eq 'running'   (single OR clause)
+    // Anything more elaborate would need to land here intentionally with a
+    // covering test.
     const partitionMatch = filter.match(/PartitionKey eq '([^']+)'/);
     const wantsQueuedOrRunning = /status eq 'queued' or status eq 'running'/.test(filter);
+    // Strip the bits we've already accounted for, then collect any remaining
+    // "<col> eq '<val>'" equalities. PartitionKey/RowKey are renamed to
+    // partitionKey/rowKey to match the in-memory entity shape.
+    const stripped = filter
+      .replace(/PartitionKey eq '[^']+'/g, '')
+      .replace(/status eq 'queued' or status eq 'running'/g, '');
+    const equalities: Array<[string, string]> = [];
+    const eqRe = /(\w+) eq '([^']*)'/g;
+    let m: RegExpExecArray | null;
+    while ((m = eqRe.exec(stripped)) !== null) {
+      const col = m[1] === 'RowKey' ? 'rowKey' : m[1];
+      equalities.push([col, m[2]]);
+    }
 
     const rows = [...tableFor(this.name).values()].filter((entity) => {
       if (wantsQueuedOrRunning) {
@@ -121,6 +140,9 @@ export class FakeTableClient {
         if (s !== 'queued' && s !== 'running') return false;
       }
       if (partitionMatch && entity.partitionKey !== partitionMatch[1]) return false;
+      for (const [col, val] of equalities) {
+        if (String(entity[col]) !== val) return false;
+      }
       return true;
     });
     return (async function* () {
