@@ -28,6 +28,7 @@ import type { InvocationContext } from '@azure/functions';
 type Entity = Record<string, unknown> & { partitionKey: string; rowKey: string };
 
 const tables = new Map<string, Map<string, Entity>>();
+let etagCounter = 0;
 
 function entityKey(partitionKey: string, rowKey: string): string {
   return `${partitionKey}::${rowKey}`;
@@ -42,13 +43,53 @@ function tableFor(name: string): Map<string, Entity> {
   return t;
 }
 
+function newEtag(): string {
+  etagCounter += 1;
+  return `W/"datetime'fake-${etagCounter}'"`;
+}
+
 // ── @azure/data-tables ───────────────────────────────────────────────────────
 
 export class FakeTableClient {
   constructor(public endpoint: string, public name: string, public _credential: unknown) {}
 
   async upsertEntity(entity: Entity, _mode?: 'Replace' | 'Merge'): Promise<void> {
-    tableFor(this.name).set(entityKey(entity.partitionKey, entity.rowKey), { ...entity });
+    const stored = { ...entity, etag: newEtag() };
+    tableFor(this.name).set(entityKey(entity.partitionKey, entity.rowKey), stored);
+  }
+
+  async createEntity(entity: Entity): Promise<void> {
+    const t = tableFor(this.name);
+    const k = entityKey(entity.partitionKey, entity.rowKey);
+    if (t.has(k)) {
+      const err = new Error('entity already exists') as Error & { statusCode: number };
+      err.statusCode = 409;
+      throw err;
+    }
+    t.set(k, { ...entity, etag: newEtag() });
+  }
+
+  async updateEntity(
+    entity: Entity,
+    _mode?: 'Replace' | 'Merge',
+    options?: { etag?: string },
+  ): Promise<{ etag: string }> {
+    const t = tableFor(this.name);
+    const k = entityKey(entity.partitionKey, entity.rowKey);
+    const current = t.get(k);
+    if (!current) {
+      const err = new Error('not found') as Error & { statusCode: number };
+      err.statusCode = 404;
+      throw err;
+    }
+    if (options?.etag && options.etag !== '*' && options.etag !== current.etag) {
+      const err = new Error('precondition failed') as Error & { statusCode: number };
+      err.statusCode = 412;
+      throw err;
+    }
+    const stored = { ...entity, etag: newEtag() };
+    t.set(k, stored);
+    return { etag: stored.etag };
   }
 
   async getEntity(partitionKey: string, rowKey: string): Promise<Entity> {

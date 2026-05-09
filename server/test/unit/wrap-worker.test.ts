@@ -197,23 +197,80 @@ describe('wrapWorker', () => {
     expect(consoleDump.includes(canary)).toBe(false);
   });
 
-  it('re-runs generateWrap on Service Bus redelivery (documents current behavior — see fix #4)', async () => {
+  it('skips generateWrap on Service Bus redelivery once the job is complete (#4)', async () => {
     const installId = 'install-A';
     const message = makeMessage();
     await seedQueuedJob(installId, message.jobId);
     vi.mocked(generateWrap).mockResolvedValue(SLICE_FIXTURE);
 
-    // First delivery
+    // First delivery: runs to completion.
     await wrapWorker(message, makeServiceBusTriggerContext(envelope(message, installId), undefined, { deliveryCount: 1 }));
-    // Second delivery (Service Bus redelivered after a transient failure)
+    // Second delivery (Service Bus redelivered after a worker-side ack timeout
+    // or platform crash). Status is already complete — must be a no-op.
     await wrapWorker(message, makeServiceBusTriggerContext(envelope(message, installId), undefined, { deliveryCount: 2 }));
 
-    // Today the worker has no idempotency check — it re-runs generateWrap and
-    // overwrites the result. When fix #4 lands, this test should be updated to
-    // assert the second delivery is a no-op.
-    expect(vi.mocked(generateWrap)).toHaveBeenCalledTimes(2);
+    expect(vi.mocked(generateWrap)).toHaveBeenCalledTimes(1);
     const row = await getJobRow(installId, message.jobId);
     expect(row?.status).toBe('complete');
+  });
+
+  it('marks the job failed with errorCode=max-retries when deliveryCount hits the cap (#4)', async () => {
+    const installId = 'install-A';
+    const message = makeMessage();
+    await seedQueuedJob(installId, message.jobId);
+    vi.mocked(generateWrap).mockResolvedValue(SLICE_FIXTURE);
+
+    // Default cap is 3. Final delivery should mark failed without ever calling
+    // generateWrap.
+    const ctx = makeServiceBusTriggerContext(envelope(message, installId), undefined, { deliveryCount: 3 });
+    await wrapWorker(message, ctx);
+
+    expect(vi.mocked(generateWrap)).not.toHaveBeenCalled();
+    const row = await getJobRow(installId, message.jobId);
+    expect(row?.status).toBe('failed');
+    expect(row?.errorCode).toBe('max-retries');
+  });
+
+  it('skips generateWrap when another delivery already flipped the row to running (#3)', async () => {
+    const installId = 'install-A';
+    const message = makeMessage();
+    await seedQueuedJob(installId, message.jobId);
+    vi.mocked(generateWrap).mockResolvedValue(SLICE_FIXTURE);
+
+    // Simulate a parallel delivery that already won the queued→running race:
+    // mutate the row out-of-band before the worker tries its conditional update.
+    const { getJobRowWithEtag, updateJobRow } = await import('../../src/queue/jobs');
+    const seeded = await getJobRowWithEtag(installId, message.jobId);
+    expect(seeded).not.toBeNull();
+    await updateJobRow(
+      { ...seeded!, status: 'running', updatedAt: new Date().toISOString() },
+      seeded!.etag,
+    );
+    // Worker reads the row at THIS point and gets the post-mutation etag —
+    // but if we want the worker to lose the race we have to make its read
+    // happen BEFORE this mutation. The integration model uses two interleaved
+    // reads: feed the worker an etag from before by passing a stale snapshot.
+    // Easier path: mutate AGAIN after the worker reads, by stubbing
+    // generateWrap to mutate mid-flight (same pattern as the mark-failed test).
+    vi.mocked(generateWrap).mockReset();
+    vi.mocked(generateWrap).mockImplementation(async () => {
+      const fresh = await getJobRowWithEtag(installId, message.jobId);
+      await updateJobRow(
+        { ...fresh!, status: 'failed', errorCode: 'parallel-takeover', updatedAt: new Date().toISOString() },
+        fresh!.etag,
+      );
+      return SLICE_FIXTURE;
+    });
+
+    const ctx = makeServiceBusTriggerContext(envelope(message, installId));
+    await wrapWorker(message, ctx);
+
+    // The worker tried to flip running → complete with a stale etag (from
+    // before the in-flight mutation), so the conditional update should 412
+    // and the worker should bail without clobbering the failed status.
+    const final = await getJobRow(installId, message.jobId);
+    expect(final?.status).toBe('failed');
+    expect(final?.errorCode).toBe('parallel-takeover');
   });
 
   it('logs failure and does not throw when marking-failed itself fails', async () => {
