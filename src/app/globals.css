@@ -8,6 +8,15 @@
 @tailwind utilities;
 
 :root {
+  --mx-hot: #ff3b1f;
+  --mx-lime: #c8f000;
+  --mx-ink: #1a0a00;
+  --mx-cream: #fff8f5;
+  --mx-paper: #ffeee8;
+  --mx-accent: #ff3b1f;
+  --mx-accent2: #ff8c00;
+  --mx-accent3: #c8f000;
+
   --background: #0a0a0f;
   --surface: #111118;
   --foreground: #f5f5f0;
@@ -93,6 +102,14 @@ select {
   opacity: 0.05;
   background-image: radial-gradient(circle at 20% 20%, rgba(255,255,255,0.55) 0.8px, transparent 0.8px);
   background-size: 10px 10px;
+}
+
+.mx-font-display {
+  font-family: var(--font-space-grotesk), sans-serif;
+}
+
+.mx-font-mono {
+  font-family: var(--font-jetbrains-mono), monospace;
 }
 
 .scrollbar-hidden {
