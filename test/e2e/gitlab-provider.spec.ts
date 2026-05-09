@@ -88,15 +88,21 @@ async function unlock(page: Page) {
   await fields.nth(0).fill(PASSPHRASE);
   await fields.nth(1).fill(PASSPHRASE);
   await page.getByRole('button', { name: /set passphrase/i }).click();
-  await expect(page.getByRole('heading', { name: /A year of contribution/i })).toBeVisible();
+  await expect(page.getByText(/contributions caught/i)).toBeVisible();
+}
+
+async function goToSettings(page: Page) {
+  await page.getByRole('button', { name: /^settings$/i }).click();
+  await expect(page.getByRole('heading', { name: /connect your tools/i })).toBeVisible();
+  // Open the GitLab connect form by clicking the provider card
+  await page.getByRole('button', { name: /GitLab Dedicated/i }).click();
 }
 
 test.describe('GitLab provider — settings + sync flow', () => {
   test('rejects http:// instance URL inline (HTTPS-only)', async ({ page }) => {
     await mockGitLab(page);
     await unlock(page);
-    await page.getByRole('link', { name: /provider settings/i }).click();
-    await expect(page.getByRole('heading', { name: /Contribution providers/i })).toBeVisible();
+    await goToSettings(page);
 
     await page.getByLabel(/instance url/i).fill('http://gitlab.test.example.com');
     await page.getByLabel(/personal access token/i).fill(PAT);
@@ -107,12 +113,13 @@ test.describe('GitLab provider — settings + sync flow', () => {
   test('connects via PAT and renders identity in the providers list', async ({ page }) => {
     await mockGitLab(page);
     await unlock(page);
-    await page.getByRole('link', { name: /provider settings/i }).click();
+    await goToSettings(page);
 
     await page.getByLabel(/instance url/i).fill(INSTANCE);
     await page.getByLabel(/personal access token/i).fill(PAT);
     await page.getByRole('button', { name: /connect/i }).click();
 
+    // Card auto-expands after connecting; identity details become visible
     await expect(page.getByText(/Alice Example/)).toBeVisible({ timeout: 10_000 });
     await expect(page.getByText(INSTANCE)).toBeVisible();
   });
@@ -120,7 +127,7 @@ test.describe('GitLab provider — settings + sync flow', () => {
   test('Sync now imports events; back on the dashboard the feed shows them', async ({ page }) => {
     await mockGitLab(page);
     await unlock(page);
-    await page.getByRole('link', { name: /provider settings/i }).click();
+    await goToSettings(page);
 
     await page.getByLabel(/instance url/i).fill(INSTANCE);
     await page.getByLabel(/personal access token/i).fill(PAT);
@@ -146,14 +153,14 @@ test.describe('GitLab provider — settings + sync flow', () => {
     });
     expect(stored).toBeGreaterThan(0);
 
-    await page.getByRole('link', { name: /back to dashboard/i }).click();
-    await expect(page.getByText(/Migrate auth to OAuth2/i)).toBeVisible({ timeout: 15_000 });
+    await page.getByRole('button', { name: /^timeline$/i }).click();
+    await expect(page.getByText(/Migrate auth to OAuth2/i).first()).toBeVisible({ timeout: 15_000 });
   });
 
   test('tokens and identity are encrypted at rest in IndexedDB', async ({ page }) => {
     await mockGitLab(page);
     await unlock(page);
-    await page.getByRole('link', { name: /provider settings/i }).click();
+    await goToSettings(page);
     await page.getByLabel(/instance url/i).fill(INSTANCE);
     await page.getByLabel(/personal access token/i).fill(PAT);
     await page.getByRole('button', { name: /connect/i }).click();
