@@ -65,10 +65,19 @@ maps to one; otherwise pick the next free number.
 
 ## Index
 
+Pre-merge (recommended before the stacked PRs land):
+
 | ID | Title | Status | Branch | Appetite |
 |----|-------|--------|--------|----------|
-| 10 | Stuck `running` job recovery | Shaped — ready | both | medium |
-| 11 | Pause polling when hidden / offline | Shaped — ready | client | small |
+| 1  | Polling-success data loss when idle-locked | Shaped — ready (P0) | client | small |
+| 14 | Server build + deploy artifact | Shaped — ready | server | small |
+
+Post-merge (UX + operational hardening):
+
+| ID | Title | Status | Branch | Appetite |
+|----|-------|--------|--------|----------|
+| 10 | Stuck `running` job recovery (+ TTL sweeper for lookup + result rows) | Shaped — ready | both | medium |
+| 11 | Pause polling when hidden / offline (+ transient vs terminal errors) | Shaped — ready | client | small |
 | 12 | Encrypt `pendingWrapRequests` | Shaped — ready | client | small |
 | 13 | Graceful "wrap not on this device" | Shaped — ready | client | small |
 | 20 | JWT secret rotation (`kid` + key map) | Shaped — ready | server | medium |

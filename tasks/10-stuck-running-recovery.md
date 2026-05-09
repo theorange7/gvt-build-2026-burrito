@@ -24,14 +24,27 @@ Two complementary moves:
 ### Server-side: TTL sweeper
 
 A new timer-triggered Function in `server/src/functions/`, runs every 5
-minutes. It scans `wrapJobs` for rows with `status='running'` AND
-`updatedAt < now - 5min` and marks them `failed` with `errorCode='stalled'`
-using the existing ETag-guarded `updateJobRow` (so it can't clobber a worker
-that's mid-flight on its own row).
+minutes. The sweeper handles three classes of orphaned rows:
 
-5 minutes is a soft floor — generation today takes ~20s, so anything past 5min
-is definitely stuck. If we ever get a model that legitimately takes 5min,
-revisit then.
+1. **Stuck `running` jobs.** Scan `wrapJobs` for rows with
+   `status='running'` AND `updatedAt < now - 5min` and mark them `failed`
+   with `errorCode='stalled'` using the existing ETag-guarded
+   `updateJobRow` (so it can't clobber a worker that's mid-flight on its
+   own row).
+2. **Stale lookup rows.** Scan the `__lookup__` partition (#7) for rows
+   with `createdAt < now - 24h` and delete them. A lookup row outlives
+   the job it points at if `wrapGet` was never called for the terminal
+   status (e.g. user closed the tab and never came back). 24h matches
+   the `WRAP_RESULT_TTL_HOURS` default and gives plenty of headroom over
+   the 5min running-job TTL.
+3. **TTL'd result rows.** Scan `wrapResults` (per-install partitions
+   after #8) for rows with `createdAt < now - WRAP_RESULT_TTL_HOURS` and
+   delete them. The env var was wired in `concurrency.ts` but never
+   enforced; this is where it gets enforced.
+
+5 minutes is a soft floor for the running-job TTL — generation today
+takes ~20s, so anything past 5min is definitely stuck. If we ever get a
+model that legitimately takes 5min, revisit then.
 
 ### Server-side: cancel endpoint
 
@@ -110,6 +123,16 @@ progress.
 - **Don't use the worker to clean up stale rows**. The worker is for
   generation. Cleanup is the timer's job. Mixing concerns produces a worker
   that takes risks at startup.
+- **Don't run the three sweeps as one big query**. They scan different
+  partitions and have different age thresholds. Three small filtered
+  scans — one per concern — keep each one auditable in isolation. The
+  total scan cost is negligible at our row counts.
+- **Don't sweep result rows whose paired job row is still in flight.**
+  Result rows shouldn't outlive their job in the normal path; if they
+  do (worker wrote result, then crashed before flipping status), let
+  the `running` TTL surface a `failed` state first, and the next sweep
+  can collect the now-orphaned result. Cleaner ordering than trying to
+  reason about both at once.
 
 ## No-gos
 
@@ -124,9 +147,18 @@ progress.
 
 ## Verification
 
-- **Server unit test**: timer handler marks `running` rows older than 5min
-  as `failed` with `errorCode='stalled'`; younger rows untouched; ETag race
-  with a live worker → timer's update 412s and is silently swallowed.
+- **Server unit test (running TTL)**: timer marks `running` rows older
+  than 5min as `failed` with `errorCode='stalled'`; younger rows
+  untouched; ETag race with a live worker → timer's update 412s and is
+  silently swallowed.
+- **Server unit test (lookup-row TTL)**: lookup rows older than 24h are
+  removed; younger rows untouched; lookup rows whose paired job row is
+  still in flight (status `queued` or `running`) are NOT removed even if
+  past 24h — they're tied to their job's lifetime, not their own age.
+- **Server unit test (result-row TTL)**: result rows older than
+  `WRAP_RESULT_TTL_HOURS` are removed; verify the env var is read each
+  invocation (not cached at module load) so changes take effect on next
+  sweep.
 - **Server integration test**: `DELETE /wrap/{jobId}` from an authenticated
   install marks the row failed and drops the result + lookup rows. From a
   different install: 404. Twice in a row from the owner: 204 then 204.
@@ -139,8 +171,15 @@ progress.
 - Depends on the lookup-row cleanup added in commit `a895064` (#7).
 - The DELETE endpoint should reuse the same install-token middleware as
   `wrapEnqueue` / `wrapGet` and follow the same `safeError` patterns.
-- Spec 11 (pause polling) lands cleanly alongside this — they touch the same
-  `usePendingWrap` hook but don't conflict.
+- The result-row TTL portion enforces `WRAP_RESULT_TTL_HOURS` from
+  `concurrency.ts:15-17`, which today is read but never used.
+- Spec 1 (data-loss when idle-locked) interacts: with this sweeper in
+  place, a result row left behind because the user idle-locked mid-poll
+  gets cleaned up at 24h. That's the safety net — the primary fix is
+  spec 1 making sure the result is fetched + persisted in the first
+  place.
+- Spec 11 (pause polling) lands cleanly alongside this — they touch the
+  same `usePendingWrap` hook but don't conflict.
 - A future spec could add server-side trace correlation between enqueue
   and worker (item 21 from the original critique) so stalled-job
   investigations are easier; that's separate.
