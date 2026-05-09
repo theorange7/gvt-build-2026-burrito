@@ -1,61 +1,52 @@
-import type { Contribution, SliceContent, WrapMode } from '@/lib/types';
-import { fallbackForSlice } from './shared';
-import { generateLaunchesShipped } from './prompts/launchesShipped';
-import { generateVelocity } from './prompts/velocity';
-import { generateCrossTeamImpact } from './prompts/crossTeamImpact';
-import { generateDeepWorkStreak } from './prompts/deepWorkStreak';
-import { generateMentorship } from './prompts/mentorship';
-import { generateInitiative } from './prompts/initiative';
-import { generateCollaborationStyle } from './prompts/collaborationStyle';
-import { generateConsistency } from './prompts/consistency';
-import { generateHighlightReel } from './prompts/highlightReel';
-import { generateIdentity } from './prompts/identity';
+import type {
+  ContributionForAI,
+  EnqueueWrapRequest,
+  EnqueueWrapResponse,
+  GetWrapResponse,
+  WrapMode,
+} from '@wrapped/shared';
+import { authHeader, backendUrl } from './endpoint';
 
-const sliceEntries = [
-  ['launches_shipped', generateLaunchesShipped],
-  ['velocity', generateVelocity],
-  ['cross_team_impact', generateCrossTeamImpact],
-  ['deep_work_streak', generateDeepWorkStreak],
-  ['mentorship', generateMentorship],
-  ['initiative', generateInitiative],
-  ['collaboration_style', generateCollaborationStyle],
-  ['consistency', generateConsistency],
-  ['highlight_reel', generateHighlightReel],
-  ['identity', generateIdentity],
-] as const;
-
-export async function generateWrap(input: {
-  contributions: Contribution[];
+/**
+ * Submit a wrap-generation job to the backend queue. Returns immediately with
+ * `{ jobId, status, busy? }`. Clients should poll `/wrap/{jobId}` via
+ * `pollWrap` until `complete` or `failed`. Replaces the previous in-process
+ * `generateWrap` — generation now happens in the Functions worker.
+ */
+export async function enqueueWrap(input: {
+  jobId: string;
+  contributions: ContributionForAI[];
   mode: WrapMode;
-  windowStart: Date;
-  windowEnd: Date;
+  windowStart: string;
+  windowEnd: string;
   modelId?: string;
-}): Promise<SliceContent[]> {
-  const startedAt = Date.now();
-  const settled = await Promise.allSettled(
-    sliceEntries.map(([_, generator]) => generator(input.contributions, input.mode, input.modelId)),
-  );
-
-  const succeeded: string[] = [];
-  const fellBack: string[] = [];
-
-  const output = settled.map((result, index) => {
-    const [sliceKey] = sliceEntries[index];
-    if (result.status === 'fulfilled') {
-      succeeded.push(sliceKey);
-      return result.value;
-    }
-    fellBack.push(sliceKey);
-    return fallbackForSlice(sliceKey);
+}): Promise<EnqueueWrapResponse> {
+  const payload: EnqueueWrapRequest = input;
+  const response = await fetch(backendUrl('/wrap'), {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', ...(await authHeader()) },
+    body: JSON.stringify(payload),
   });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error(typeof body.error === 'string' ? body.error : `enqueue failed (${response.status})`);
+  }
+  return (await response.json()) as EnqueueWrapResponse;
+}
 
-  console.log('Wrapped generation complete', {
-    mode: input.mode,
-    model: input.modelId ?? 'default',
-    success: succeeded,
-    fallback: fellBack,
-    totalMs: Date.now() - startedAt,
+export async function pollWrap(jobId: string): Promise<GetWrapResponse> {
+  const response = await fetch(backendUrl(`/wrap/${jobId}`), {
+    headers: { ...(await authHeader()) },
   });
-
-  return output;
+  if (response.status === 404) {
+    return { status: 'failed', error: 'not-found' };
+  }
+  if (response.status === 410) {
+    return { status: 'failed', error: 'result-already-fetched' };
+  }
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error(typeof body.error === 'string' ? body.error : `poll failed (${response.status})`);
+  }
+  return (await response.json()) as GetWrapResponse;
 }

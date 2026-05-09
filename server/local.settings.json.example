@@ -1,0 +1,26 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "FUNCTIONS_WORKER_RUNTIME": "node",
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "WRAP_JWT_SECRET": "change-me-locally-and-store-in-keyvault-elsewhere",
+    "WRAP_MAX_CONCURRENCY": "8",
+    "WRAP_PER_INSTALL_LIMIT": "1",
+    "WRAP_RESULT_TTL_HOURS": "24",
+    "WRAP_REGISTER_RATE_LIMIT_PER_HOUR": "10",
+    "WRAP_MAX_DELIVERIES": "3",
+    "ANTHROPIC_API_KEY": "",
+    "AZURE_FOUNDRY_PROJECT_ENDPOINT": "",
+    "AZURE_FOUNDRY_API_VERSION": "",
+    "AZURE_SERVICE_BUS_NAMESPACE": "<your-namespace>.servicebus.windows.net",
+    "AZURE_SERVICE_BUS_QUEUE_NAME": "wrap-jobs",
+    "ServiceBusConnection__fullyQualifiedNamespace": "<your-namespace>.servicebus.windows.net",
+    "AZURE_TABLES_ENDPOINT": "",
+    "AZURE_TABLES_JOBS": "wrapJobs",
+    "AZURE_TABLES_RESULTS": "wrapResults"
+  },
+  "Host": {
+    "CORS": "http://localhost:3000,tauri://localhost",
+    "CORSCredentials": false
+  }
+}

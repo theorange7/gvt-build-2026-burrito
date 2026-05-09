@@ -19,6 +19,7 @@ export default defineConfig({
     timeout: 120_000,
     env: {
       ANTHROPIC_API_KEY: 'test-stubbed',
+      NEXT_PUBLIC_WRAP_API_URL: 'http://localhost:7071/api',
     },
   },
 });
