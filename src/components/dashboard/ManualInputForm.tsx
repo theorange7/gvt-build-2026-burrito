@@ -9,6 +9,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import type { Contribution, ContributionCategory } from '@/lib/types';
 import { addContribution } from '@/lib/local-store/contributions';
+import { classify } from '@/lib/ai/classify';
 
 const INK = '#0A0A0A';
 const CREAM = '#FFF4DE';
@@ -32,18 +33,7 @@ export function ManualInputForm({ open, onClose }: { open: boolean; onClose: () 
 
   const mutation = useMutation({
     mutationFn: async () => {
-      const response = await fetch('/api/classify', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ freeText, source: 'manual' }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ error: 'Classification failed.' }));
-        throw new Error(error.error || 'Classification failed.');
-      }
-
-      const classified = (await response.json()) as Classification;
+      const classified = await classify({ source: 'manual', freeText });
 
       return addContribution({
         source: 'manual',

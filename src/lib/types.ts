@@ -1,63 +1,12 @@
 /**
- * Built-in contribution sources known statically. The `ContributionSource`
- * type is intentionally `string` so providers added via the registry pattern
- * (see `docs/decisions/contribution-provider-pattern.md`) can introduce new
- * source identifiers without forcing a type change at every call site.
+ * Domain types. The shapes shared with the backend (Contribution,
+ * SliceContent, WrapMode, etc.) live in `@wrapped/shared` so both deployables
+ * import the same source of truth. This file re-exports them and adds
+ * client-only types.
  */
-export const KNOWN_CONTRIBUTION_SOURCES = [
-  'github',
-  'gitlab',
-  'jira',
-  'slack',
-  'confluence',
-  'manual',
-] as const;
+export * from '@wrapped/shared';
 
-export type KnownContributionSource = (typeof KNOWN_CONTRIBUTION_SOURCES)[number];
-
-export type ContributionSource = string;
-
-export type ContributionCategory =
-  | 'delivery'
-  | 'collaboration'
-  | 'mentorship'
-  | 'process'
-  | 'leadership'
-  | 'other';
-
-export type Contribution = {
-  id: string;
-  userId: string;
-  source: ContributionSource;
-  category: ContributionCategory;
-  signal: string;
-  rawData: Record<string, unknown>;
-  occurredAt: Date;
-  weight: number;
-  externalId?: string;
-  externalUrl?: string;
-  identityId?: string;
-  createdAt: Date;
-};
-
-export type ContributionForAI = {
-  source: ContributionSource;
-  category: ContributionCategory;
-  signal: string;
-  rawData: Record<string, unknown>;
-  occurredAt: Date;
-  weight: number;
-};
-
-export type WrapMode = 'snapshot' | 'year-end';
-
-export type SliceContent = {
-  sliceKey: string;
-  headline: string;
-  body: string;
-  stat?: string | null;
-  supporting?: string[] | null;
-};
+import type { ContributionCategory } from '@wrapped/shared';
 
 export type ManualContributionInput = {
   freeText: string;

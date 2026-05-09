@@ -72,6 +72,18 @@ export type ImportedRangeRow = {
   end: string;
 };
 
+export type PendingWrapRow = {
+  id: string;
+  mode: string;
+  windowStart: string;
+  windowEnd: string;
+  requestedAt: string;
+  status: string;
+  busy: number;
+  modelId?: string;
+  lastCheckedAt?: string;
+};
+
 export class WrappedDB extends Dexie {
   contributions!: Table<ContributionRow, string>;
   wraps!: Table<WrapRow, string>;
@@ -80,6 +92,7 @@ export class WrappedDB extends Dexie {
   tokens!: Table<TokenRow, string>;
   syncState!: Table<SyncStateRow, string>;
   importedRanges!: Table<ImportedRangeRow, string>;
+  pendingWrapRequests!: Table<PendingWrapRow, string>;
 
   constructor() {
     super('wrapped-for-work');
@@ -97,6 +110,9 @@ export class WrappedDB extends Dexie {
       tokens: 'id, &identityId',
       syncState: 'identityId, lastSyncAt',
       importedRanges: 'id, identityId, [identityId+start]',
+    });
+    this.version(3).stores({
+      pendingWrapRequests: 'id, status, requestedAt',
     });
   }
 }
@@ -118,4 +134,5 @@ export const META_KEYS = {
   kdfSalt: 'kdfSalt',
   seeded: 'seeded',
   passphraseHint: 'passphraseHint',
+  wrapInstallToken: 'wrapInstallToken',
 } as const;

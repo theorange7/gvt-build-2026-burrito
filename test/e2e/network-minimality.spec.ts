@@ -1,23 +1,32 @@
 import { test, expect } from '@playwright/test';
 
+const BACKEND = 'http://localhost:7071/api';
+
 test.describe('network minimality', () => {
-  test('/api/wrap payload contains no userId, id, or externalId', async ({ page }) => {
+  test('backend /wrap payload contains no userId, id, or externalId', async ({ page }) => {
     const wrapRequests: Array<Record<string, unknown>> = [];
-    await page.route('https://api.anthropic.com/v1/messages', async (route) => {
+
+    // Stub the backend register + enqueue endpoints so the test does not
+    // require a running Functions instance.
+    await page.route(`${BACKEND}/auth/register`, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ token: 'test-install-token', expiresAt: Math.floor(Date.now() / 1000) + 3600 }),
+      });
+    });
+    await page.route(`${BACKEND}/wrap`, async (route, request) => {
+      const body = request.postData();
+      if (body) wrapRequests.push(JSON.parse(body));
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
-          content: [{ type: 'text', text: JSON.stringify({ headline: 'h', body: 'b' }) }],
+          jobId: JSON.parse(body ?? '{}').jobId,
+          status: 'queued',
+          busy: false,
         }),
       });
-    });
-
-    page.on('request', async (req) => {
-      if (req.url().endsWith('/api/wrap') && req.method() === 'POST') {
-        const body = req.postData();
-        if (body) wrapRequests.push(JSON.parse(body));
-      }
     });
 
     await page.goto('/dashboard');
@@ -30,7 +39,7 @@ test.describe('network minimality', () => {
 
     await page.getByRole('button', { name: /wrap it/i }).click();
     await page.getByRole('button', { name: /^generate$/i }).click();
-    await expect(page.getByRole('link', { name: /view wrap/i })).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole('link', { name: /view status/i })).toBeVisible({ timeout: 30_000 });
 
     expect(wrapRequests.length).toBeGreaterThan(0);
     const payload = wrapRequests[0];
