@@ -98,7 +98,7 @@ describe('usePendingWrap — idle-lock behaviour (spec 01)', () => {
     // Let the first microtask queue drain (tick() runs synchronously inside
     // the effect but awaits nothing before the hasActiveKey() guard).
     await act(async () => {
-      await vi.runAllMicrotasksAsync();
+      await vi.runAllTimersAsync();
     });
 
     expect(mockPollWrap).not.toHaveBeenCalled();
@@ -113,13 +113,16 @@ describe('usePendingWrap — idle-lock behaviour (spec 01)', () => {
     // First call: locked; subsequent calls: unlocked
     mockHasActiveKey.mockReturnValueOnce(false).mockReturnValue(true);
     mockGetPendingWrap.mockResolvedValue(makePending());
-    mockPollWrap.mockResolvedValue({ status: 'running', busy: false });
+    // Return 'failed' so the polling loop terminates cleanly after one fetch
+    mockPollWrap.mockResolvedValue({ status: 'failed', error: 'test-done' });
 
     const { result } = renderHook(() => usePendingWrap('job-abc'));
 
-    // Let the initial locked tick complete
+    // Let the initial locked tick complete (no timers scheduled when locked, so
+    // only microtasks need draining — cap at a small advance to avoid infinite
+    // timer loops that runAllTimersAsync would trigger on a live polling chain).
     await act(async () => {
-      await vi.runAllMicrotasksAsync();
+      await vi.runAllTimersAsync();
     });
 
     expect(result.current.phase).toBe('paused-locked');
@@ -128,12 +131,12 @@ describe('usePendingWrap — idle-lock behaviour (spec 01)', () => {
     // Simulate unlock event — the hook registered a one-shot listener
     await act(async () => {
       window.dispatchEvent(new CustomEvent('store-unlocked'));
-      await vi.runAllMicrotasksAsync();
+      await vi.runAllTimersAsync();
     });
 
     // pollWrap should have been called exactly once after the unlock event
     expect(mockPollWrap).toHaveBeenCalledTimes(1);
-    // Phase must no longer be paused-locked
+    // Phase must no longer be paused-locked (it is 'failed' since pollWrap returned failed)
     expect(result.current.phase).not.toBe('paused-locked');
   });
 
@@ -151,7 +154,7 @@ describe('usePendingWrap — idle-lock behaviour (spec 01)', () => {
     const { result } = renderHook(() => usePendingWrap('job-abc'));
 
     await act(async () => {
-      await vi.runAllMicrotasksAsync();
+      await vi.runAllTimersAsync();
     });
 
     // removePendingWrap must NOT have been called — the server copy is preserved
@@ -173,23 +176,23 @@ describe('usePendingWrap — idle-lock behaviour (spec 01)', () => {
 
     // First tick
     await act(async () => {
-      await vi.runAllMicrotasksAsync();
+      await vi.runAllTimersAsync();
     });
 
     // Advance through multiple backoff windows
     await act(async () => {
       vi.advanceTimersByTime(2000);
-      await vi.runAllMicrotasksAsync();
+      await vi.runAllTimersAsync();
     });
 
     await act(async () => {
       vi.advanceTimersByTime(4000);
-      await vi.runAllMicrotasksAsync();
+      await vi.runAllTimersAsync();
     });
 
     await act(async () => {
       vi.advanceTimersByTime(8000);
-      await vi.runAllMicrotasksAsync();
+      await vi.runAllTimersAsync();
     });
 
     // pollWrap must remain at zero — the server result row is untouched
