@@ -38,7 +38,8 @@ pnpm test:watch
 pnpm test:e2e          # playwright (boots dev server)
 pnpm export:demo       # regenerate public/demo-contributions.json
 pnpm tauri:dev         # native shell dev, requires Rust
-pnpm tauri:build       # ships .dmg
+pnpm tauri:build       # ships .dmg  (set NEXT_PUBLIC_WRAP_API_URL first)
+pnpm tauri:check       # cargo check — CI-safe, no window opened
 
 # Server (Azure Functions)
 cd server

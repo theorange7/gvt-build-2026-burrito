@@ -110,12 +110,58 @@ pnpm export:demo
 
 ## Tauri shell (v2)
 
+A native macOS `.app` that bundles the same Next.js static export the
+browser app produces. Crypto, storage, and AI calls are identical — the
+shell is a thin WKWebView wrapper.
+
+### Prerequisites (one-time)
+
 ```bash
-pnpm tauri:dev    # requires Rust toolchain
-pnpm tauri:build  # builds .dmg for macOS
+# Rust toolchain (1.77+)
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh && rustup update
+xcode-select --install   # macOS linker
 ```
 
-See `src-tauri/README.md` for bootstrap instructions.
+`@tauri-apps/cli` is already a devDependency — no separate CLI install needed.
+
+### Dev
+
+```bash
+# Terminal 1 — backend (AI calls)
+cd server && func start          # port 7071
+
+# Terminal 2 — native shell (opens a macOS window against localhost:3000)
+pnpm tauri:dev
+```
+
+Hot-reload works normally. No Rust rebuild when you edit React components.
+
+```bash
+pnpm tauri:check   # cargo check — CI-friendly, no window opened
+```
+
+### Build
+
+```bash
+export NEXT_PUBLIC_WRAP_API_URL=https://<your-function-app>.azurewebsites.net/api
+pnpm tauri:build
+```
+
+Produces an unsigned `.app` and `.dmg` under
+`src-tauri/target/release/bundle/`. On first launch, right-click → Open to
+bypass Gatekeeper, or strip the quarantine attribute:
+
+```bash
+xattr -dr com.apple.quarantine \
+  "src-tauri/target/release/bundle/macos/Wrapped for Work.app"
+```
+
+`NEXT_PUBLIC_WRAP_API_URL` is baked into the bundle's Content Security Policy
+at build time by `scripts/tauri-csp.mjs`. Set it before every distribution
+build.
+
+See `src-tauri/README.md` for the full runbook (prerequisites, CSP config,
+signing notes).
 
 ## Tests
 

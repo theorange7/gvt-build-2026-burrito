@@ -160,6 +160,30 @@ If you find a reason `tauri-export.mjs` is still load-bearing (e.g. a
 Server Action snuck back in), don't restore the stash dance — fix the
 root cause. Static export is the contract.
 
+### 6. Update documentation
+
+Rewrite `src-tauri/README.md` end-to-end. The current README describes the
+old architecture (references `src/app/api/` stash dance, wrong CSP origin,
+a stateless-proxy TODO that no longer applies). After this spec, the README
+is the operator runbook for the shell: prerequisites, one-time bootstrap,
+dev workflow, build/release steps, and what is explicitly not in v1.
+
+Also expand two sections in the existing docs:
+
+- **`README.md`** — the "Tauri shell (v2)" section is two lines + a link.
+  Expand it to show the one-time Rust prerequisite, `tauri:dev` /
+  `tauri:build` / `tauri:check` invocations, and which env var controls
+  the backend origin baked into the bundle.
+- **`ARCHITECTURE.md`** — the "Tauri shell (v2 distribution)" section is
+  a four-bullet future-state list. Expand it to describe what v1 *is*
+  (static export, thin WebView, remote backend) with the build commands
+  and the no-divergence contract.
+- **`CLAUDE.md`** — add `pnpm tauri:check` to the Commands section so
+  future agents know the crate-check script exists.
+
+The docs should reflect the **post-spec-40 state** — written as if the
+Rust crate, icons, and CSP templating are already in place.
+
 ### 5. Lock in the "no shell divergence" invariant
 
 The whole point of this spec is that the browser app and the Tauri app
@@ -277,6 +301,11 @@ Server Component slipped past the static export.
 - **CSP correct**: opening devtools in the built `.app` and inspecting
   the response headers / meta CSP shows the deployed Functions origin
   in `connect-src` and no `api.anthropic.com`.
+- **Docs accurate**: `src-tauri/README.md` documents the actual
+  prerequisites, bootstrap steps, `tauri:dev` / `tauri:build` /
+  `tauri:check` invocations, and what is deferred. A reader following
+  the README alone can get a working dev shell and a distributable
+  `.app` without referring to the spec.
 
 ## Notes
 
@@ -299,10 +328,13 @@ Server Component slipped past the static export.
   `src-tauri/icons/*` (new placeholders),
   `src-tauri/tauri.conf.json` (rewritten),
   `src-tauri/tauri.conf.template.json` (new — input to CSP templater),
-  `src-tauri/README.md` (updated),
+  `src-tauri/README.md` (full rewrite — setup, dev, release runbook),
   `scripts/tauri-csp.mjs` (new),
   `scripts/tauri-export.mjs` (deleted),
   `package.json` (adds `tauri:check`),
+  `README.md` (expand Tauri section),
+  `ARCHITECTURE.md` (expand Tauri section),
+  `CLAUDE.md` (add `tauri:check` to Commands),
   `test/unit/tauri-invariants.test.ts` (new),
   optionally `.github/workflows/ci.yml` if CI gains a `tauri:check` step.
 - Dependencies on other specs: none. Lands independently. Pairs well

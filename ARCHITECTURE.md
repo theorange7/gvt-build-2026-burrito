@@ -198,17 +198,60 @@ meta:          'key'
 
 ## Tauri shell (v2 distribution)
 
-`src-tauri/` hosts the Tauri 2 macOS bundle. The Next.js frontend is
-exported as static assets (`output: 'export'` when `TAURI=1`); there is no
-Node server in the .app. The proxy routes are expected to run as a remote
-service.
+`src-tauri/` is a thin Tauri 2 WKWebView shell that bundles the Next.js
+frontend as a static export. There is no Node server inside the `.app` — the
+AI proxy and JWT issuance remain in the deployed Azure Functions backend. The
+shell calls the same `NEXT_PUBLIC_WRAP_API_URL` as the browser client.
 
-Future-state v2 capabilities:
-- Replace the in-memory `cachedKey` with `tauri-plugin-stronghold` /
-  Keychain-backed storage.
-- Pin data to the macOS filesystem instead of IDB to sidestep Safari's
-  7-day eviction.
-- Native menus, smaller surface area than Electron.
+### No-divergence contract
+
+The shell and the browser app load the same React tree. `isTauri()` in
+`src/lib/local-store/platform.ts` is the detection seam; in v1 it is unused.
+Static analysis in `test/unit/tauri-invariants.test.ts` asserts:
+
+- No `@tauri-apps/api/*` static imports in `src/` (must be behind a dynamic
+  import + `isTauri()` guard).
+- `NEXT_PUBLIC_WRAP_API_URL` is still required — no implicit fallback when
+  running as Tauri.
+- `next.config.mjs` preserves the `TAURI=1` → `output: 'export'` mapping.
+
+Consequence: every client PR — slide edits, dashboard changes, new providers —
+ships into the shell automatically. A PR that forces a Rust rebuild is a signal
+something diverged.
+
+### Build pipeline
+
+```bash
+# Dev (WKWebView against localhost:3000)
+pnpm tauri:dev
+
+# Production .app + .dmg (unsigned)
+export NEXT_PUBLIC_WRAP_API_URL=https://<fn-app>.azurewebsites.net/api
+pnpm tauri:build
+
+# CI crate check (no window, no macOS required)
+pnpm tauri:check
+```
+
+`pnpm tauri:build` runs three steps in order:
+
+1. `scripts/tauri-csp.mjs` — templates `tauri.conf.json` from
+   `tauri.conf.template.json`, substituting the `connect-src` origin from
+   `NEXT_PUBLIC_WRAP_API_URL`.
+2. `TAURI=1 pnpm build` — `next build` with `output: 'export'` → `out/`.
+3. `tauri build` — compiles the Rust crate, bundles `out/`, emits
+   `src-tauri/target/release/bundle/`.
+
+### v1 scope
+
+The Rust crate in v1 has no `invoke` handlers. Crypto, storage, and
+AI are all JavaScript. Deferred to follow-up specs:
+
+- `tauri-plugin-stronghold` (Keychain-backed encryption key).
+- Code signing + notarisation.
+- `tauri-plugin-updater` (auto-update).
+
+See `src-tauri/README.md` for the full setup and release runbook.
 
 ## Testing topology
 
