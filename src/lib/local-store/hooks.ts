@@ -48,7 +48,8 @@ export type PendingPollState =
   | { phase: 'loading' }
   | { phase: 'queued' | 'running'; busy: boolean }
   | { phase: 'failed'; error: string }
-  | { phase: 'complete' };
+  | { phase: 'complete' }
+  | { phase: 'paused-locked' };
 
 const BACKOFF_MS = [2000, 4000, 8000, 10000];
 
@@ -68,6 +69,16 @@ export function usePendingWrap(id: string): PendingPollState {
     let attempt = 0;
 
     const tick = async () => {
+      if (!hasActiveKey()) {
+        if (!cancelled.current) setState({ phase: 'paused-locked' });
+        const resume = () => {
+          window.removeEventListener('store-unlocked', resume);
+          if (!cancelled.current) void tick();
+        };
+        window.addEventListener('store-unlocked', resume);
+        return;
+      }
+
       try {
         const pending = await getPendingWrap(id);
         if (!pending) {
