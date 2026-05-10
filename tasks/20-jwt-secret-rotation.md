@@ -1,6 +1,6 @@
 # Spec 20 — JWT secret rotation (`kid` + key map)
 
-**Status**: Shaped — ready to pick up
+**Status**: Done
 **Branch**: server
 **Appetite**: medium (≤ 3 days; realistically ~1 day plus runbook)
 **Last shaped**: 2026-05-09
@@ -178,3 +178,9 @@ For emergency rotation (suspected compromise of <oldKid>):
 - After this lands, follow-up spec idea (not yet written): shorter token
   TTLs (e.g. 30 days) with a refresh endpoint. That makes the rotation
   drain-window much shorter and brings revocation closer to the table.
+
+## Done
+
+**Completed**: 2026-05-10
+**PR**: claude/spec-20-9mk1y
+**Summary**: Implemented `loadKeys()` which reads all `WRAP_JWT_KEY_<kid>` env vars into a key map and selects the active signer via `WRAP_JWT_ACTIVE_KID`. `signInstallToken` now stamps each token with `kid` in the protected header. `verifyInstallToken` passes a resolver function to `jwtVerify` that looks up the incoming `kid` in the map, rejecting tokens with missing or unregistered kids. The backwards-compat shim for `WRAP_JWT_SECRET` (mapped to `kid=legacy`) is in place. Unit tests cover all six verification scenarios from the spec. The rotation runbook was added to `tasks/runbooks/jwt-rotation.md`. No deviations from the solution shape.
