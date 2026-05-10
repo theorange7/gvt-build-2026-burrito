@@ -91,6 +91,7 @@ Post-merge (UX + operational hardening):
 | 12 | Encrypt `pendingWrapRequests` | Shaped — ready | client | small |
 | 13 | Graceful "wrap not on this device" | Shaped — ready | client | small |
 | 20 | JWT secret rotation (`kid` + key map) | Shaped — ready | server | medium |
+| 21 | Automated UAT suite (Playwright) | Shaped — ready | both | medium |
 
 ## How an agent should use this directory
 
