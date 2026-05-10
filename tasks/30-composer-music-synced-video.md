@@ -317,6 +317,157 @@ addresses headless screencast (see Notes → Out-of-scope follow-ups).
 - **No watermarks, intros, outros, or branded title cards.** Output is
   the slides + audio. Anything else is a future product decision.
 
+## Testing
+
+The pipeline has three slow dependencies — MusicGen inference, LLM
+calls, and FFmpeg I/O. Real-loop testing all three on every change
+is too slow for both the developer's edit-test loop and CI's per-PR
+budget. This section pins the test architecture so the spec doesn't
+get quietly redesigned by an agent who hits the first slow test.
+
+### Test layers
+
+| Layer | When it runs | Wall-clock | What it covers |
+|-------|--------------|------------|----------------|
+| `unit` | every save | < 2 s total | pure functions, schemas, FFmpeg argv builder, beat detect on synthetic clicks, privacy invariants |
+| `integration` (fixture mode) | every PR | < 30 s total | full pipeline, real FFmpeg, **stubbed MusicGen + LLM** backed by golden artifacts |
+| `live-musicgen`, `live-llm`, `smoke-live` | manual / pre-release | minutes | real model weights + real LLM; gated by env vars |
+
+### Local: fast loop
+
+`composer/tests/unit/` is no-network, no-model, no-subprocess. Targets:
+schema parsing, FFmpeg argv builder (snapshot-test the list), fallback
+prompt mapping, beat detection against a numpy-generated click track,
+privacy invariants. Goal: `pytest composer/tests/unit/` under 2 s,
+runnable on save via an editor watcher.
+
+### Local: integration with golden samples
+
+`composer/tests/integration/` runs the full pipeline with real FFmpeg
+but **stubbed MusicGen and LLM**. Both stubs read from artifacts checked
+into `composer/tests/fixtures/`:
+
+```
+fixtures/
+  wrap-year-end-10slice.json     synthetic SliceContent[]
+  pngs/                          pre-rendered slide PNGs (downsampled)
+  stems/                         WAVs (~12s, 22kHz mono) — one per mood category
+  beats/                         detected-beats JSON per stem
+  llm/
+    pass1-responses.json         recorded director-LLM responses by sliceKey
+    pass2-response.json          recorded pass-2 response for the fixture wrap
+  golden/
+    manifest.json                expected manifest.json (renderedAtUtc + outputMp4 redacted)
+    mp4-metadata.json            expected `ffprobe -show_streams` output (creation_time redacted)
+```
+
+`pipeline/musicgen.py` and `pipeline/llm.py` honour
+`COMPOSER_FIXTURE_MODE=1`. In fixture mode, `musicgen.generate(...)`
+returns the bytes of `fixtures/stems/<moodTag>.wav` via a deterministic
+`sliceKey → moodTag` map; `llm.direct_call(...)` returns the recorded
+response. The JWT verifier itself stays live — tests inject a real
+signed token via a helper.
+
+Assertions in fixture-mode integration:
+
+- The produced MP4 matches `golden/mp4-metadata.json` on stream count
+  and codec strings, and on total duration within ±50 ms.
+- The produced manifest.json matches `golden/manifest.json` after
+  redacting `renderedAtUtc` and `outputMp4`.
+- Running the same fixture-mode test twice produces an identical
+  manifest (excluding redacted fields). Non-determinism is a bug —
+  flag and fix, don't add tolerance.
+
+### Golden sample regeneration
+
+Goldens drift when the prompt template, MusicGen pin, FFmpeg flag set,
+or the fixture wrap itself changes. A regen script —
+`composer/scripts/regen_goldens.py` — re-runs the live paths against
+the fixture wrap and rewrites artifacts in place:
+
+```bash
+COMPOSER_FIXTURE_MODE=0 LLM_LIVE=1 MUSICGEN_LIVE=1 \
+  python -m composer.scripts.regen_goldens \
+    --wrap composer/tests/fixtures/wrap-year-end-10slice.json \
+    --out composer/tests/fixtures/
+```
+
+The resulting diff is reviewed in PR. Surprising movement — all beats
+shifted 200 ms, manifest grew a new field, MP4 duration jumped — is
+the test signal you want to see.
+
+**Never auto-regen goldens in CI.** A stale golden is the failure mode
+we're relying on; auto-refreshing erases it.
+
+### Local: live (gated)
+
+Mirrors the Node-side `INTEGRATION_LIVE=1` pattern with three env-gated
+markers under `composer/tests/integration/live/`:
+
+- `MUSICGEN_LIVE=1 pytest -m musicgen_live` — pulls
+  `facebook/musicgen-small`, generates a single 4 s stem, asserts a
+  valid WAV comes back. ~2 min on CPU; ~10 s on GPU.
+- `LLM_LIVE=1 pytest -m llm_live` — hits a locally-running Node
+  server's `/api/composer/direct`, asserts response shape. Requires
+  `az login` (Anthropic via the existing dispatch path) plus
+  `pnpm -C server dev` running on a known port.
+- `COMPOSER_LIVE=1 pytest -m smoke_live` — both of the above plus the
+  full pipeline → real MP4 → ffprobe. Longest test in the codebase;
+  budget ~5 min.
+
+None of these run in default CI. They exist for pre-PR smoke checks,
+post-deploy validation, and golden regen.
+
+### CI: per-PR
+
+`.github/workflows/ci.yml` adds a `composer` job:
+
+```yaml
+composer:
+  runs-on: ubuntu-latest
+  timeout-minutes: 8
+  steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with: { python-version: '3.12' }
+    - uses: actions/cache@v4
+      with: { path: ~/.cache/uv, key: uv-${{ hashFiles('composer/uv.lock') }} }
+    - run: uv sync --frozen --project composer
+    - run: ruff check composer/ && ruff format --check composer/
+    - run: mypy --strict composer/
+    - run: pytest composer/tests/unit/ -q
+    - run: COMPOSER_FIXTURE_MODE=1 pytest composer/tests/integration/ -q
+    - run: pytest composer/tests/privacy_invariants/ -q
+    - run: docker build composer/ --build-arg variant=cpu -t composer:ci
+    - run: ./composer/scripts/check-image-size.sh composer:ci 4096   # MB
+```
+
+Budget: 8 min. The integration step uses **only** golden fixtures —
+no model pulls, no HTTPS, no GPU — so wall-clock is dominated by
+`uv sync` + `docker build`, not by the actual test work.
+
+What CI deliberately does **not** do:
+
+- Pull MusicGen weights (fixture stems substitute).
+- Hit a real LLM (recorded responses substitute).
+- Run on GPU (CPU + fixtures only).
+- Auto-regen goldens (stale = signal).
+- Run `live-musicgen` / `live-llm` / `smoke-live` (manual only).
+- Push the Docker image (release-on-tag is a separate spec).
+
+### Test data hygiene
+
+- Fixture wrap JSON contains **synthetic** slice content — never copied
+  from a real user's wrap. A unit test flags suspiciously real-looking
+  identifiers (URLs containing real domains, project names matching
+  internal repos, etc.).
+- Fixture PNGs render the synthetic wrap, not screenshots of a real one.
+- Recorded LLM responses are scrubbed of provider usage / cost / debug
+  metadata before commit. The regen script handles this — don't write
+  raw provider responses by hand.
+- Stems are treated as artifacts, not source: regenerate them when the
+  prompt grammar changes; don't preserve them across breaking changes.
+
 ## Verification
 
 Functional:
