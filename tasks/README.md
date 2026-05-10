@@ -92,6 +92,12 @@ Post-merge (UX + operational hardening):
 | 13 | Graceful "wrap not on this device" | Shaped — ready | client | small |
 | 20 | JWT secret rotation (`kid` + key map) | Shaped — ready | server | medium |
 
+Future / new features:
+
+| ID | Title | Status | Branch | Appetite |
+|----|-------|--------|--------|----------|
+| 30 | Composer — music-synced video render service | Shaped — ready | composer + server + client | large |
+
 ## How an agent should use this directory
 
 1. When the user says "work on task 12" or "spec 12", read
