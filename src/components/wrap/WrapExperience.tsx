@@ -44,8 +44,8 @@ export function WrapExperience({
   if (isMobile === null) return null;
 
   if (isMobile) {
-    return <WrapPhone p={MX_PALETTE} onClose={handleClose} />;
+    return <WrapPhone p={MX_PALETTE} slices={slices} mode={mode} onClose={handleClose} />;
   }
 
-  return <WrapDesktop onClose={handleClose} />;
+  return <WrapDesktop slices={slices} mode={mode} title={title} onClose={handleClose} />;
 }
