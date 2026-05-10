@@ -4,18 +4,27 @@ A local-first Next.js prototype of **Wrapped for Work** (Spotify-Wrapped-style
 year-end recap for engineering contributions).
 
 User data lives **on the user's device**, encrypted with a passphrase-derived
-key. The hosted backend is a **stateless AI proxy** — it forwards prompts to
-Anthropic and returns the result, but never stores contribution text or wrap
-artifacts.
+key. The hosted backend is a **stateless Azure Functions service** — it enqueues
+wrap-generation jobs, runs the LLM fan-out, and returns the result, but never
+persists contribution text or wrap artifacts beyond the in-flight job lifetime.
 
 ## Setup
 
-1. `cp .env.local.example .env.local`
-2. Add your `ANTHROPIC_API_KEY` to `.env.local`
-3. `pnpm install`
-4. `pnpm dev`
-5. Open [http://localhost:3000](http://localhost:3000), set a passphrase,
-   choose **Try with demo data** to populate 134 sample contributions.
+```bash
+# 1. Client
+cp .env.local.example .env.local   # sets NEXT_PUBLIC_WRAP_API_URL=http://localhost:7071/api
+pnpm install
+pnpm dev
+
+# 2. Server (separate terminal)
+cp server/local.settings.json.example server/local.settings.json
+# Edit local.settings.json: set WRAP_JWT_SECRET, ANTHROPIC_API_KEY and/or Azure vars
+cd server && pnpm install
+func start                         # Azure Functions Core Tools, port 7071
+```
+
+Open [http://localhost:3000](http://localhost:3000), set a passphrase, choose
+**Try with demo data** to populate 134 sample contributions.
 
 ## Architecture
 
@@ -25,16 +34,24 @@ artifacts.
 │                       │       encrypted-envelope rows        │
 │                       └──► WebCrypto AES-GCM-256 (in-memory) │
 │                                                              │
-│  POST /api/classify   { freeText, source }                   │
-│  POST /api/wrap       { contributions[], mode, window }      │
+│  src/lib/ai/  (thin HTTP wrappers — no LLM SDK)              │
+│   POST /classify   { freeText, source }                      │
+│   POST /wrap       { contributions[], mode, window, jobId }  │
+│   GET  /wrap/{jobId}   (poll until complete)                 │
 └──────────┬───────────────────────────────────────────────────┘
-           │ TLS · no cookies · no userId
+           │ TLS · Bearer install-JWT · no userId
            ▼
-┌──────────────── Stateless Next.js backend ───────────────────┐
-│  /api/classify, /api/wrap                                    │
-│  - reads input, calls Anthropic, returns output              │
-│  - no DB, no payload logging, no Prisma                      │
-│  - holds ANTHROPIC_API_KEY only                              │
+┌──────────────── Azure Functions (server/) ───────────────────┐
+│  POST /classify ──► classify() ──► LLM                       │
+│  POST /wrap     ──► enqueue job ──► Service Bus              │
+│  GET  /wrap/{id}──► read job row from Table Storage          │
+│  POST /auth/register ──► issue per-install JWT               │
+│                                                              │
+│  [Service Bus trigger]                                       │
+│  wrapWorker ──► generateWrap() ──► 10 × createSlice          │
+│             ──► write result to Table Storage                │
+│                                                              │
+│  No contribution text persisted. Logs error codes only.      │
 └──────────────────────────────────────────────────────────────┘
 ```
 
@@ -48,21 +65,18 @@ artifacts.
 - `id`, `occurredAt`, `category`, `source`, `weight`, `mode`, `createdAt`
 - A 16-byte device-local salt and a `seeded: true` flag
 
-**What crosses the wire to our backend** (in transit only, never persisted):
-- `/api/classify`: `{ freeText, source }`
-- `/api/wrap`: an array of contributions stripped of `userId`, `id`, `externalId`
+**What crosses the wire to the backend** (in transit only, never persisted beyond the job lifetime):
+- `/classify`: `{ freeText, source }`
+- `/wrap` (enqueue): contributions stripped of `userId`, `id`, `externalId`; the Service Bus message is consumed once by the worker and then deleted
+- `/wrap/{jobId}` (poll): only the `jobId`; result is deleted from Table Storage on first successful read
 
-**What our backend does**:
-- Forwards the request to `https://api.anthropic.com/v1/messages` with our
-  `ANTHROPIC_API_KEY`
-- Returns the response to the caller
-- Logs only error status codes and messages (never request bodies)
-- Has no database — `prisma/` was removed in the migration to local-first
+**What the backend stores**:
+- A job row: `{ installId, jobId, status, busy, timestamps }` — no contributions, no IPs, no tokens
+- A result row (deleted on first read): `{ sliceContent }` encrypted at rest by Azure Table Storage
 
 **Trust boundaries we cannot eliminate**:
-- **Anthropic** sees plaintext at inference time. This is the documented
-  residual risk. For stronger guarantees, route requests via the Anthropic
-  zero-retention enterprise tier or run a local LLM in a future iteration.
+- **The LLM provider** (Anthropic or Azure AI) sees plaintext at inference time.
+  For stronger guarantees, route via the zero-retention enterprise tier or a local model.
 - **An attacker on your unlocked device** can read everything the app can read.
   The passphrase only protects data at rest.
 - **An attacker with raw IndexedDB access** (e.g. an extension) learns the
@@ -106,31 +120,39 @@ See `src-tauri/README.md` for bootstrap instructions.
 ## Tests
 
 ```bash
+# Client
 pnpm typecheck       # tsc --noEmit
-pnpm test            # Vitest: unit, component, integration (mocked Anthropic)
+pnpm test            # Vitest: unit, component, integration (mocked backend)
 pnpm test:watch      # Vitest in watch mode
 pnpm test:e2e        # Playwright e2e (boots dev server, real browser)
+
+# Server
+cd server
+pnpm typecheck
+pnpm test            # Vitest: AI layer, function handlers, privacy invariants
 pnpm ai:test         # AI integration with MSW-mocked Anthropic (fast)
 pnpm ai:test:live    # Same suite against the real Anthropic API
 ```
 
 Test layout:
 
-- `test/unit/` — crypto round-trip, local-store CRUD, AI classify/generate/client, API route handlers, privacy invariants (static-analysis).
+- `test/unit/` — crypto round-trip, local-store CRUD, client AI thin-wrapper, privacy invariants (static-analysis: asserts `src/app/api/` absent).
 - `test/component/` — UnlockGate (React Testing Library, happy-dom).
-- `test/integration/` — wrap pipeline smoke against MSW-mocked Anthropic; gate live runs behind `INTEGRATION_LIVE=1`.
-- `test/e2e/` — Playwright specs: locality (clear site data → fresh state), encryption-at-rest (raw IDB rows have no plaintext signal), network minimality (`/api/wrap` payloads carry no `userId`/`id`/`externalId`).
-- `test/fixtures/`, `test/mocks/`, `test/setup/` — shared fixtures, MSW handlers, and Vitest setup files.
+- `test/integration/` — provider orchestrator smoke.
+- `test/e2e/` — Playwright specs: locality (clear site data → fresh state), encryption-at-rest (raw IDB rows have no plaintext signal), network minimality (payloads carry no `userId`/`id`/`externalId`).
+- `server/test/unit/` — AI client, classify, generate, function handlers, privacy invariants.
+- `server/test/integration/` — wrap pipeline smoke against MSW-mocked Anthropic; gated by `INTEGRATION_LIVE=1`.
+- `test/fixtures/`, `test/mocks/`, `test/setup/` — shared fixtures, MSW handlers, Vitest setup.
 
-CI runs typecheck + lint + unit + build, then a separate Playwright job. A manual `workflow_dispatch` job runs the live AI smoke against a `secrets.ANTHROPIC_API_KEY`.
+CI runs typecheck + lint + unit + build for both packages, then a separate Playwright job. A manual `workflow_dispatch` job runs the live AI smoke against a `secrets.ANTHROPIC_API_KEY`.
 
 ## Verification checklist
 
 - **Locality**: clear browser site data → reload → empty state returns.
 - **Encryption at rest**: open IndexedDB → confirm `signal`/`rawData` are
   opaque byte arrays, not strings.
-- **Network minimality**: DevTools Network tab on `/api/wrap` → assert
-  payload contains no `userId`, no `id`, no `externalId`.
+- **Network minimality**: DevTools Network tab on the `/wrap` enqueue POST →
+  assert payload contains no `userId`, no `id`, no `externalId`.
 - **Server silence**: no Prisma in the codebase, no `db.*` imports outside
   `src/lib/local-store/`.
 

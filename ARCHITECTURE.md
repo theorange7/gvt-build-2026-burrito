@@ -2,12 +2,14 @@
 
 ## One-paragraph summary
 
-A local-first Next.js app. User contribution data lives in IndexedDB on the
-device, encrypted with a passphrase-derived AES-GCM key. Two stateless API
-routes proxy LLM calls (`/api/classify`, `/api/wrap`) — they hold the
-upstream credentials, but never persist or log payloads. The wrap experience
-is composed from ten parallel slice prompts. The shipping target for v2 is
-a Tauri 2 macOS shell that pins data to disk and uses the OS Keychain.
+A local-first Next.js app backed by a separately deployed Azure Functions
+service. User contribution data lives in IndexedDB on the device, encrypted
+with a passphrase-derived AES-GCM key. The client calls the Functions backend
+via a per-install Bearer JWT; the backend classifies contributions and runs
+async wrap generation (enqueue → Service Bus → worker → Table Storage result).
+The wrap experience is composed from ten parallel slice prompts. The shipping
+target for v2 is a Tauri 2 macOS shell that pins data to disk and uses the OS
+Keychain.
 
 ## System diagram
 
@@ -33,29 +35,32 @@ a Tauri 2 macOS shell that pins data to disk and uses the OS Keychain.
 │   │                                  │   ciphertext blob) │   │
 │   │                                  └────────────────────┘   │
 │   │                                                           │
-│   ├── ManualInputForm ── POST /api/classify                   │
-│   └── GenerateWrapModal ── POST /api/wrap                     │
+│   │  src/lib/ai/  (thin HTTP wrappers — no LLM SDK)           │
+│   ├── ManualInputForm ── POST /classify                       │
+│   └── GenerateWrapModal ── POST /wrap (enqueue)               │
+│                            GET  /wrap/{jobId} (poll)          │
 │                                                               │
 └─────────────────┬─────────────────────────────────────────────┘
-                  │ TLS only · no cookies · no userId
+                  │ TLS · Bearer install-JWT · no userId
                   ▼
-┌──────────────── Stateless Next.js backend ────────────────────┐
-│  /api/classify ──► classify() ──► callClaude (alias)          │
-│  /api/wrap     ──► generateWrap() ──► 10 × createSlice        │
-│                                          │                    │
-│                                          ▼                    │
-│                                   callModel(modelId)          │
-│                                   ├── callAnthropic           │
-│                                   │     POST api.anthropic.com│
-│                                   └── callAzureFoundry        │
-│                                         AIProjectClient       │
-│                                         .getAzureOpenAIClient │
-│                                         .chat.completions     │
+┌──────────────── Azure Functions (server/) ────────────────────┐
+│  POST /classify   ──► classify() ──► LLM                      │
+│  POST /wrap       ──► createJobRow ──► Service Bus enqueue    │
+│  GET  /wrap/{id}  ──► read wrapJobs Table Storage             │
+│  POST /auth/register ──► sign per-install JWT                 │
+│                                                               │
+│  [Service Bus trigger]                                        │
+│  wrapWorker ──► generateWrap() ──► 10 × createSlice           │
+│             ──► callModel(modelId)                            │
+│                  ├── callAnthropic  → api.anthropic.com       │
+│                  └── callAzureFoundry → AIProjectClient       │
+│             ──► write result → wrapResults Table Storage      │
 └────────────────────────┬──────────────────────────────────────┘
                          │
-                ┌────────┴────────┐
-                ▼                 ▼
-         api.anthropic.com   *.services.ai.azure.com
+        ┌────────────────┼──────────────────┐
+        ▼                ▼                  ▼
+ api.anthropic.com  *.services.ai.azure.com  Azure Service Bus
+                                             Azure Table Storage
 ```
 
 ## Trust boundaries
@@ -73,9 +78,10 @@ client doesn't, but it does not persist, aggregate, or log request bodies.
 ## Data flow — capturing a contribution
 
 1. User pastes free text into `ManualInputForm`.
-2. Browser POSTs `{ freeText, source }` to `/api/classify`.
-3. Route calls `classify()` (`src/lib/ai/classify.ts`), which calls
-   `callClaude` and parses a JSON `{ signal, category, weight }`.
+2. Browser POSTs `{ freeText, source }` to `/classify` on the Functions
+   backend (`src/lib/ai/classify.ts` builds the request).
+3. `server/src/functions/classify.ts` calls `classify()` (`server/src/ai/classify.ts`),
+   which calls `callModel` and parses a JSON `{ signal, category, weight }`.
 4. Result returned to client. Client encrypts the secret payload
    (`signal`, `rawData`, `userId`, `externalId`, `externalUrl`) via
    `encryptJSON` and writes a `ContributionRow` to Dexie. The plaintext
@@ -86,20 +92,29 @@ client doesn't, but it does not persist, aggregate, or log request bodies.
 ## Data flow — generating a wrap
 
 1. User opens `GenerateWrapModal`, picks a window, mode, and a model from
-   `MODEL_OPTIONS` (loaded from `src/lib/ai/models.config.json`).
+   `MODEL_OPTIONS` (loaded from `server/src/ai/models.config.json`).
 2. Browser fetches local contributions via `listContributionsInRange`,
    strips them down to `{ source, category, signal, rawData, occurredAt,
-   weight }`, and POSTs to `/api/wrap` with `{ contributions, mode,
-   windowStart, windowEnd, modelId }`.
-3. The route calls `generateWrap`, which fans out across 10 slice prompts
-   in parallel via `Promise.allSettled`. Each prompt:
+   weight }`, and calls `enqueueWrap` (`src/lib/ai/generate.ts`), which
+   POSTs `{ jobId, contributions, mode, windowStart, windowEnd, modelId }`
+   to `/wrap`.
+3. `server/src/functions/wrapEnqueue.ts` creates a job row in Table Storage,
+   checks per-install and global concurrency caps, and pushes a Service Bus
+   message containing the full payload plus an opaque `jobLookupToken`.
+4. Client polls `GET /wrap/{jobId}` via `pollWrap` until `status` is
+   `complete` or `failed`.
+5. `server/src/functions/wrapWorker.ts` (Service Bus trigger) calls
+   `generateWrap`, which fans out across 10 slice prompts in parallel via
+   `Promise.allSettled`. Each prompt:
    - filters contributions by category/weight,
-   - calls `callModel(systemPrompt, userMessage, modelId)` via
-     `createSlice`,
+   - calls `callModel(systemPrompt, userMessage, modelId)` via `createSlice`,
    - parses a strict JSON response into `SliceContent`.
-4. Failed slices fall back to a placeholder (`fallbackForSlice`) so the
-   wrap is never half-empty.
-5. Browser encrypts the resulting `sliceContent` array and persists a
+   Failed slices fall back to a placeholder (`fallbackForSlice`) so the wrap
+   is never half-empty.
+6. Worker writes the result to the `wrapResults` table and marks the job
+   `complete`. On first `GET /wrap/{jobId}` that returns `complete`, the
+   result row and job row are deleted (one-time read).
+7. Browser encrypts the resulting `sliceContent` array and persists a
    `WrapRow` via `saveWrap`. Then redirects to `/wrap/[id]`.
 
 ## Encryption envelope
@@ -122,8 +137,8 @@ Defined in `src/lib/local-store/crypto.ts`.
 
 ## Model selection
 
-Configured in `src/lib/ai/models.config.json`, validated at import time by
-`src/lib/ai/models.ts`. Each entry declares a provider and a `parameters`
+Configured in `server/src/ai/models.config.json`, validated at import time by
+`server/src/ai/models.ts`. Each entry declares a provider and a `parameters`
 object that gets spread verbatim into the upstream chat-completions request.
 
 - **Anthropic** path: direct POST to `https://api.anthropic.com/v1/messages`
@@ -138,17 +153,15 @@ object that gets spread verbatim into the upstream chat-completions request.
     the model family.
   - 404 errors include a hint about deployment name + api-version.
 
-The wrap modal renders a dropdown over `MODEL_OPTIONS`. The selected `id`
-is sent to `/api/wrap`; the route resolves it and threads `modelId` through
+The wrap modal renders a dropdown over `MODEL_OPTIONS` (fetched from the
+server's config). The selected `id` is sent with the enqueue request;
+`wrapWorker` resolves it and threads `modelId` through
 `generateWrap` → each `generate*` prompt → `createSlice` → `callModel`.
-
-`callClaude` is retained as a deprecated alias for `callModel` so existing
-imports (notably `classify.ts` and the test suite) keep working.
 
 ## Slice generation
 
 Ten slices, one component each (`src/components/slides/*`) and one prompt
-each (`src/lib/ai/prompts/*`):
+each (`server/src/ai/prompts/*`):
 
 | Slice                | Categories used                  | Notes                              |
 |----------------------|----------------------------------|------------------------------------|
@@ -163,7 +176,7 @@ each (`src/lib/ai/prompts/*`):
 | `highlight_reel`     | all (weight ≥ 4, top 3)          | Three defining moments             |
 | `identity`           | all (top 5)                      | Synthesizes signature style        |
 
-`createSlice` (`shared.ts`):
+`createSlice` (`server/src/ai/shared.ts`):
 - Filters to relevant contributions; if fewer than 2, returns the fallback
   immediately (no API call).
 - Builds the user message: slice name, coverage, mode, tone instruction,
@@ -199,33 +212,62 @@ Future-state v2 capabilities:
 
 ## Testing topology
 
-- **`test/unit/privacy-invariants.test.ts`** — static analysis: no Prisma,
-  no `node:fs` in API routes, no local-store imports under `src/lib/ai/**`
-  or `src/app/api/**`, every API route carries a `PRIVACY` banner.
-- **`test/unit/crypto.test.ts`** — encrypt/decrypt round-trip, key
-  lifecycle.
-- **`test/unit/{contributions,wraps}.test.ts`** — Dexie CRUD via
-  `fake-indexeddb`.
-- **`test/unit/{client,classify,generate,api-classify,api-wrap}.test.ts`**
-  — AI surface mocked at the network with MSW.
+**Client (`test/`)**
+
+- **`test/unit/privacy-invariants.test.ts`** — static analysis: `src/app/api/`
+  absent; `src/lib/ai/**` imports no LLM/Azure SDK and reads no server-only env;
+  `shared/` is types-only; providers are storage-pure.
+- **`test/unit/crypto.test.ts`** — encrypt/decrypt round-trip, key lifecycle.
+- **`test/unit/{contributions,wraps}.test.ts`** — Dexie CRUD via `fake-indexeddb`.
 - **`test/component/`** — UnlockGate behavior under happy-dom.
-- **`test/integration/wrap.test.ts`** — full pipeline against MSW; live
-  variant gated by `INTEGRATION_LIVE=1`.
-- **`test/e2e/`** — Playwright verifies the three privacy invariants in a
-  real browser:
+- **`test/integration/`** — provider orchestrator smoke.
+- **`test/e2e/`** — Playwright verifies privacy invariants in a real browser:
   - `locality.spec.ts`: clear site data → fresh state.
   - `encryption.spec.ts`: raw IDB rows have no plaintext signal.
-  - `network-minimality.spec.ts`: `/api/wrap` payload contains no
-    `userId`, `id`, or `externalId`.
+  - `network-minimality.spec.ts`: enqueue payload contains no `userId`, `id`, or `externalId`.
+
+**Server (`server/test/`)**
+
+- **`server/test/unit/privacy-invariants.test.ts`** — static analysis: PRIVACY
+  banners in every function, no payload logging.
+- **`server/test/unit/{client,classify,generate}.test.ts`** — AI layer mocked
+  at the network with MSW.
+- **`server/test/integration/wrap.test.ts`** — full pipeline against MSW; live
+  variant gated by `INTEGRATION_LIVE=1`.
 
 ## Operational env vars
 
-| Var                              | Used by                          | Notes                                         |
-|----------------------------------|----------------------------------|-----------------------------------------------|
-| `ANTHROPIC_API_KEY`              | `callAnthropic`                  | Required only for the Anthropic provider.     |
-| `AZURE_FOUNDRY_PROJECT_ENDPOINT` | `callAzureFoundry`               | `https://<acct>.services.ai.azure.com/api/projects/<project>` |
-| `AZURE_FOUNDRY_API_VERSION`      | `callAzureFoundry`               | Optional global override; per-model `version` wins. |
-| `APP_ENV`                        | UI                               | Free-form environment label.                  |
-| `NEXT_PUBLIC_APP_URL`            | UI                               | Used by demo links / clipboard.               |
-| `TAURI=1`                        | `next.config.mjs`                | Switches Next to static export for the shell. |
-| `INTEGRATION_LIVE=1`             | `test/integration/wrap.test.ts`  | Bypasses MSW, hits real upstream.             |
+### Client (`.env.local`)
+
+| Var                        | Notes                                                           |
+|----------------------------|-----------------------------------------------------------------|
+| `NEXT_PUBLIC_WRAP_API_URL` | Base URL of the Functions backend. `http://localhost:7071/api` for local dev. |
+| `APP_ENV`                  | Free-form environment label shown in the UI.                    |
+| `NEXT_PUBLIC_APP_URL`      | Used by demo links / clipboard.                                 |
+| `TAURI=1`                  | Switches Next to static export for the Tauri shell.             |
+
+### Server (`server/local.settings.json` / Azure App Settings)
+
+| Var                                      | Notes                                                                          |
+|------------------------------------------|--------------------------------------------------------------------------------|
+| `WRAP_JWT_SECRET`                        | HS256 secret for signing/verifying per-install tokens. Store in Key Vault.     |
+| `ANTHROPIC_API_KEY`                      | Required for the Anthropic provider.                                           |
+| `AZURE_FOUNDRY_PROJECT_ENDPOINT`         | `https://<acct>.services.ai.azure.com/api/projects/<project>`                  |
+| `AZURE_FOUNDRY_API_VERSION`              | Optional global override; per-model `version` in `models.config.json` wins.   |
+| `AZURE_SERVICE_BUS_NAMESPACE`            | `<ns>.servicebus.windows.net` — used by the enqueue function.                  |
+| `ServiceBusConnection__fullyQualifiedNamespace` | Same namespace — used by the Service Bus trigger binding.             |
+| `AZURE_SERVICE_BUS_QUEUE_NAME`           | Default `wrap-jobs`.                                                           |
+| `AZURE_TABLES_ENDPOINT`                  | Table Storage account endpoint.                                                |
+| `AZURE_TABLES_JOBS`                      | Table name for job rows. Default `wrapJobs`.                                   |
+| `AZURE_TABLES_RESULTS`                   | Table name for result rows. Default `wrapResults`.                             |
+| `WRAP_MAX_CONCURRENCY`                   | Global in-flight cap (default `8`).                                            |
+| `WRAP_PER_INSTALL_LIMIT`                 | Per-install in-flight cap (default `1`).                                       |
+| `WRAP_RESULT_TTL_HOURS`                  | Hours before an unclaimed result is swept (default `24`).                      |
+| `WRAP_REGISTER_RATE_LIMIT_PER_HOUR`      | Max `/auth/register` calls per IP per hour (default `10`).                     |
+| `WRAP_MAX_DELIVERIES`                    | Max Service Bus delivery attempts before DLQ (default `3`).                   |
+
+### Test / CI
+
+| Var               | Notes                                                     |
+|-------------------|-----------------------------------------------------------|
+| `INTEGRATION_LIVE=1` | Bypasses MSW in `server/test/integration/wrap.test.ts`, hits real upstream. |
