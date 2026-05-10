@@ -468,6 +468,217 @@ What CI deliberately does **not** do:
 - Stems are treated as artifacts, not source: regenerate them when the
   prompt grammar changes; don't preserve them across breaking changes.
 
+## Deployment & dependencies
+
+Reference: [`Echooff3/azure-musicgen-tools`](https://github.com/Echooff3/azure-musicgen-tools).
+That repo targets Azure ML for **training** runs; Composer is an
+**inference + compose** service, so the deployment shape differs.
+Useful borrowings: GPU SKU sizing (T4 / V100 trade-off), spot-instance
+cost framing, model-weights-in-blob pattern. Things that don't carry
+over: Azure ML managed endpoints (we want a long-running FastAPI app
+that also runs FFmpeg + writes blobs, not a `score.py` scoring
+endpoint).
+
+### Hosting target
+
+**Azure Container Apps** with workload profiles, in the same resource
+group as the Node server.
+
+- **API tier**: Consumption profile (CPU only). Handles request
+  routing, JWT verification, FFmpeg compositing, blob upload. Scales
+  to zero.
+- **Worker tier**: Consumption-GPU profile —
+  `Consumption-GPU-NC8as-T4` (NVIDIA T4) — runs MusicGen. v1 ships
+  API + worker in the same container image and the same Container App
+  with min-replicas=0, max-replicas=1. The worker becomes a separate
+  Container App when concurrency demands it (Rabbit holes already
+  flag the module boundary for this split).
+
+Compute alternatives considered and rejected:
+
+- **Azure ML managed endpoints** (the reference repo's choice): right
+  for pure-inference scoring; wrong for a service that also runs FFmpeg
+  + writes blobs + holds asyncio jobs. Adds an Azure ML control plane
+  we don't otherwise need.
+- **Azure Container Instances**: supports GPU but no scale-to-zero
+  revisions or built-in ingress; we'd reinvent both.
+- **AKS**: overkill for v1.
+- **Azure Functions (Premium with GPU)**: not a real offering.
+
+### LLM path: Azure Foundry stays on the Node side
+
+Composer never calls Azure Foundry directly in v1. The shape is:
+
+```
+Composer (Python) ──HTTPS──► Node server /api/composer/direct ──Azure Foundry──► LLM
+```
+
+The Node server already authenticates to Foundry via
+`DefaultAzureCredential` (`src/lib/ai/client.ts`); Composer's only LLM
+config is the Node server's internal URL plus the user's JWT. One
+identity boundary, one model registry.
+
+If a future spec wants Composer to talk to Foundry directly (e.g. to
+remove a hop on the director-pass-2), the Python mirror is
+`azure-identity.DefaultAzureCredential` + `azure-ai-projects` —
+analogous to the Node side's `getAzureOpenAIClient`. **Explicitly out
+of scope here**; v1 keeps Foundry credentials off Composer's managed
+identity.
+
+### Container image: two variants, one Dockerfile
+
+Build via `docker build composer/ --build-arg variant=cpu|gpu`.
+
+| Variant | Base image | Use |
+|---------|------------|-----|
+| `cpu` | `python:3.12-slim-bookworm` | CI, local dev, fixture-mode tests, CPU-only fallback prod |
+| `gpu` | `nvidia/cuda:12.1.1-cudnn8-runtime-ubuntu22.04` + Python 3.12 (deadsnakes PPA) | Production worker on Consumption-GPU profile |
+
+Multi-stage layout:
+
+1. **deps**: `apt-get install` system packages, then `uv sync --frozen`.
+2. **runtime**: copy `composer/`, set non-root user, `ENV
+   COMPOSER_FIXTURE_MODE=0`, expose 8080, healthcheck `/healthz`.
+
+GPU variant additionally installs `torch==<pin>+cu121` from
+`https://download.pytorch.org/whl/cu121`. CPU variant uses the matching
+CPU torch wheel from PyPI. The torch + audiocraft pin pair is the most
+volatile dep in the tree — verify both wheels on first build and
+record the pinned versions in `composer/pyproject.toml` and the lock.
+
+### System packages (apt)
+
+Both variants:
+
+- `ffmpeg` — Composer's compositor.
+- `libsndfile1` — librosa runtime.
+- `sox`, `libsox-fmt-mp3` — audiocraft + librosa codecs.
+- `libgomp1` — numpy / torch OpenMP runtime.
+- `ca-certificates`, `curl` — TLS + healthchecks.
+
+### Python dependencies
+
+Declared in `composer/pyproject.toml`; versions pinned at
+implementation time and locked via `uv lock`. The shape:
+
+Runtime:
+- `fastapi`, `uvicorn[standard]`
+- `pydantic`, `pydantic-settings`
+- `pyjwt[crypto]` — JWT verify, HS256 to match the Node server
+- `httpx` — Node server calls
+- `azure-storage-blob`, `azure-identity`, `azure-keyvault-secrets`
+- `audiocraft` — MusicGen
+- `torch` (variant-specific wheel)
+- `transformers` (audiocraft pulls it; pin explicitly)
+- `librosa`, `soundfile`, `numpy`
+
+Dev:
+- `ruff`, `mypy`
+- `pytest`, `pytest-asyncio`, `pytest-mock`
+- `respx` — httpx test stubs for the Node server
+
+### Model weights: HuggingFace cache on Azure Files
+
+`facebook/musicgen-small` (~1.5 GB) is **not** baked into the image.
+Pulled on first cold-start into a HuggingFace cache that's mounted
+from an **Azure Files share** so weights persist across replicas:
+
+- Azure Files share: `composer-hf-cache` (5 GB quota).
+- Mount path: `/cache/huggingface`.
+- `ENV HF_HOME=/cache/huggingface TRANSFORMERS_CACHE=/cache/huggingface`.
+
+We use Azure Files (POSIX mount) rather than Blob (object semantics)
+because HuggingFace's cache layout assumes a filesystem. The reference
+repo uses Blob for **finished training artifacts** — a different
+access pattern. The cache survives redeploys, scale events, and SKU
+changes.
+
+### Blob storage (output)
+
+Outputs land in a dedicated storage account, separate from any other
+application data:
+
+- Storage account: existing or new (small marginal cost).
+- Container: `composer-output` (private; access via signed URLs only).
+- Lifecycle policy: **delete blobs ≥ 24h old**, enforced at the
+  storage layer — so a Composer bug can't retain user data past TTL.
+- Access: Container App's managed identity has Storage Blob Data
+  Contributor scoped to that container only.
+
+### Key Vault & managed identity
+
+Composer's Container App is assigned a **system-assigned managed
+identity** with these grants:
+
+| Grant | Resource | Purpose |
+|-------|----------|---------|
+| Storage Blob Data Contributor | `composer-output` container | Write MP4s + manifests, mint signed URLs |
+| Storage File Data SMB Share Contributor | `composer-hf-cache` share | Write to HF cache on first cold-start |
+| Key Vault Secrets User | shared Key Vault (`wrap-secrets`) | Read JWT signing secret |
+| Cognitive Services User | Foundry resource | **Not granted in v1**. Only if a future spec moves the LLM path into Composer. |
+
+Secrets read at boot via `azure-identity.DefaultAzureCredential`:
+
+- `JWT_SIGNING_SECRET` — shared with Node server. Spec 20's `kid` map
+  drops in once that lands.
+- `NODE_SERVER_URL` — internal HTTPS endpoint of the Node server's
+  `/api/composer/direct` route.
+- No Anthropic or Foundry keys on Composer's identity in v1.
+
+### Azure resources summary
+
+| Resource | Notes |
+|----------|-------|
+| Container Apps Environment | Existing or new; must enable workload profiles + Consumption-GPU profile |
+| Container App: `composer` | Min replicas 0, max 1 in v1; ingress external HTTPS |
+| Storage Account | Either reuse the wrap server's or provision new — output container is namespaced |
+| Blob container: `composer-output` | 24h lifecycle policy |
+| Azure Files share: `composer-hf-cache` | 5 GB |
+| ACR | Reuse the wrap server's registry |
+| Key Vault: `wrap-secrets` | Reuse the Node server's |
+| Managed Identity (system-assigned) | RBAC grants per the table above |
+
+### Build & deploy
+
+Following spec 14's pattern: build → push → deploy is operator-driven,
+not auto-merge.
+
+1. `pnpm composer:build` (wraps `docker build composer/ --build-arg variant=gpu -t composer:<sha>`).
+2. `pnpm composer:push` (`az acr login` + `docker push <ACR>/composer:<sha>`).
+3. `az containerapp update --name composer --image <ACR>/composer:<sha>`.
+4. Smoke: `curl https://composer.../healthz` → 200; one fixture job
+   end-to-end.
+
+Documented in `tasks/runbooks/composer-deploy.md`. CI builds the CPU
+image and pushes nothing (see Testing → CI: per-PR).
+
+### Cost envelope (reference-grade)
+
+Drawn loosely from `azure-musicgen-tools`'s reported numbers, adjusted
+for inference rather than training. Not a contract; revisit after the
+first weeks of real usage.
+
+- API tier (Consumption, scale-to-zero): ~$0 idle.
+- GPU worker (Consumption-GPU T4, scale-to-zero): ~$0 idle; ~$0.50/h
+  active. A 10-slice wrap is ~10 stems × 10–30 s each on T4 ≈ 2–5 min
+  active GPU time, so ~$0.02–$0.05 per wrap in GPU.
+- Storage + Key Vault baseline: ~$5/month.
+- Azure Files HF cache (5 GB): < $1/month.
+- Outbound bandwidth: dominated by MP4 download; ~$0.05 per 1 GB
+  egress, so a single user generating ~daily wraps stays under $1/mo.
+
+### Out of scope here
+
+- **Bicep / Terraform IaC** for Composer's resources. v1 deploy is
+  `az` CLI from the runbook, mirroring spec 14. A follow-up infra
+  spec adds IaC.
+- **Auto-deploy on tag / merge.** Manual deploy only.
+- **Multi-region**. Single region matches the rest of the stack.
+- **Reserved or savings-plan GPU.** Consumption-GPU fits spiky use.
+- **A100 / V100 SKUs.** T4 is sufficient for `musicgen-small`; larger
+  models or `musicgen-medium` may push us up the SKU ladder, but
+  that's a separate model-quality decision.
+
 ## Verification
 
 Functional:
