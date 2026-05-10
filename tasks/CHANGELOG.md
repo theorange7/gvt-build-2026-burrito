@@ -21,4 +21,7 @@ on the same day share one date heading.
 
 ---
 
+## 2026-05-10
+- **Spec 01 — Polling-success data loss when idle-locked**. Started implementation: pause polling when idle-locked, dispatch store-unlocked event on unlock.
+
 _No completed specs yet._
