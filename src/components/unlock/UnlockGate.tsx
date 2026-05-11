@@ -70,6 +70,7 @@ export function UnlockGate({ children }: { children: React.ReactNode }) {
       setPassphrase('');
       setConfirm('');
       setStatus('unlocked');
+      window.dispatchEvent(new CustomEvent('store-unlocked'));
       queryClient.invalidateQueries({ queryKey: ['contributions'] });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to set up encryption.');
@@ -103,6 +104,7 @@ export function UnlockGate({ children }: { children: React.ReactNode }) {
       }
       setPassphrase('');
       setStatus('unlocked');
+      window.dispatchEvent(new CustomEvent('store-unlocked'));
       queryClient.invalidateQueries({ queryKey: ['contributions'] });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to unlock.');

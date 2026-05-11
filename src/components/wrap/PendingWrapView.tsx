@@ -36,6 +36,13 @@ export function PendingWrapView({ id, mode }: { id: string; mode: WrapMode }) {
           </div>
         ) : null}
 
+        {state.phase === 'paused-locked' ? (
+          <div className="mt-6 text-sm text-white/65">
+            <p>Your wrap is still generating.</p>
+            <p className="mt-1">Unlock your local store to resume.</p>
+          </div>
+        ) : null}
+
         {state.phase === 'failed' ? (
           <div className="mt-6 space-y-4 text-sm text-white/65">
             <p className="text-[rgb(255,193,168)]">{state.error}</p>
