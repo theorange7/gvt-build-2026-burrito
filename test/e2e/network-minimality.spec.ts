@@ -40,7 +40,7 @@ test.describe('network minimality', () => {
     await fields.nth(1).fill('network-test-passphrase');
     await page.getByRole('button', { name: /set passphrase/i }).click();
     await page.getByRole('button', { name: /try with demo data/i }).click();
-    await expect(page.getByText(/total signals/i)).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText(/contributions caught/i)).toBeVisible({ timeout: 15_000 });
 
     await page.getByRole('button', { name: /wrap it/i }).click();
     await page.getByRole('button', { name: /^generate$/i }).click();

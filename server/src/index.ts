@@ -12,6 +12,7 @@ import './functions/authRegister';
 import './functions/classify';
 import './functions/import';
 import './functions/meReset';
+import './functions/health';
 import './functions/wrapEnqueue';
 import './functions/wrapGet';
 import './functions/wrapWorker';

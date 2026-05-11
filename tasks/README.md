@@ -91,7 +91,7 @@ Post-merge (UX + operational hardening):
 | 12 | Encrypt `pendingWrapRequests` | Shaped — ready | client | small |
 | 13 | Graceful "wrap not on this device" | Shaped — ready | client | small |
 | 20 | JWT secret rotation (`kid` + key map) | Done — 2026-05-10 | server | medium |
-| 21 | Automated UAT suite (Playwright) | Shaped — ready | both | medium |
+| 21 | Automated UAT suite (Playwright) | Done — 2026-05-11 | both | medium |
 | 22 | Backend metrics & observability (App Insights + Azure Monitor) | Shaped — ready | server + infra | medium |
 
 Future / new features:

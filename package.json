@@ -13,6 +13,8 @@
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
     "test:e2e:install": "playwright install chromium",
+    "test:uat": "playwright test test/e2e/uat",
+    "test:uat:full": "UAT_FULL=1 playwright test test/e2e/uat",
     "export:demo": "node scripts/export-demo.mjs",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
