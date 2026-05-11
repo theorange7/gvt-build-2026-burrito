@@ -1,4 +1,5 @@
 node_modules/
 dist/
+wrap-server.zip
 local.settings.json
 .azure/

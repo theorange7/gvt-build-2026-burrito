@@ -4,6 +4,8 @@
   "private": true,
   "main": "src/index.ts",
   "scripts": {
+    "build": "node scripts/build-shared.mjs && tsc -p tsconfig.build.json && node scripts/copy-assets.mjs",
+    "package": "pnpm build && node scripts/zip-artifact.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",

@@ -47,6 +47,12 @@ jobs:
       - name: Build
         run: pnpm build
 
+      - name: Server typecheck
+        run: pnpm -C server typecheck
+
+      - name: Server build
+        run: pnpm -C server build
+
   e2e:
     name: Playwright e2e
     runs-on: ubuntu-latest
