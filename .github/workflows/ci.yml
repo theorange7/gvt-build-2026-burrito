@@ -47,6 +47,9 @@ jobs:
       - name: Build
         run: pnpm build
 
+      - name: Install server dependencies
+        run: pnpm -C server install --frozen-lockfile
+
       - name: Server typecheck
         run: pnpm -C server typecheck
 
