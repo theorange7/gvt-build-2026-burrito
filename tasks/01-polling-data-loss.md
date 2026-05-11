@@ -1,6 +1,6 @@
 # Spec 1 — Polling-success data loss when idle-locked
 
-**Status**: Shaped — ready to pick up
+**Status**: In progress
 **Branch**: client (with optional small server-side companion noted below)
 **Appetite**: small (≤ 1 day; realistically ~half day)
 **Last shaped**: 2026-05-09
