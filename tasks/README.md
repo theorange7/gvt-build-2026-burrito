@@ -90,7 +90,7 @@ Post-merge (UX + operational hardening):
 | 11 | Pause polling when hidden / offline (+ transient vs terminal errors) | Shaped — ready | client | small |
 | 12 | Encrypt `pendingWrapRequests` | Shaped — ready | client | small |
 | 13 | Graceful "wrap not on this device" | Shaped — ready | client | small |
-| 20 | JWT secret rotation (`kid` + key map) | Shaped — ready | server | medium |
+| 20 | JWT secret rotation (`kid` + key map) | Done — 2026-05-10 | server | medium |
 | 21 | Automated UAT suite (Playwright) | Shaped — ready | both | medium |
 
 Future / new features:
