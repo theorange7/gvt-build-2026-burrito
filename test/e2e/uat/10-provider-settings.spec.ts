@@ -15,14 +15,15 @@ test.describe('UAT-010 — provider settings', () => {
   test('settings tab shows exactly one provider card (GitLab Dedicated)', async ({ page }) => {
     await page.getByRole('button', { name: /settings/i }).click();
     await expect(page.getByText(/gitlab dedicated/i)).toBeVisible({ timeout: 5_000 });
-    // Only one provider link card
-    const providerCards = page.getByText(/\+ link/i);
+    // Only one provider link card — use role="button" filter to avoid matching
+    // nested parent elements that also contain "+ LINK" in their textContent.
+    const providerCards = page.getByRole('button').filter({ hasText: /\+ link/i });
     await expect(providerCards).toHaveCount(1);
   });
 
   test('clicking GitLab Dedicated card opens connect modal', async ({ page }) => {
     await page.getByRole('button', { name: /settings/i }).click();
-    await page.getByText(/gitlab dedicated/i).click();
+    await page.getByRole('button', { name: /gitlab dedicated/i }).click();
     // Modal should be open with instance URL input
     await expect(page.getByPlaceholder(/instance url/i).or(page.getByPlaceholder(/https:\/\/gitlab/i))).toBeVisible({ timeout: 5_000 });
   });

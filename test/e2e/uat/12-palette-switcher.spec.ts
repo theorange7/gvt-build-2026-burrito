@@ -14,14 +14,14 @@ test.describe('UAT-012 — palette switcher', () => {
 
   test('palette switch works in session (GovTech SG)', async ({ page }) => {
     await page.getByRole('button', { name: /switch palette/i }).click();
-    await page.getByText(/govtech sg/i).click();
+    await page.getByRole('button', { name: /govtech sg/i }).click();
     // After switching, page should still be usable (no crash)
     await expect(page.getByText(/contributions caught/i)).toBeVisible({ timeout: 5_000 });
   });
 
   test('palette reverts to default (Tomato) after reload (documented gap KG-4)', async ({ page }) => {
     await page.getByRole('button', { name: /switch palette/i }).click();
-    await page.getByText(/govtech sg/i).click();
+    await page.getByRole('button', { name: /govtech sg/i }).click();
 
     await page.reload();
     await page.getByPlaceholder(/passphrase/i).fill(PASS);

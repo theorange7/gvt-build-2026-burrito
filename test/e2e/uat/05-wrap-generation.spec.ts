@@ -51,7 +51,7 @@ test.describe('UAT-008 — wrap generation, year-end mode', () => {
 
   test('year-end wrap enqueues and payload has correct mode and window', async ({ page }) => {
     await page.getByRole('button', { name: /wrap it/i }).click();
-    await page.getByText(/year.end/i).click();
+    await page.getByRole('button', { name: /year.end/i }).click();
     await expect(page.getByText(/year.end automatically uses the full 2025 calendar year/i)).toBeVisible();
     await page.getByRole('button', { name: /^generate$/i }).click();
     await expect(page.getByRole('link', { name: /view status/i })).toBeVisible({ timeout: 30_000 });
