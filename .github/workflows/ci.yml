@@ -68,6 +68,9 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
 
+      - name: Install root dependencies
+        run: pnpm install --frozen-lockfile
+
       - name: Install server dependencies
         working-directory: server
         run: pnpm install --frozen-lockfile
