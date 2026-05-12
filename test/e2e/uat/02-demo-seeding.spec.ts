@@ -13,12 +13,19 @@ test.describe('UAT-002 — demo seeding', () => {
 
   test('clicking Try with demo data loads 134 contributions', async ({ page }) => {
     await page.getByRole('button', { name: /try with demo data/i }).click();
-    await expect(page.getByText('134')).toBeVisible({ timeout: 15_000 });
+    // Wait for the first-launch panel (which also contains "134") to go away,
+    // then confirm the contributions counter shows 134.
+    await page
+      .getByRole('button', { name: /try with demo data/i })
+      .waitFor({ state: 'hidden', timeout: 15_000 });
+    await expect(page.getByText('134')).toBeVisible({ timeout: 5_000 });
   });
 
   test('contributions table has 134 rows after seeding', async ({ page }) => {
     await page.getByRole('button', { name: /try with demo data/i }).click();
-    await expect(page.getByText('134')).toBeVisible({ timeout: 15_000 });
+    await page
+      .getByRole('button', { name: /try with demo data/i })
+      .waitFor({ state: 'hidden', timeout: 15_000 });
 
     const count = await page.evaluate(async () => {
       const open = indexedDB.open('wrapped-for-work');
@@ -40,7 +47,9 @@ test.describe('UAT-002 — demo seeding', () => {
 
   test('contribution rows are encrypted (iv/ct present, no plaintext signal)', async ({ page }) => {
     await page.getByRole('button', { name: /try with demo data/i }).click();
-    await expect(page.getByText('134')).toBeVisible({ timeout: 15_000 });
+    await page
+      .getByRole('button', { name: /try with demo data/i })
+      .waitFor({ state: 'hidden', timeout: 15_000 });
 
     const row = await page.evaluate(async () => {
       const open = indexedDB.open('wrapped-for-work');
@@ -67,7 +76,9 @@ test.describe('UAT-002 — demo seeding', () => {
 
   test('meta seeded flag is true after seeding', async ({ page }) => {
     await page.getByRole('button', { name: /try with demo data/i }).click();
-    await expect(page.getByText('134')).toBeVisible({ timeout: 15_000 });
+    await page
+      .getByRole('button', { name: /try with demo data/i })
+      .waitFor({ state: 'hidden', timeout: 15_000 });
 
     const seeded = await page.evaluate(async () => {
       const open = indexedDB.open('wrapped-for-work');

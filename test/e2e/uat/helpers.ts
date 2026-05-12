@@ -41,7 +41,12 @@ export async function unlockWithPassphrase(page: Page, pass: string): Promise<vo
 
 export async function seedDemoData(page: Page): Promise<void> {
   await page.getByRole('button', { name: /try with demo data/i }).click();
-  await page.getByText('134').waitFor({ timeout: 15_000 });
+  // Wait for the button (inside the first-launch panel) to disappear — signals seeding complete.
+  // Don't use getByText('134') here: the first-launch panel itself contains "134 mocked
+  // contributions." before seeding starts, causing a false-positive premature match.
+  await page
+    .getByRole('button', { name: /try with demo data/i })
+    .waitFor({ state: 'hidden', timeout: 15_000 });
 }
 
 export async function stubBackend(

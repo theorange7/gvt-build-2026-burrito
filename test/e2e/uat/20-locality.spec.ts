@@ -31,6 +31,9 @@ test.describe('UAT-020 — locality (privacy invariant)', () => {
     await fields.nth(1).fill(PASS);
     await page.getByRole('button', { name: /set passphrase/i }).click();
     await expect(page.getByText(/contributions caught/i)).toBeVisible({ timeout: 10_000 });
+    // Dismiss the first-launch panel (which itself contains "134 mocked contributions."
+    // text) before asserting count is 0 — otherwise getByText('134') matches the panel.
+    await page.getByRole('button', { name: /start fresh/i }).click();
     // Count should be 0 (not 134)
     await expect(page.getByText('134')).toHaveCount(0);
 

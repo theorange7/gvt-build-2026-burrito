@@ -15,6 +15,14 @@ test.describe('UAT-016 — stale wrap link', () => {
 
   test('unknown wrap id shows not-on-device panel with back link', async ({ page }) => {
     await page.goto('/wrap?id=aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
+    // page.goto() triggers beforeunload which clears the in-memory key.
+    // Re-unlock if the passphrase gate appears.
+    const field = page.getByPlaceholder(/passphrase/i);
+    if (await field.isVisible({ timeout: 2_000 }).catch(() => false)) {
+      await field.fill(PASS);
+      await page.getByRole('button', { name: /unlock/i }).click();
+      await field.waitFor({ state: 'hidden', timeout: 10_000 });
+    }
     await expect(page.getByText(/this wrap isn't on this device/i)).toBeVisible({ timeout: 10_000 });
     await expect(page.getByRole('link', { name: /back to dashboard/i })).toBeVisible();
   });
@@ -26,6 +34,14 @@ test.describe('UAT-016 — stale wrap link', () => {
     });
 
     await page.goto('/wrap?id=aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
+    // page.goto() triggers beforeunload which clears the in-memory key.
+    // Re-unlock if the passphrase gate appears.
+    const field2 = page.getByPlaceholder(/passphrase/i);
+    if (await field2.isVisible({ timeout: 2_000 }).catch(() => false)) {
+      await field2.fill(PASS);
+      await page.getByRole('button', { name: /unlock/i }).click();
+      await field2.waitFor({ state: 'hidden', timeout: 10_000 });
+    }
     await expect(page.getByText(/this wrap isn't on this device/i)).toBeVisible({ timeout: 10_000 });
     // No polling should have fired since there's no pending row
     expect(apiRequests.filter((u) => u.includes('aaaaaaaa'))).toHaveLength(0);
