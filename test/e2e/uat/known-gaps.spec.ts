@@ -45,15 +45,13 @@ const PASS = 'correct horse battery staple';
 // 04-manual-entry.spec.ts client-only test confirms success. No signal needed.
 
 // ---------------------------------------------------------------------------
-// KG-3: Wrap viewer renders mock data, not real sliceContent
+// KG-3: Wrap viewer renders mock data, not real sliceContent — RESOLVED
 // ---------------------------------------------------------------------------
-// WrapExperience renders WrapPhone/WrapDesktop without forwarding sliceContent.
-// Both show hardcoded mock content. When fixed, the stub's "Stub headline" text
-// should appear instead of the mock string.
-// Action when "unexpectedly passed": remove this test.fail() block and confirm
-// 06-wrap-viewer.spec.ts passes with a real sliceContent assertion.
+// WrapViewer.tsx passes wrap.sliceContent as slices to WrapExperience, which
+// forwards it to WrapDesktop/WrapPhone. WrapDesktop renders slice.headline.
+// Stub returns "Stub headline" which is now visible in the wrap viewer.
 
-test.fail('KG-3: Wrap viewer renders real sliceContent instead of hardcoded mock (regression signal)', async ({ page }) => {
+test('KG-3: Wrap viewer renders real sliceContent instead of hardcoded mock (regression signal)', async ({ page }) => {
   await stubBackend(page);
   await page.goto('/dashboard');
   await clearStorage(page);
@@ -73,15 +71,13 @@ test.fail('KG-3: Wrap viewer renders real sliceContent instead of hardcoded mock
 });
 
 // ---------------------------------------------------------------------------
-// KG-5: Pending-wrap polling does not pause on lock
+// KG-5: Pending-wrap polling does not pause on lock — RESOLVED
 // ---------------------------------------------------------------------------
-// usePendingWrap does not check hasActiveKey() before polling or saving.
-// When fixed: simulating a lock while the wrap page is open should prompt unlock,
-// not show phase:failed.
-// Action when "unexpectedly passed": remove this test.fail() block and confirm
-// 14-pending-key-loss.spec.ts has a positive passing test for the unlock prompt.
+// usePendingWrap checks hasActiveKey() before each poll tick. When the key is
+// null (cleared by beforeunload), it sets phase:'paused-locked'.
+// PendingWrapView renders "Unlock your local store to resume." for that phase.
 
-test.fail('KG-5: Lock during pending wrap shows unlock prompt not failure (regression signal)', async ({ page }) => {
+test('KG-5: Lock during pending wrap shows unlock prompt not failure (regression signal)', async ({ page }) => {
   await stubBackend(page, { pollStatus: 'queued' });
   await page.goto('/dashboard');
   await clearStorage(page);
