@@ -36,32 +36,13 @@ import { clearStorage, setupPassphrase, seedDemoData, stubBackend } from './help
 const PASS = 'correct horse battery staple';
 
 // ---------------------------------------------------------------------------
-// KG-1: ManualInputForm classify call endpoint
+// KG-1: ManualInputForm classify call endpoint — RESOLVED
 // ---------------------------------------------------------------------------
-// The uat-plan documented ManualInputForm calling fetch('/api/classify') as a relative
-// URL. Current build already imports classify() from src/lib/ai/classify which correctly
-// calls backendUrl('/classify'). With stubBackend, the classify succeeds and the green
-// banner appears. This test.fail() will therefore report "unexpectedly passed" immediately,
-// signalling that KG-1 has been resolved.
-// Action when "unexpectedly passed": remove this test.fail() block and confirm
-// 04-manual-entry.spec.ts passes cleanly.
-
-test.fail('KG-1: ManualInputForm calls classify with correct host (regression signal)', async ({ page }) => {
-  await stubBackend(page);
-  await page.goto('/dashboard');
-  await clearStorage(page);
-  await page.goto('/dashboard');
-  await setupPassphrase(page, PASS);
-  await seedDemoData(page);
-
-  await page.getByRole('button', { name: /add contribution manually/i }).click();
-  await page.getByPlaceholder(/describe a contribution/i).fill(
-    'Led the design review for the new payment-rail v2 migration plan.',
-  );
-  await page.getByRole('button', { name: /add contribution/i }).click();
-  // If this PASSES: classify hit the correct endpoint (KG-1 fixed).
-  await expect(page.getByText(/contribution saved/i)).toBeVisible({ timeout: 10_000 });
-});
+// The uat-plan documented ManualInputForm calling fetch('/api/classify') as a
+// relative URL. The current build already imports classify() from
+// src/lib/ai/classify.ts which correctly calls backendUrl('/classify').
+// test.fail() was removed because this gap is no longer present — the
+// 04-manual-entry.spec.ts client-only test confirms success. No signal needed.
 
 // ---------------------------------------------------------------------------
 // KG-3: Wrap viewer renders mock data, not real sliceContent
