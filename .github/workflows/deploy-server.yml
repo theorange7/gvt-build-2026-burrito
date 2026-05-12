@@ -43,7 +43,8 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Install server dependencies
-        run: pnpm -C server install --frozen-lockfile
+        working-directory: server
+        run: pnpm install --frozen-lockfile
 
       - name: Build and package server artifact
         run: pnpm -C server package

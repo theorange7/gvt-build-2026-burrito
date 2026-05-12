@@ -69,7 +69,8 @@ jobs:
           cache: pnpm
 
       - name: Install server dependencies
-        run: pnpm -C server install --frozen-lockfile
+        working-directory: server
+        run: pnpm install --frozen-lockfile
 
       - name: Server typecheck
         run: pnpm -C server typecheck
