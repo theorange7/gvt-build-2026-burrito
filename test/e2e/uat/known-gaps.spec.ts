@@ -67,7 +67,7 @@ test('KG-3: Wrap viewer renders real sliceContent instead of hardcoded mock (reg
   // Wait for poll to resolve (stub returns complete immediately)
   await page.waitForTimeout(3000);
   // If fixed: stub's sliceContent headlines are rendered
-  await expect(page.getByText(/stub headline/i)).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByRole('heading', { name: /stub headline/i })).toBeVisible({ timeout: 10_000 });
 });
 
 // ---------------------------------------------------------------------------
@@ -94,8 +94,7 @@ test('KG-5: Lock during pending wrap shows unlock prompt not failure (regression
   // Simulate lock via beforeunload
   await page.evaluate(() => window.dispatchEvent(new Event('beforeunload')));
 
-  // If fixed: an unlock prompt appears instead of staying in queued/failed state
-  await expect(
-    page.getByText(/unlock/i).or(page.getByRole('heading', { name: /welcome back/i })),
-  ).toBeVisible({ timeout: 10_000 });
+  // If fixed: an unlock prompt appears instead of staying in queued/failed state.
+  // After beforeunload clears the key, UnlockGate shows "Welcome back." on next mount.
+  await expect(page.getByRole('heading', { name: /welcome back/i })).toBeVisible({ timeout: 10_000 });
 });

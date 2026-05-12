@@ -48,6 +48,8 @@ test.describe('UAT-003 — lock / unlock round-trip', () => {
     await page.reload();
     await page.getByPlaceholder(/passphrase/i).fill(PASS);
     await page.getByRole('button', { name: /unlock/i }).click();
-    await expect(page.getByText('134')).toBeVisible({ timeout: 10_000 });
+    // Wait for the contributions banner first, then check the count is 134.
+    await page.getByText(/contributions caught/i).waitFor({ timeout: 15_000 });
+    await expect(page.getByText('134', { exact: true })).toBeVisible({ timeout: 5_000 });
   });
 });

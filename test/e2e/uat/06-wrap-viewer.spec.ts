@@ -15,14 +15,12 @@ test.describe('UAT-006 — wrap viewer', () => {
 
   test('navigating to wrap?id=unknown shows not-on-device panel', async ({ page }) => {
     await page.goto('/wrap?id=aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
-    // page.goto() triggers beforeunload which clears the in-memory key.
-    // Re-unlock if the passphrase gate appears.
+    // page.goto() always triggers beforeunload → always clears the in-memory key.
     const field = page.getByPlaceholder(/passphrase/i);
-    if (await field.isVisible({ timeout: 2_000 }).catch(() => false)) {
-      await field.fill(PASS);
-      await page.getByRole('button', { name: /unlock/i }).click();
-      await field.waitFor({ state: 'hidden', timeout: 10_000 });
-    }
+    await field.waitFor({ state: 'visible', timeout: 10_000 });
+    await field.fill(PASS);
+    await page.getByRole('button', { name: /unlock/i }).click();
+    await field.waitFor({ state: 'hidden', timeout: 10_000 });
     await expect(page.getByText(/this wrap isn't on this device/i)).toBeVisible({ timeout: 10_000 });
     await expect(page.getByRole('link', { name: /back to dashboard/i })).toBeVisible();
   });

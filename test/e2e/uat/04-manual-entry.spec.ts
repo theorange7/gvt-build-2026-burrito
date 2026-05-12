@@ -19,7 +19,7 @@ test.describe('UAT-004 — manual contribution entry (client-only, stub backend)
     await page.getByPlaceholder(/describe a contribution/i).fill(
       'Led the design review for the new payment-rail v2 migration plan.',
     );
-    await page.getByRole('button', { name: /add contribution/i }).click();
+    await page.getByRole('button', { name: 'Add Contribution', exact: true }).click();
     // With stub backend returning a valid classify response, save succeeds
     await expect(page.getByText(/contribution saved/i)).toBeVisible({ timeout: 10_000 });
   });
@@ -41,7 +41,7 @@ test.describe('UAT-004 — manual contribution entry (full-stack)', () => {
     await page.getByPlaceholder(/describe a contribution/i).fill(
       'Led the design review for the new payment-rail v2 migration plan.',
     );
-    await page.getByRole('button', { name: /add contribution/i }).click();
+    await page.getByRole('button', { name: 'Add Contribution', exact: true }).click();
     await expect(page.getByText(/contribution saved/i)).toBeVisible({ timeout: 15_000 });
   });
 });
