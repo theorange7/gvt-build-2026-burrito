@@ -1,0 +1,73 @@
+name: Deploy server
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+      function_app_name:
+        description: Azure Function App name
+        required: true
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    name: Build and deploy to ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: ${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955  # v4.3.0
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320  # v4.4.0
+        with:
+          version: 10
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4.4.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install root dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install server dependencies
+        run: pnpm -C server install --frozen-lockfile
+
+      - name: Build and package server artifact
+        run: pnpm -C server package
+
+      - name: Azure login (OIDC)
+        uses: azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5  # v2.3.0
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy zip to Azure Functions
+        run: |
+          az functionapp deployment source config-zip \
+            --name "${{ inputs.function_app_name }}" \
+            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+            --src server/wrap-server.zip
+
+      - name: Smoke test
+        run: |
+          APP_URL="https://${{ inputs.function_app_name }}.azurewebsites.net"
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$APP_URL/api/auth/register" -X POST -H "Content-Type: application/json" -d '{}')
+          if [[ "$STATUS" != "200" && "$STATUS" != "400" && "$STATUS" != "422" ]]; then
+            echo "Smoke test failed: /api/auth/register returned HTTP $STATUS"
+            exit 1
+          fi
+          echo "Smoke test passed (HTTP $STATUS)"

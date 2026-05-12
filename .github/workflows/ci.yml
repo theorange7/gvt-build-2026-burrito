@@ -3,33 +3,36 @@ name: CI
 on:
   push:
     branches: [main]
-  # Run on PRs to any base branch so stacked PRs (e.g. client → server → main)
-  # also get CI. Without this, only PRs targeting main trigger the workflow.
   pull_request:
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 env:
   ANTHROPIC_API_KEY: test-stubbed-key
 
 concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
-  unit:
-    name: Lint, typecheck, unit + integration tests
+  client:
+    name: Client (lint, typecheck, test, build)
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955  # v4.3.0
+        with:
+          persist-credentials: false
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320  # v4.4.0
         with:
           version: 10
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4.4.0
         with:
-          node-version: 22
+          node-version-file: .nvmrc
           cache: pnpm
 
       - name: Install dependencies
@@ -47,11 +50,32 @@ jobs:
       - name: Build
         run: pnpm build
 
+  server:
+    name: Server (typecheck, test, build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955  # v4.3.0
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320  # v4.4.0
+        with:
+          version: 10
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4.4.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
       - name: Install server dependencies
         run: pnpm -C server install --frozen-lockfile
 
       - name: Server typecheck
         run: pnpm -C server typecheck
+
+      - name: Server tests
+        run: pnpm -C server test
 
       - name: Server build
         run: pnpm -C server build
@@ -60,21 +84,29 @@ jobs:
     name: Playwright e2e
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    needs: unit
+    needs: [client]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955  # v4.3.0
+        with:
+          persist-credentials: false
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320  # v4.4.0
         with:
           version: 10
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4.4.0
         with:
-          node-version: 22
+          node-version-file: .nvmrc
           cache: pnpm
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4.3.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ hashFiles('pnpm-lock.yaml') }}
 
       - name: Install Playwright browsers
         run: pnpm test:e2e:install
@@ -84,7 +116,7 @@ jobs:
 
       - name: Upload UI screenshots
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
         with:
           name: ui-screenshots
           path: screenshots/
@@ -93,34 +125,56 @@ jobs:
 
       - name: Upload Playwright report
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
         with:
           name: playwright-report
           path: playwright-report/
           retention-days: 7
 
-  ai-live-smoke:
-    name: AI live smoke (manual)
-    if: github.event_name == 'workflow_dispatch'
+  terraform-validate:
+    name: Terraform validate
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-    env:
-      INTEGRATION_LIVE: '1'
-      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
+      - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955  # v4.3.0
         with:
-          version: 10
+          persist-credentials: false
 
-      - uses: actions/setup-node@v4
+      - uses: dorny/paths-filter@d1c1ffe0248fe513906c8e24db8ea791d46f8590  # v3.0.3
+        id: filter
         with:
-          node-version: 22
-          cache: pnpm
+          filters: |
+            infra:
+              - 'infra/**'
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd  # v3.1.2
+        if: steps.filter.outputs.infra == 'true'
 
-      - name: Run live AI smoke
-        run: pnpm ai:test:live
+      - name: Terraform fmt check
+        if: steps.filter.outputs.infra == 'true'
+        working-directory: infra
+        run: terraform fmt -check
+
+      - name: Terraform init
+        if: steps.filter.outputs.infra == 'true'
+        working-directory: infra
+        run: terraform init -backend=false
+
+      - name: Terraform validate
+        if: steps.filter.outputs.infra == 'true'
+        working-directory: infra
+        run: terraform validate
+
+  status:
+    name: CI status
+    runs-on: ubuntu-latest
+    needs: [client, server, e2e, terraform-validate]
+    if: always()
+    steps:
+      - name: Report status
+        run: |
+          if [[ "${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}" == 'true' ]]; then
+            echo "One or more required jobs failed or were cancelled."
+            exit 1
+          fi
+          echo "All required jobs passed or were skipped."

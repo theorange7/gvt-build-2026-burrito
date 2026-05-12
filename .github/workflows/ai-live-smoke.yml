@@ -1,0 +1,36 @@
+name: AI live smoke
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    name: AI live smoke test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: ai-live
+    env:
+      INTEGRATION_LIVE: '1'
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    steps:
+      - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955  # v4.3.0
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320  # v4.4.0
+        with:
+          version: 10
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4.4.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install server dependencies
+        run: pnpm -C server install --frozen-lockfile
+
+      - name: Run live AI smoke
+        run: pnpm -C server ai:test:live
