@@ -99,6 +99,7 @@ Future / new features:
 |----|-------|--------|--------|----------|
 | 30 | Composer — music-synced video render service | Shaped — ready | composer + server + client | large |
 | 40 | Tauri 2 macOS shell bootstrap | Shaped — ready | client | medium |
+| 51 | Reset (clear data) and de-register (forget passphrase) | Shaped — ready | both | medium |
 
 ## How an agent should use this directory
 
