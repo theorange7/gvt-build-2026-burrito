@@ -98,6 +98,7 @@ Future / new features:
 | ID | Title | Status | Branch | Appetite |
 |----|-------|--------|--------|----------|
 | 30 | Composer — music-synced video render service | Shaped — ready | composer + server + client | large |
+| 31 | Shareable highlight wheels (public bundle + revoke) | Shaped — ready | both | large |
 | 40 | Tauri 2 macOS shell bootstrap | Shaped — ready | client | medium |
 
 ## How an agent should use this directory
