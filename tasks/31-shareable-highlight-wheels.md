@@ -206,14 +206,16 @@ template already includes a runtime check:
 ```
 
 This HEAD is the **one** allowed network call from the bundle. It is
-same-origin, no body, no identifiers, and tolerates offline (the link
-stays hidden). The static-analysis test allows exactly this one fetch via
-an allowlisted pattern; everything else is forbidden.
+anonymous, same-origin, no body, no identifiers on the wire, and
+tolerates offline (the probe fails, the link stays hidden, the rest of
+the page renders). The static-analysis test allows exactly this one
+fetch via an allowlisted pattern; everything else is forbidden.
 
-If you decide the HEAD probe is too much network for v1 because it
-violates "offline-viewable", remove the probe and have spec 30 do an
-explicit "republish bundle to flip the flag" step instead. Either is fine;
-pick one in implementation and document the choice in `## Done`.
+This is a deliberate v1 decision in favour of loose coupling between
+spec 31 and spec 30: when the composer lands, it only has to write the
+MP4 into the slug folder — it does not need to re-render and re-upload
+`index.html`. The cost is exactly one allowlisted HEAD request from an
+otherwise zero-network bundle. Do not remove the probe in this spec.
 
 ## Rabbit holes
 
