@@ -1,0 +1,14 @@
+# Default owner for everything not matched below
+* @theorange7
+
+# Crypto and auth — high-sensitivity paths
+/src/lib/local-store/crypto.ts @theorange7
+
+# Server functions and all Azure backend code
+/server/src/ @theorange7
+
+# Infrastructure (Terraform)
+/infra/ @theorange7
+
+# CI/CD and security configs
+/.github/ @theorange7

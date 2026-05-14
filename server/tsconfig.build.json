@@ -1,0 +1,17 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "outDir": "./dist",
+    "declaration": false,
+    "sourceMap": true,
+    "rootDir": "./src",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "paths": {
+      "@wrapped/shared": ["./dist/_shared"]
+    }
+  },
+  "include": ["src/**/*"],
+  "exclude": ["src/**/*.test.ts", "test/**"]
+}

@@ -80,7 +80,7 @@ Pre-merge (recommended before the stacked PRs land):
 | ID | Title | Status | Branch | Appetite |
 |----|-------|--------|--------|----------|
 | 1  | Polling-success data loss when idle-locked | In progress | client | small |
-| 14 | Server build + deploy artifact | Shaped — ready | server | small |
+| 14 | Server build + deploy artifact | Done — 2026-05-11 (claude/implement-spec-14-xmQBd) | server | small |
 
 Post-merge (UX + operational hardening):
 

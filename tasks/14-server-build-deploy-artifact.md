@@ -1,6 +1,6 @@
 # Spec 14 — Server build + deploy artifact
 
-**Status**: Shaped — ready to pick up
+**Status**: Done
 **Branch**: server (with optional CI workflow change in the same PR)
 **Appetite**: small (≤ 1 day; realistically ~half day for build, half day for runbook)
 **Last shaped**: 2026-05-09
@@ -194,6 +194,33 @@ operator-driven for now; spec for automated deploys is its own thing.
   spec ("server CI deploy on tag") could add a release workflow. Out of
   scope here.
 - Touches `server/package.json`, adds `server/tsconfig.build.json`,
-  `server/scripts/copy-assets.mjs`, `server/scripts/build-runtime-package-json.mjs`,
-  potentially `.github/workflows/ci.yml`, and `tasks/runbooks/server-deploy.md`.
+  `server/scripts/copy-assets.mjs`, `server/scripts/zip-artifact.mjs`,
+  `.github/workflows/ci.yml`, and `tasks/runbooks/server-deploy.md`.
 - Independent of every other spec in this directory. Land in any order.
+- **Deviation from spec**: The spec asserted that all `@wrapped/shared` imports
+  are type-only (and would erase to nothing), making the `grep dist/` zero-match
+  check trivially true. In practice, `wrapEnqueue.ts` and `classify.ts` import
+  Zod schemas (`enqueueWrapRequestSchema`, `classifyRequestSchema`) as values.
+  `copy-assets.mjs` therefore builds `@wrapped/shared` into `dist/_shared/` and
+  the runtime `package.json` references it as `file:./_shared`. The pre-install
+  step in `zip-artifact.mjs` copies it into `dist/node_modules/@wrapped/shared`
+  before zipping, so the artifact is fully self-contained.
+- `build-runtime-package-json.mjs` from the spec Notes is not a separate file;
+  the package.json generation (~20 lines) lives at the end of `copy-assets.mjs`.
+
+## Done
+
+**Completed**: 2026-05-11
+**Branch**: claude/implement-spec-14-xmQBd
+**Summary**: Shipped `pnpm -C server build` (tsc + copy-assets) and
+`pnpm -C server package` (build + npm install --omit=dev + zip) in one PR.
+`server/tsconfig.build.json` overrides the dev tsconfig to emit CommonJS to
+`dist/` (correct for direct Node.js execution on Azure Functions). One deviation
+from the spec: `@wrapped/shared` has two value imports (Zod schemas), not only
+type imports, so `copy-assets.mjs` compiles shared into `dist/_shared/` and
+wires it into the runtime `package.json` as a local file dep — the pre-install
+step resolves it into `node_modules` before zipping. The `grep dist/` check will
+find `@wrapped/shared` only in the `require()` calls and `node_modules`, which
+is expected and correct. CI gains `pnpm -C server typecheck` and
+`pnpm -C server build` steps after the existing client build. Deploy runbook
+added at `tasks/runbooks/server-deploy.md`.
