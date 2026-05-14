@@ -761,6 +761,21 @@ from the wrap viewer.
 - **Spec 12 (encrypt pendingWrapRequests)** is unrelated but worth
   noting: Composer introduces no new client-side persistence, so the
   v3 → v4 schema bump in spec 12 doesn't need to know about Composer.
+- **Spec 31 (shareable highlight wheels)** reserves a public blob path
+  at `wraps/{slug}/video.mp4` for Composer to drop the MP4 into when a
+  wrap is shared. Composer's primary output stays in the private
+  `composer-output` container with the 24h TTL — that flow is unchanged
+  and the signed URL is still what the user gets back. The hook for
+  spec 31 is an **additional** write: when the originating wrap has a
+  `shareSlug` (the worker enqueueing the compose job passes it through
+  in the request body), Composer copies the finished MP4 into the
+  `wraps` container under that slug. The shared bundle's HEAD probe
+  for `./video.mp4` then lights up automatically — no re-rendering of
+  the published `index.html`. Composer needs `Storage Blob Data
+  Contributor` scoped to the `wraps` container in addition to its
+  existing grant on `composer-output`. If spec 31 has not yet shipped,
+  drop the dual-write silently — it's gated on the presence of
+  `shareSlug` in the request.
 
 ### Out-of-scope follow-ups (parking lot)
 
