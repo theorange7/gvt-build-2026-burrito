@@ -17,12 +17,12 @@ terraform {
   }
 
   # Remote state — swap for local backend during first-time setup
-  backend "azurerm" {
+  /* backend "azurerm" {
     resource_group_name  = "rg-wrapped-tfstate"
     storage_account_name = "stwrappedtfstate"
     container_name       = "tfstate"
     key                  = "wrapped-backend.tfstate"
-  }
+  } */
 }
 
 provider "azurerm" {
@@ -50,7 +50,9 @@ locals {
   suffix = "${var.environment}-${var.location_short}"
 
   common_tags = {
-    project     = "wrapped-for-work"
+    project     = "burrito"
+    team        = "Fancy Burritos"
+    purpose     = "Build 2026 - Timothy"
     environment = var.environment
     managed_by  = "terraform"
   }
@@ -114,25 +116,25 @@ module "key_vault" {
 module "functions" {
   source = "./modules/functions"
 
-  resource_group_name               = azurerm_resource_group.main.name
-  location                          = azurerm_resource_group.main.location
-  suffix                            = local.suffix
-  app_insights_connection_string    = module.monitoring.connection_string
-  app_insights_instrumentation_key  = module.monitoring.instrumentation_key
-  storage_account_name              = module.storage.account_name
+  resource_group_name                = azurerm_resource_group.main.name
+  location                           = azurerm_resource_group.main.location
+  suffix                             = local.suffix
+  app_insights_connection_string     = module.monitoring.connection_string
+  app_insights_instrumentation_key   = module.monitoring.instrumentation_key
+  storage_account_name               = module.storage.account_name
   storage_account_primary_access_key = module.storage.primary_access_key
-  service_bus_namespace_fqdn        = module.service_bus.namespace_fqdn
-  service_bus_queue_name            = var.wrap_service_bus_queue_name
-  tables_endpoint                   = module.storage.tables_endpoint
-  key_vault_uri                     = module.key_vault.vault_uri
-  wrap_max_concurrency              = var.wrap_max_concurrency
-  wrap_per_install_limit            = var.wrap_per_install_limit
-  wrap_result_ttl_hours             = var.wrap_result_ttl_hours
-  wrap_register_rate_limit_per_hour = var.wrap_register_rate_limit_per_hour
-  wrap_tables_jobs                  = var.wrap_tables_jobs
-  wrap_tables_results               = var.wrap_tables_results
-  allowed_origins                   = var.wrap_allowed_origins
-  tags                              = local.common_tags
+  service_bus_namespace_fqdn         = module.service_bus.namespace_fqdn
+  service_bus_queue_name             = var.wrap_service_bus_queue_name
+  tables_endpoint                    = module.storage.tables_endpoint
+  key_vault_uri                      = module.key_vault.vault_uri
+  wrap_max_concurrency               = var.wrap_max_concurrency
+  wrap_per_install_limit             = var.wrap_per_install_limit
+  wrap_result_ttl_hours              = var.wrap_result_ttl_hours
+  wrap_register_rate_limit_per_hour  = var.wrap_register_rate_limit_per_hour
+  wrap_tables_jobs                   = var.wrap_tables_jobs
+  wrap_tables_results                = var.wrap_tables_results
+  allowed_origins                    = var.wrap_allowed_origins
+  tags                               = local.common_tags
 }
 
 # ── RBAC: Functions managed identity → Service Bus ───────────────────────────

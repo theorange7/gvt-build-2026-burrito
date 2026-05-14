@@ -11,8 +11,8 @@ resource "azurerm_servicebus_queue" "wrap_jobs" {
   namespace_id = azurerm_servicebus_namespace.main.id
 
   # Keep unprocessed messages for up to 1 day, then dead-letter them
-  max_delivery_count               = 3
-  default_message_time_to_live     = "P1D"
+  max_delivery_count                   = 3
+  default_message_ttl         = "P1D"
   dead_lettering_on_message_expiration = true
 
   # Lock messages for up to 5 minutes while the worker processes them
