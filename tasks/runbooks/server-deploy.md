@@ -21,6 +21,8 @@ Infra is managed by Terraform (`infra/`); this runbook covers the code deploy on
 
 ```bash
 # From repo root
+cd server && pnpm install
+cd ..
 pnpm -C server package
 ```
 
