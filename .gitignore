@@ -10,3 +10,4 @@ test-results
 playwright-report
 screenshots
 .tools-version
+.tool-versions
