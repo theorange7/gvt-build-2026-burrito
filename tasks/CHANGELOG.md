@@ -21,6 +21,9 @@ on the same day share one date heading.
 
 ---
 
+## 2026-05-15
+- **Spec 51 — Reset (clear data) and de-register (forget passphrase)** (claude/implement-spec-51-hO60s). Shipped `DELETE /me/data` server endpoint that deletes all wrapJobs, wrapResults, and lookup rows for the calling install. Client orchestrator `local-store/reset.ts` handles two modes: "clear-data" (keeps passphrase + install token) and "forget-device" (drops everything and reloads). ResetModal component with RESET confirmation phrase, inline retry on mode A server failure, and "Proceed without server cleanup" secondary action for mode B offline case. "Forgot your passphrase?" link added to UnlockGate unlock branch. Share-bundle deletion (spec 31) code path is written but is a deliberate no-op until spec 31 lands.
+
 ## 2026-05-11
 - **Spec 14 — Server build + deploy artifact** (claude/implement-spec-14-xmQBd). Added `pnpm -C server build` (tsc to `dist/` + copy-assets) and `pnpm -C server package` (build + `npm install --omit=dev` + zip to `wrap-server.zip`). `tsconfig.build.json` overrides the dev config to emit CommonJS for direct Node.js execution. One deviation: the spec assumed all `@wrapped/shared` imports were type-only, but two server functions import Zod schemas as values; `copy-assets.mjs` compiles shared into `dist/_shared/` and references it from the runtime `package.json`. CI gains server typecheck and server build steps. Deploy runbook added at `tasks/runbooks/server-deploy.md`.
 

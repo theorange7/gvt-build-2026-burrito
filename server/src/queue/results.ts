@@ -43,6 +43,21 @@ export async function putResult(
   await client.upsertEntity(entity, 'Replace');
 }
 
+export async function deleteAllResultsForInstall(partitionKey: string): Promise<number> {
+  const client = getClient();
+  const filter = `PartitionKey eq '${partitionKey.replace(/'/g, "''")}'`;
+  let removed = 0;
+  for await (const entity of client.listEntities<ResultEntity>({ queryOptions: { filter, select: ['rowKey'] } })) {
+    try {
+      await client.deleteEntity(partitionKey, entity.rowKey as string);
+      removed += 1;
+    } catch (err) {
+      if ((err as { statusCode?: number }).statusCode !== 404) throw err;
+    }
+  }
+  return removed;
+}
+
 export async function getAndDeleteResult(
   partitionKey: string,
   jobId: string,

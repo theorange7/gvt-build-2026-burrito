@@ -225,6 +225,36 @@ export async function deleteJobRow(installId: string, jobId: string): Promise<vo
   }
 }
 
+export async function deleteAllJobRowsForInstall(installId: string): Promise<number> {
+  const client = getClient();
+  const filter = `PartitionKey eq '${installId.replace(/'/g, "''")}'`;
+  let removed = 0;
+  for await (const entity of client.listEntities<JobEntity>({ queryOptions: { filter, select: ['rowKey'] } })) {
+    try {
+      await client.deleteEntity(installId, entity.rowKey as string);
+      removed += 1;
+    } catch (err) {
+      if ((err as { statusCode?: number }).statusCode !== 404) throw err;
+    }
+  }
+  return removed;
+}
+
+export async function deleteLookupRowsForInstall(installId: string): Promise<number> {
+  const client = getClient();
+  const filter = `PartitionKey eq '${LOOKUP_PARTITION}' and installId eq '${installId.replace(/'/g, "''")}'`;
+  let removed = 0;
+  for await (const entity of client.listEntities<LookupEntity>({ queryOptions: { filter } })) {
+    try {
+      await client.deleteEntity(LOOKUP_PARTITION, entity.rowKey);
+      removed += 1;
+    } catch (err) {
+      if ((err as { statusCode?: number }).statusCode !== 404) throw err;
+    }
+  }
+  return removed;
+}
+
 export async function countInflight(filter?: { installId?: string }): Promise<number> {
   const client = getClient();
   const baseFilter = `(status eq 'queued' or status eq 'running')`;
