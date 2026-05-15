@@ -51,13 +51,7 @@ export function ResetModal({ open, onClose, initialMode = 'clear-data' }: ResetM
       try {
         const result = await resetLocalState(mode, proceedLocalOnly ? { proceedLocalOnly: true } : undefined);
 
-        if (result.serverCleanup === 'offline' && mode === 'clear-data') {
-          setError('Could not reach server. Your local data has not been cleared. Check your connection and try again.');
-          setBusy(false);
-          return;
-        }
-
-        if (result.serverCleanup === 'offline' && mode === 'forget-device' && !proceedLocalOnly) {
+        if (result.serverCleanup === 'offline' && !proceedLocalOnly) {
           setOfflineResult(result);
           setBusy(false);
           return;
@@ -228,8 +222,8 @@ export function ResetModal({ open, onClose, initialMode = 'clear-data' }: ResetM
           ⚠ This is permanent. Encrypted data cannot be recovered without the passphrase.
         </div>
 
-        {/* Server offline — mode B proceed prompt */}
-        {offlineResult && mode === 'forget-device' && (
+        {/* Server offline — proceed prompt (both modes) */}
+        {offlineResult && (
           <div
             style={{
               background: '#FFF4DE',
@@ -247,8 +241,9 @@ export function ResetModal({ open, onClose, initialMode = 'clear-data' }: ResetM
               Could not reach server.
             </div>
             <div style={{ marginBottom: 12, opacity: 0.8 }}>
-              Orphaned server rows may persist until the TTL sweeper cleans them. You can
-              still clear this device locally.
+              {mode === 'clear-data'
+                ? 'Server-side jobs and results may not be cleaned up. Your local data can still be cleared now.'
+                : 'Orphaned server rows may persist until the TTL sweeper cleans them. You can still clear this device locally.'}
             </div>
             <button
               type="button"
