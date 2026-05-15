@@ -36,18 +36,19 @@ const MXD_W = 1600;
 const MXD_H = 900;
 const mxMono = '"JetBrains Mono", "Fira Mono", "Courier New", monospace';
 
-// SlideFrame renders at 390×844. Chrome bars occupy 48+36=84px of the canvas height.
-// Scale slides to fill available height with a small margin.
-const FRAME_W = 390;
-const FRAME_H = 844;
-const AVAILABLE_H = MXD_H - 84 - 16; // minus chrome and 8px top/bottom margin
-const SLIDE_SCALE = AVAILABLE_H / FRAME_H;
+// Desktop SlideFrame renders at 1440×760. Canvas has 48+36=84px of chrome,
+// leaving ~816px for the slide. Scale down slightly to fit with breathing room.
+const FRAME_W = 1440;
+const FRAME_H = 760;
+const AVAILABLE_W = MXD_W - 32; // 16px side margins
+const AVAILABLE_H = MXD_H - 84 - 16;
+const SLIDE_SCALE = Math.min(AVAILABLE_W / FRAME_W, AVAILABLE_H / FRAME_H);
 
 const SLIDE_DURATION_S = 6;
 
 /* ─── Slice component map ─────────────────────────────────────────────────── */
 
-type SlideComponent = React.ComponentType<{ content: SliceContent; mode: WrapMode; index: number }>;
+type SlideComponent = React.ComponentType<{ content: SliceContent; mode: WrapMode; index: number; variant?: 'phone' | 'desktop' }>;
 
 const SLICE_MAP: Record<string, SlideComponent> = {
   launches_shipped: LaunchesShipped,
@@ -180,7 +181,7 @@ export function WrapDesktop({ p = DEFAULT_PALETTE, onClose, slices, mode, title 
           <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             {Component ? (
               <div style={{ flexShrink: 0, width: FRAME_W, height: FRAME_H, transform: `scale(${SLIDE_SCALE})`, transformOrigin: 'center center' }}>
-                <Component content={slice} mode={mode} index={current} />
+                <Component content={slice} mode={mode} index={current} variant="desktop" />
               </div>
             ) : (
               <div style={{ color: '#555', fontFamily: mxMono, fontSize: 14 }}>

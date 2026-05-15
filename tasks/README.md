@@ -80,7 +80,7 @@ Pre-merge (recommended before the stacked PRs land):
 | ID | Title | Status | Branch | Appetite |
 |----|-------|--------|--------|----------|
 | 1  | Polling-success data loss when idle-locked | In progress | client | small |
-| 14 | Server build + deploy artifact | Shaped — ready | server | small |
+| 14 | Server build + deploy artifact | Done — 2026-05-11 (claude/implement-spec-14-xmQBd) | server | small |
 
 Post-merge (UX + operational hardening):
 
@@ -98,8 +98,10 @@ Future / new features:
 | ID | Title | Status | Branch | Appetite |
 |----|-------|--------|--------|----------|
 | 30 | Composer — music-synced video render service | Shaped — ready | composer + server + client | large |
+| 31 | Shareable highlight wheels (public bundle + revoke) | Shaped — ready | both | large |
 | 40 | Tauri 2 macOS shell bootstrap | Shaped — ready | client | medium |
 | 50 | File-upload contribution provider | Shaped — ready | both | medium |
+| 51 | Reset (clear data) and de-register (forget passphrase) | Shaped — ready | both | medium |
 
 ## How an agent should use this directory
 

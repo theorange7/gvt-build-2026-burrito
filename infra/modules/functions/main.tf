@@ -1,3 +1,9 @@
+resource "azurerm_storage_container" "deploy" {
+  name                  = "func-deploy"
+  storage_account_name  = var.storage_account_name
+  container_access_type = "private"
+}
+
 resource "azurerm_service_plan" "main" {
   name                = "asp-wrapped-${var.suffix}"
   resource_group_name = var.resource_group_name
@@ -8,15 +14,25 @@ resource "azurerm_service_plan" "main" {
   tags     = var.tags
 }
 
-resource "azurerm_linux_function_app" "main" {
+resource "azurerm_function_app_flex_consumption" "main" {
   name                = "func-wrapped-${var.suffix}"
   resource_group_name = var.resource_group_name
   location            = var.location
   service_plan_id     = azurerm_service_plan.main.id
 
-  # Flex Consumption requires a storage account for internal use
-  storage_account_name       = var.storage_account_name
-  storage_account_access_key = var.storage_account_primary_access_key
+  # Deployment artifact storage — required by Flex Consumption
+  storage_container_type      = "blobContainer"
+  storage_container_endpoint  = "https://${var.storage_account_name}.blob.core.windows.net/${azurerm_storage_container.deploy.name}"
+  storage_authentication_type = "StorageAccountConnectionString"
+  storage_access_key          = var.storage_account_primary_access_key
+
+  # Runtime
+  runtime_name    = "node"
+  runtime_version = "22"
+
+  # Scaling
+  instance_memory_in_mb  = 2048
+  maximum_instance_count = 100
 
   # Managed identity — used for all Azure SDK calls (Service Bus, Tables, Key Vault)
   identity {
@@ -24,10 +40,6 @@ resource "azurerm_linux_function_app" "main" {
   }
 
   site_config {
-    application_stack {
-      node_version = "22"
-    }
-
     cors {
       allowed_origins = split(",", var.allowed_origins)
     }
@@ -38,10 +50,6 @@ resource "azurerm_linux_function_app" "main" {
   }
 
   app_settings = {
-    # Runtime
-    FUNCTIONS_WORKER_RUNTIME = "node"
-    WEBSITE_RUN_FROM_PACKAGE = "1"
-
     # Application Insights
     APPLICATIONINSIGHTS_CONNECTION_STRING = var.app_insights_connection_string
 
@@ -56,10 +64,10 @@ resource "azurerm_linux_function_app" "main" {
     AZURE_TABLES_RESULTS  = var.wrap_tables_results
 
     # Secrets via Key Vault references — Functions resolves @Microsoft.KeyVault(…) at runtime
-    WRAP_JWT_SECRET              = "@Microsoft.KeyVault(SecretUri=${var.key_vault_uri}secrets/wrap-jwt-secret/)"
-    ANTHROPIC_API_KEY            = "@Microsoft.KeyVault(SecretUri=${var.key_vault_uri}secrets/anthropic-api-key/)"
+    WRAP_JWT_SECRET                = "@Microsoft.KeyVault(SecretUri=${var.key_vault_uri}secrets/wrap-jwt-secret/)"
+    ANTHROPIC_API_KEY              = "@Microsoft.KeyVault(SecretUri=${var.key_vault_uri}secrets/anthropic-api-key/)"
     AZURE_FOUNDRY_PROJECT_ENDPOINT = "@Microsoft.KeyVault(SecretUri=${var.key_vault_uri}secrets/azure-foundry-project-endpoint/)"
-    AZURE_FOUNDRY_API_VERSION    = "@Microsoft.KeyVault(SecretUri=${var.key_vault_uri}secrets/azure-foundry-api-version/)"
+    AZURE_FOUNDRY_API_VERSION      = "@Microsoft.KeyVault(SecretUri=${var.key_vault_uri}secrets/azure-foundry-api-version/)"
 
     # Capacity / tuning
     WRAP_MAX_CONCURRENCY              = tostring(var.wrap_max_concurrency)

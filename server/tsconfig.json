@@ -10,7 +10,6 @@
     "noEmit": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "baseUrl": ".",
     "paths": {
       "@wrapped/shared": ["../shared/src/index.ts"],
       "@wrapped/shared/*": ["../shared/src/*"]
