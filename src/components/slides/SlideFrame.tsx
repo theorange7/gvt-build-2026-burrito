@@ -7,12 +7,15 @@
 import type { ReactNode } from 'react';
 import type { SliceContent, WrapMode } from '@/lib/types';
 
+export type SlideVariant = 'phone' | 'desktop';
+
 export function SlideFrame({
   content,
   mode,
   index,
   label,
   accent,
+  variant = 'phone',
   children,
 }: {
   content: SliceContent;
@@ -20,8 +23,111 @@ export function SlideFrame({
   index: number;
   label: string;
   accent: string;
+  variant?: SlideVariant;
   children?: ReactNode;
 }) {
+  if (variant === 'desktop') {
+    return (
+      <div
+        style={{
+          background: '#FFF4DE',
+          border: '2px solid #0A0A0A',
+          boxShadow: '10px 10px 0 #0A0A0A',
+        }}
+        className="relative mx-auto flex h-[760px] w-[1440px] flex-col overflow-hidden px-16 py-12"
+      >
+        {/* Slide number + label */}
+        <div
+          style={{ fontFamily: 'JetBrains Mono, monospace', color: '#0A0A0A' }}
+          className="flex items-center justify-between text-[0.8rem] uppercase tracking-[0.32em]"
+        >
+          <span
+            style={{ border: '2px solid #0A0A0A', fontFamily: 'JetBrains Mono, monospace' }}
+            className="px-3 py-1 text-[0.72rem]"
+          >
+            {String(index + 1).padStart(2, '0')}&nbsp;/&nbsp;10
+          </span>
+          <span>{label}</span>
+        </div>
+
+        {/* Main content — two-column landscape layout */}
+        <div className="mt-10 flex flex-1 items-center gap-16">
+          {/* Left column: stat */}
+          <div className="flex flex-1 items-center justify-center">
+            {content.stat ? (
+              <p
+                style={{ fontFamily: 'Space Grotesk, sans-serif', color: accent }}
+                className="text-[200px] font-black leading-[0.9] text-center"
+              >
+                {content.stat}
+              </p>
+            ) : (
+              <p
+                style={{ fontFamily: 'Space Grotesk, sans-serif', color: accent }}
+                className="text-[120px] font-black leading-[0.95] text-center opacity-80"
+              >
+                {label.split(' ')[0]}
+              </p>
+            )}
+          </div>
+
+          {/* Right column: headline / body / supporting */}
+          <div className="flex flex-1 flex-col">
+            <h2
+              style={{ fontFamily: 'Space Grotesk, sans-serif', color: '#0A0A0A' }}
+              className="text-[64px] font-bold leading-[1.02]"
+            >
+              {content.headline}
+            </h2>
+            <p
+              style={{ fontFamily: 'Space Grotesk, sans-serif', color: '#0A0A0A' }}
+              className="mt-8 max-w-[560px] text-[22px] leading-[1.55] opacity-70"
+            >
+              {content.body}
+            </p>
+            {mode === 'year-end' && content.supporting?.length ? (
+              <div
+                style={{ fontFamily: 'JetBrains Mono, monospace', color: '#0A0A0A' }}
+                className="mt-10 max-w-[560px] space-y-4 text-[16px] leading-7"
+              >
+                {content.supporting.slice(0, 3).map((item) => (
+                  <div key={item} className="flex gap-4">
+                    <span style={{ color: accent }} className="font-bold">—</span>
+                    <span>{item}</span>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+            {children}
+          </div>
+        </div>
+
+        {/* Mode badge */}
+        <div className="mt-6 flex justify-between items-center">
+          <span
+            style={{
+              fontFamily: 'JetBrains Mono, monospace',
+              color: '#0A0A0A',
+              border: '2px solid #0A0A0A',
+              background: accent + '33',
+            }}
+            className="px-5 py-2 text-[0.78rem] uppercase tracking-[0.28em]"
+          >
+            {mode === 'snapshot' ? 'SNAPSHOT' : 'YEAR-END'}
+          </span>
+        </div>
+
+        {/* Bottom accent stripe for year-end */}
+        {mode === 'year-end' ? (
+          <div
+            className="absolute inset-x-0 bottom-0 h-[4px]"
+            style={{ background: accent }}
+          />
+        ) : null}
+      </div>
+    );
+  }
+
   return (
     <div
       style={{
