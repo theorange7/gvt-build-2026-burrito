@@ -1,4 +1,4 @@
-# Spec 60 — Interactive sense-making session v0
+# Spec 70 — Interactive sense-making session v0
 
 **Status**: Shaped — ready to pick up
 **Branch**: both (client primary; server adds one route + one prompt; shared adds session/panel/record types)
@@ -21,7 +21,7 @@ sessions. The user authors their own record through an editorial
 workbench; the AI assists with drafts and context.
 
 The wrap remains as a separately-invoked, shareable artifact. v0 does
-**not** change the existing wrap path — Spec 61 handles that. v0 ships
+**not** change the existing wrap path — Spec 71 handles that. v0 ships
 the sense-making session experience.
 
 This spec is the **v0** — the smallest version achievable in one
@@ -41,7 +41,7 @@ each, edits the AI's draft framing in their own voice, locks it in
 record** — a new local-store table.
 
 The existing wrap path is reachable as it is today; v0 doesn't touch
-it. v1 (Spec 61) replaces it with a wrap-from-record path.
+it. v1 (Spec 71) replaces it with a wrap-from-record path.
 
 ### Repo touch points
 
@@ -137,7 +137,7 @@ D. Panel extraction caps apply at a wider scope (see rules)
 Wrap flow
 ─────────
 Existing /wrap enqueue path, untouched. Reachable from dashboard
-exactly as today. v0 does not change wrap composition. Spec 61
+exactly as today. v0 does not change wrap composition. Spec 71
 rewrites this to read from the record.
 ```
 
@@ -447,7 +447,7 @@ When you're ready, we can sit down with them.
   the workbench with unsaved edits, we lose them. Warn on close with
   a browser confirm dialog. Resumability is v2.
 - **Don't try to remove the existing `/wrap` enqueue path.** Keep it
-  reachable exactly as today. Spec 61 replaces it; v0 leaves it
+  reachable exactly as today. Spec 71 replaces it; v0 leaves it
   alone. Demo day relies on the existing path as a wrap fallback.
 - **Don't put a confidence/reliability score in the UI.** We have
   `eventCount` available, but exposing it requires a framing v0
@@ -473,7 +473,7 @@ When you're ready, we can sit down with them.
   destroys the experience.
 - **Don't compose a wrap in v0.** "Close session" persists
   RecordEntries; it does not produce a wrap. The existing wrap path
-  remains available on the dashboard, untouched. Spec 61 introduces
+  remains available on the dashboard, untouched. Spec 71 introduces
   wrap-from-record.
 
 ## No-gos
@@ -494,7 +494,7 @@ When you're ready, we can sit down with them.
 - **No changes to Composer (Spec 30).** Composer reads finished
   wraps; how the wrap was made is invisible to it.
 - **No changes to the wrap renderer.** `WrapViewer` and slide
-  components don't know about sessions or the record. (Spec 61 keeps
+  components don't know about sessions or the record. (Spec 71 keeps
   them unchanged too; it changes only the composition path.)
 - **No removal of `/wrap` enqueue.** Stays untouched in v0.
 - **No "highlights" / "top" / "best" / "most impactful" copy
@@ -675,8 +675,8 @@ discipline for full guidance.
   once it ships; integration into sessions is automatic if its
   artifacts surface through the same consolidation pipeline. No spec
   change needed here.
-- **Spec 61 (wrap from the record)** is the v1 follow-up. v0 leaves
-  the existing `/wrap` enqueue path alone; Spec 61 replaces it.
+- **Spec 71 (wrap from the record)** is the v1 follow-up. v0 leaves
+  the existing `/wrap` enqueue path alone; Spec 71 replaces it.
 - Existing **manual-input-form** in `src/components/dashboard/` is
   the third artifact source as-is. No v0 changes to it.
 
@@ -691,7 +691,7 @@ discipline for full guidance.
 - Story-aware lazy classification at slice prompt time.
 - Multi-provider normalisation past GitLab.
 - Replacing the contribution timeline as a discoverable surface.
-- Deprecating the original `/wrap` enqueue path (after Spec 61).
+- Deprecating the original `/wrap` enqueue path (after Spec 71).
 - Analytics on session edit/lock/skip patterns.
 - Browseable record UI ("read my journal").
 - In-session artifact creation.

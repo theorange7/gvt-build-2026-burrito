@@ -1,15 +1,15 @@
-# Spec 61 — Wrap from the record (v1)
+# Spec 71 — Wrap from the record (v1)
 
-**Status**: Shaped — ready to pick up (blocked by Spec 60)
+**Status**: Shaped — ready to pick up (blocked by Spec 70)
 **Branch**: both (client primary; server adds one route + one prompt; shared adds wrap-composition types)
 **Appetite**: medium (≤ 3 days)
 **Last shaped**: 2026-05-16
 
 ## Problem
 
-Spec 60 ships the new main experience: small day-scoped sense-making
+Spec 70 ships the new main experience: small day-scoped sense-making
 sessions that accumulate locked framings into **the record** (L2 in
-the design note). After Spec 60, users have their own words attached
+the design note). After Spec 70, users have their own words attached
 to groupings of their work — but the wrap path still fans out over
 raw signals, ignoring everything the user authored.
 
@@ -23,7 +23,7 @@ own voice. The wrap renderer (`WrapViewer`, slide components) is
 unchanged. Composer (Spec 30) is unchanged. What changes is the
 composition path.
 
-Once Spec 61 ships, the original `/wrap` enqueue path (raw-signal
+Once Spec 71 ships, the original `/wrap` enqueue path (raw-signal
 fan-out) is hidden from the UI but left in code for compatibility.
 A future spec removes it entirely.
 
@@ -179,7 +179,7 @@ components — for v1, all three templates render with the existing
 text-forward slide layout; visual differentiation between templates
 is a follow-up.
 
-Same forbidden-phrase post-check as Spec 60. Same fallback shape: if
+Same forbidden-phrase post-check as Spec 70. Same fallback shape: if
 the LLM output contains banned phrasing or fails the Zod parse,
 substitute a deterministic slice that carries the user's framing
 verbatim with the panel title as the headline.
@@ -204,7 +204,7 @@ If the record contains zero entries in the chosen range:
 > session first to add some framings.
 
 Inline link: [Start a session for…] (re-uses the date-range picker
-from Spec 60). No fallback to the old raw-signal wrap path from this
+from Spec 70). No fallback to the old raw-signal wrap path from this
 modal — Make a wrap from the record means from the record.
 
 The legacy `/wrap` enqueue path lives in code but is removed from
@@ -319,7 +319,7 @@ You've recorded 27 entries across 12 sessions.
 - **Don't keep the legacy `/wrap` enqueue path reachable from
   the dashboard.** This spec removes the UI affordance for it. The
   code stays for compatibility (existing in-flight jobs, stored
-  wraps from before Spec 61). A future spec deletes the code.
+  wraps from before Spec 71). A future spec deletes the code.
 - **Don't let an empty record fall back to the legacy path.** The
   CurateStep's empty state must point to "start a session", not to
   the old generator. The whole point of v1 is that the wrap comes
@@ -327,10 +327,10 @@ You've recorded 27 entries across 12 sessions.
 - **Don't add a "ranged auto-prompt" to suggest making a wrap.**
   The wrap is user-initiated. No "you've reached 20 entries — want
   to make a wrap?" nudges. v2 may revisit this with a soft prompt
-  pattern matching Spec 60's session entry.
+  pattern matching Spec 70's session entry.
 - **Don't surface forbidden phrases in CurateStep entry titles.**
   The framing previews come from RecordEntries which already passed
-  the forbidden-phrase check in Spec 60. But the previews must
+  the forbidden-phrase check in Spec 70. But the previews must
   truncate without altering — no system-side ellipsis that injects
   new words.
 
@@ -353,12 +353,12 @@ You've recorded 27 entries across 12 sessions.
 - **No server-side persistence of record entries.** The client
   sends the selected entries in the request payload; the server
   composes from them in-memory and writes only the resulting wrap.
-- **No "make a wrap from session" CTA inside Spec 60's workbench.**
+- **No "make a wrap from session" CTA inside Spec 70's workbench.**
   Wrap creation is initiated from the dashboard, not from a closing
   session. Sessions write to the record; the wrap reads from the
   record. The decoupling is the point.
 - **No "highlights" / "top" / "best" copy anywhere.** Enforced by
-  the same copy-lint check shared with Spec 60.
+  the same copy-lint check shared with Spec 70.
 - **No fan-out across raw signals.** This spec deletes that path
   from the user's experience. Compose from framings only.
 
@@ -398,7 +398,7 @@ Functional (server):
   responses.
 - **Concurrency cap**: with a 20-entry request, the worker runs no
   more than 8 LLM calls in flight at once.
-- **Forbidden-phrase guard**: same shared guard as Spec 60.
+- **Forbidden-phrase guard**: same shared guard as Spec 70.
 - **Adversarial test (substance preservation)**: a fixture where
   `artifactSummaries` say "frontend/app — 4 MRs all merged" but the
   user's framing says "Spent the day chasing a flaky test in
@@ -456,8 +456,8 @@ The `## Done` block + index update + changelog entry land on PR 3.
   without code changes to Composer.
 - **Spec 31 (shareable highlight wheels)**: unaffected. The wrap
   bundle format Spec 31 publishes is the same.
-- **Spec 60 (sense-making v0)**: this spec is the v1 completion of
-  that initiative. Cannot land until Spec 60 ships and at least one
+- **Spec 70 (sense-making v0)**: this spec is the v1 completion of
+  that initiative. Cannot land until Spec 70 ships and at least one
   user has a non-empty record.
 - **Legacy `/wrap` enqueue**: code stays for compatibility; UI
   affordance removed. A v2 spec deletes the code and the worker
@@ -465,14 +465,14 @@ The `## Done` block + index update + changelog entry land on PR 3.
 
 ### Pre-existing wraps
 
-Wraps stored locally from before Spec 61 (composed by the legacy
+Wraps stored locally from before Spec 71 (composed by the legacy
 fan-out) continue to render exactly as today via the existing
 `/wrap/[id]` page. The shape is unchanged. No migration needed.
 
 ### Demo-day relevance
 
-Spec 60 ships first for demo day. Spec 61 is the follow-up. If
-demo timing pulls Spec 61 forward, the cuts are:
+Spec 70 ships first for demo day. Spec 71 is the follow-up. If
+demo timing pulls Spec 71 forward, the cuts are:
 
 - Drop the curation step entirely — first cut. All record entries
   in the range become slides; no user-side untick UI.
