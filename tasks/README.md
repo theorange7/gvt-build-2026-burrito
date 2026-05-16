@@ -103,6 +103,22 @@ Future / new features:
 | 50 | File-upload contribution provider | Shaped — ready | both | medium |
 | 51 | Reset (clear data) and de-register (forget passphrase) | Shaped — ready | both | medium |
 | 60 | Ollama local provider | Shaped — ready | server | small |
+| 70 | Interactive sense-making session v0 | Shaped — ready | both | large |
+| 71 | Wrap from the record (v1) | Shaped — ready (blocked by 60) | both | medium |
+
+## Design notes (pre-spec)
+
+Design notes capture direction and decisions ahead of one or more
+shaped specs. Named `design-<slug>.md` (no number); they don't appear
+in the index table above.
+
+- `design-interactive-sensemaking.md` — direction for the sense-making
+  initiative; informs Spec 60 and future specs.
+- `design-system-reference.md` — extracted reference of the existing
+  visual language (philosophy, palette, typography, motifs, copy
+  register). Pairs with Claude Design briefs so new surfaces sit
+  inside the existing world.
+>>>>>>> 7329645 (docs: shape Specs 60 + 61 (interactive sense-making) and design reference)
 
 ## How an agent should use this directory
 
