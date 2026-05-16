@@ -121,6 +121,34 @@ describe('privacy invariants — installId never enters Service Bus message meta
   });
 });
 
+describe('privacy invariants — Ollama adapter never logs, only hints with safe content', () => {
+  const ollamaFile = join(srcDir, 'ai', 'providers', 'ollama.ts');
+  const source = readFileSync(ollamaFile, 'utf8');
+
+  it('contains no console.* calls', () => {
+    expect(source).not.toMatch(/\bconsole\.[a-z]+\s*\(/);
+  });
+
+  it('contains no context.log/info/warn/error calls', () => {
+    expect(source).not.toMatch(/\bcontext\.(?:log|info|warn|error)\s*\(/);
+  });
+
+  it('only references baseUrl in the ollama_unreachable hint (not in any other thrown UpstreamError)', () => {
+    // Capture every `new UpstreamError(...)` constructor call.
+    const ctorRe = /new UpstreamError\(([^)]*)\)/g;
+    let m: RegExpExecArray | null;
+    while ((m = ctorRe.exec(source)) !== null) {
+      const args = m[1];
+      const mentionsBaseUrl = /\bbaseUrl\b/.test(args);
+      if (mentionsBaseUrl) {
+        expect(args, `baseUrl may only appear in the ollama_unreachable hint, found in: ${args}`).toMatch(
+          /'ollama_unreachable'/,
+        );
+      }
+    }
+  });
+});
+
 describe('privacy invariants — result row contains only sliceContent + jobId + timestamps', () => {
   it('queue/results.ts persists no IP, token, or contributions', () => {
     const file = join(srcDir, 'queue', 'results.ts');

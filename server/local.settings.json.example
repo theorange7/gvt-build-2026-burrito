@@ -12,6 +12,8 @@
     "ANTHROPIC_API_KEY": "",
     "AZURE_FOUNDRY_PROJECT_ENDPOINT": "",
     "AZURE_FOUNDRY_API_VERSION": "",
+    "_comment_OLLAMA_BASE_URL": "Optional. Override the default http://localhost:11434 when Ollama runs elsewhere on your network. Per-model overrides via models.config.json's baseUrl field take precedence. Leave unset to use the default.",
+    "OLLAMA_BASE_URL": "",
     "AZURE_SERVICE_BUS_NAMESPACE": "<your-namespace>.servicebus.windows.net",
     "AZURE_SERVICE_BUS_QUEUE_NAME": "wrap-jobs",
     "ServiceBusConnection__fullyQualifiedNamespace": "<your-namespace>.servicebus.windows.net",

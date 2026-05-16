@@ -102,7 +102,7 @@ Future / new features:
 | 40 | Tauri 2 macOS shell bootstrap | Shaped — ready | client | medium |
 | 50 | File-upload contribution provider | Shaped — ready | both | medium |
 | 51 | Reset (clear data) and de-register (forget passphrase) | Shaped — ready | both | medium |
-| 60 | Ollama local provider | Shaped — ready | server | small |
+| 60 | Ollama local provider | Done — 2026-05-16 (claude/ollama-llm-adapters-8DpaB) | server | small |
 
 ## How an agent should use this directory
 
