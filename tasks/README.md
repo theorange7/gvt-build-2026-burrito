@@ -103,6 +103,7 @@ Future / new features:
 | 50 | File-upload contribution provider | Shaped — ready | both | medium |
 | 51 | Reset (clear data) and de-register (forget passphrase) | Shaped — ready | both | medium |
 | 60 | Ollama local provider | Done — 2026-05-16 (claude/ollama-llm-adapters-8DpaB) | server | small |
+| 61 | Client-side Ollama wrap generation (skip the queue) | Shaped — ready | both | medium |
 
 ## How an agent should use this directory
 
