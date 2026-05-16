@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Burrito · C4 Container Diagram</title>
+  <style>
+    html, body { margin: 0; padding: 0; background: #0A1622; }
+    body { font-family: 'IBM Plex Sans', sans-serif; }
+    .wrap { padding: 24px; }
+    .hint { margin-top: 12px; max-width: 1120px; font-size: 10px; color: #1A3A5A; }
+    .panel {
+      margin-top: 16px; max-width: 1120px;
+      background: #0C1D2E;
+      padding: 18px 22px; border-radius: 6px;
+      color: #D8E6F2;
+    }
+    .panel-head {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 14px;
+    }
+    .panel-title {
+      font-family: 'IBM Plex Mono', monospace; font-weight: 700;
+      font-size: 14px; color: #fff;
+    }
+    .panel-close {
+      background: transparent; color: #7AB6E0;
+      border: 1px solid #1A3A5A; border-radius: 4px;
+      padding: 4px 10px; cursor: pointer;
+      font-family: 'IBM Plex Sans', sans-serif; font-size: 11px;
+    }
+    .panel-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 14px;
+    }
+    .panel-item {
+      background: #0A1622; padding: 12px; border-radius: 4px;
+    }
+    .panel-item-title { font-weight: 600; font-size: 12px; margin-bottom: 6px; color: #fff; }
+    .panel-item-body { font-size: 11px; color: #9EC5F5; line-height: 1.5; }
+    .panel-note {
+      margin-top: 14px; font-size: 11px; font-style: italic;
+      color: #7AB6E0; border-top: 1px solid #1A3A5A; padding-top: 10px;
+    }
+    .clickable { cursor: pointer; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;700&family=IBM+Plex+Sans:ital,wght@0,400;0,600;1,400&display=swap" />
+    <div id="root"></div>
+  </div>
+
+  <script>
+    // ===================== App =====================
+    function App(container) {
+      // ----- Layout constants -----
+      const W = 1120, H = 830;
+
+      // Person
+      const PERSON_X = 105, PERSON_Y = 18, PERSON_W = 180;
+
+      // Client boundary
+      const CLIENT_X = 40, CLIENT_Y = 100;
+      const CLIENT_W = 260, CLIENT_H = 580;
+
+      // Client components
+      const COMP_X = 60, COMP_W = 220, COMP_H = 100;
+      const COMP1_Y = 130;
+      const COMP2_Y = 274;
+      const COMP3_Y = 418;
+      const COMP4_Y = 562;
+
+      // Adapter Layer
+      const ADAPTER_X = 312, ADAPTER_Y = 130;
+      const ADAPTER_W = 22, ADAPTER_H = 540;
+
+      // System (Azure) boundary
+      const SYS_X = 348, SYS_Y = 100;
+      const SYS_W = 752, SYS_H = 670;
+
+      // Auth Service
+      const AUTH_X = 380, AUTH_Y = 310;
+      const AUTH_W = 200, AUTH_H = 140;
+
+      // Backend Services boundary
+      const BACK_X = 620, BACK_Y = 130;
+      const BACK_W = 270, BACK_H = 480;
+
+      // Backend components
+      const WRAP_X = 640, WRAP_Y = 160, WRAP_W = 230, WRAP_H = 110;
+      const QUEUE_X = 640, QUEUE_Y = 314, QUEUE_W = 230, QUEUE_H = 80;
+      const CLASS_X = 640, CLASS_Y = 438, CLASS_W = 230, CLASS_H = 130;
+
+      // Composer
+      const COMPOSER_X = 620, COMPOSER_Y = 640, COMPOSER_W = 270, COMPOSER_H = 110;
+
+      // Right column
+      const OLLAMA_X = 920, OLLAMA_Y = 160, OLLAMA_W = 160, OLLAMA_H = 110;
+      const BSHARE_X = 920, BSHARE_Y = 314, BSHARE_W = 160, BSHARE_H = 130;
+      const BDL_X = 920, BDL_Y = 488, BDL_W = 160, BDL_H = 130;
+
+      // UAT Agent
+      const UAT_X = 380, UAT_Y = 580, UAT_W = 200, UAT_H = 100;
+
+      // ----- Colors -----
+      const C4 = {
+        person:    { bg: "#1B4F8A", border: "#0D3468", text: "#fff", sub: "#9EC5F5" },
+        auth:      { bg: "#0D5C45", border: "#08402F", text: "#fff", sub: "#5FD9B0" },
+        container: { bg: "#1168BD", border: "#0A4F94", text: "#fff", sub: "#9EC5F5" },
+        component: { bg: "#2C6EA6", border: "#1C508A", text: "#fff", sub: "#B8D8F5" },
+        external:  { bg: "#555555", border: "#383838", text: "#fff", sub: "#C0C0C0" },
+        storage:   { bg: "#0F6674", border: "#084650", text: "#fff", sub: "#7DD5DF" },
+        test:      { bg: "#4A2E7A", border: "#321D56", text: "#fff", sub: "#C0A0F0" },
+        bound:     { fill: "rgba(17,104,189,0.05)", stroke: "#1168BD" },
+      };
+
+      const MONO = "'IBM Plex Mono', monospace";
+      const SANS = "'IBM Plex Sans', sans-serif";
+
+      // ----- State (in-memory, no localStorage) -----
+      let panel = null;
+      function tog(k) { panel = (panel === k ? null : k); render(); }
+
+      // ----- SVG escaping -----
+      function esc(s) {
+        return String(s)
+          .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+      }
+
+      // ----- Primitive: Box -----
+      function Box({ x, y, w, h, type, label, tech, desc, active, onClick }) {
+        const c = C4[type];
+        const stroke = active ? "#FFD060" : c.border;
+        const sw = active ? 2.5 : 1.5;
+        const labelY = tech ? y + 34 : y + 24;
+        const cursor = onClick ? 'pointer' : 'default';
+        const evt = onClick ? `data-onclick="${esc(onClick)}"` : '';
+        const techSvg = tech
+          ? `<text x="${x + w/2}" y="${y + 17}" font-family="${SANS}" font-style="italic" font-size="8.5" fill="${c.sub}" text-anchor="middle">[${esc(tech)}]</text>`
+          : '';
+        const descSvg = desc
+          ? `<foreignObject x="${x + 8}" y="${labelY + 6}" width="${w - 16}" height="${Math.max(0, h - (labelY - y) - 10)}">
+              <div xmlns="http://www.w3.org/1999/xhtml" style="font-family:${SANS};font-size:9px;color:${c.sub};line-height:1.45;text-align:center;white-space:pre-wrap;">${esc(desc)}</div>
+            </foreignObject>`
+          : '';
+        return `<g style="cursor:${cursor}" ${evt} filter="url(#sh)">
+          <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="6" fill="${c.bg}" stroke="${stroke}" stroke-width="${sw}"/>
+          ${techSvg}
+          <text x="${x + w/2}" y="${labelY}" font-family="${MONO}" font-weight="bold" font-size="12" fill="#fff" text-anchor="middle">${esc(label)}</text>
+          ${descSvg}
+        </g>`;
+      }
+
+      // ----- Primitive: Cylinder -----
+      function Cylinder({ x, y, w, h, label, tech, desc, active, onClick }) {
+        const c = C4.storage;
+        const stroke = active ? "#FFD060" : c.border;
+        const sw = active ? 2.5 : 1.5;
+        const ry = 11;
+        const cursor = onClick ? 'pointer' : 'default';
+        const evt = onClick ? `data-onclick="${esc(onClick)}"` : '';
+        const techSvg = tech
+          ? `<text x="${x + w/2}" y="${y + 38}" font-family="${SANS}" font-style="italic" font-size="8.5" fill="${c.sub}" text-anchor="middle">[${esc(tech)}]</text>`
+          : '';
+        const descSvg = desc
+          ? `<foreignObject x="${x + 8}" y="${y + 62}" width="${w - 16}" height="${Math.max(0, h - 68)}">
+              <div xmlns="http://www.w3.org/1999/xhtml" style="font-family:${SANS};font-size:9px;color:${c.sub};line-height:1.45;text-align:center;white-space:pre-wrap;">${esc(desc)}</div>
+            </foreignObject>`
+          : '';
+        return `<g style="cursor:${cursor}" ${evt} filter="url(#sh)">
+          <path d="M ${x},${y + ry} L ${x},${y + h - ry} A ${w/2},${ry} 0 0 0 ${x + w},${y + h - ry} L ${x + w},${y + ry}" fill="${c.bg}" stroke="${stroke}" stroke-width="${sw}"/>
+          <ellipse cx="${x + w/2}" cy="${y + ry}" rx="${w/2}" ry="${ry}" fill="${c.bg}" stroke="${stroke}" stroke-width="${sw}"/>
+          <ellipse cx="${x + w/2}" cy="${y + ry}" rx="${Math.max(0, w/2 - 8)}" ry="6" fill="#0A7A8A" opacity="0.55"/>
+          ${techSvg}
+          <text x="${x + w/2}" y="${y + 56}" font-family="${MONO}" font-weight="bold" font-size="12" fill="#fff" text-anchor="middle">${esc(label)}</text>
+          ${descSvg}
+        </g>`;
+      }
+
+      // ----- Primitive: Person -----
+      function Person({ x, y, w, label, sub }) {
+        const c = C4.person;
+        const cx = x + w/2;
+        return `<g filter="url(#sh)">
+          <circle cx="${cx}" cy="${y + 14}" r="14" fill="${c.bg}" stroke="${c.border}" stroke-width="1.5"/>
+          <rect x="${x}" y="${y + 32}" width="${w}" height="44" rx="6" fill="${c.bg}" stroke="${c.border}" stroke-width="1.5"/>
+          <text x="${cx}" y="${y + 45}" font-family="${SANS}" font-style="italic" font-size="8.5" fill="${c.sub}" text-anchor="middle">[Person]</text>
+          <text x="${cx}" y="${y + 60}" font-family="${MONO}" font-weight="bold" font-size="12" fill="#fff" text-anchor="middle">${esc(label)}</text>
+          ${sub ? `<text x="${cx}" y="${y + 72}" font-family="${SANS}" font-size="9" fill="${c.sub}" text-anchor="middle">${esc(sub)}</text>` : ''}
+        </g>`;
+      }
+
+      // ----- Primitive: Boundary -----
+      function Boundary({ x, y, w, h, label, onClick, active }) {
+        const stroke = active ? "#FFD060" : C4.bound.stroke;
+        const sw = active ? 2.5 : 1.5;
+        const pillW = label.length * 7 + 18;
+        const cursor = onClick ? 'pointer' : 'default';
+        const evt = onClick ? `data-onclick="${esc(onClick)}"` : '';
+        return `<g style="cursor:${cursor}" ${evt}>
+          <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="12" fill="${C4.bound.fill}" stroke="${stroke}" stroke-width="${sw}" stroke-dasharray="8,5"/>
+          <rect x="${x + 14}" y="${y - 10}" width="${pillW}" height="20" rx="4" fill="#071524" stroke="${stroke}" stroke-width="1"/>
+          <text x="${x + 14 + pillW/2}" y="${y + 4}" font-family="${MONO}" font-weight="bold" font-size="10" fill="${stroke}" text-anchor="middle">${esc(label)}</text>
+        </g>`;
+      }
+
+      // ----- Primitive: Arrow -----
+      function Arrow({ x1, y1, x2, y2, label, dashed, cx1, cy1, cx2, cy2, lx, ly }) {
+        const d = cx1 !== undefined
+          ? `M ${x1},${y1} C ${cx1},${cy1} ${cx2},${cy2} ${x2},${y2}`
+          : `M ${x1},${y1} L ${x2},${y2}`;
+        const mx = lx !== undefined ? lx : (x1 + x2) / 2;
+        const my = ly !== undefined ? ly : (y1 + y2) / 2;
+        const labelW = label ? label.length * 5.6 + 8 : 0;
+        const dash = dashed ? ' stroke-dasharray="5,4"' : '';
+        const labelSvg = label
+          ? `<g>
+              <rect x="${mx - labelW/2}" y="${my - 7}" width="${labelW}" height="13" rx="2" fill="#07111F" opacity="0.92"/>
+              <text x="${mx}" y="${my + 3}" font-family="${SANS}" font-size="9" fill="#7AB6E0" text-anchor="middle">${esc(label)}</text>
+            </g>`
+          : '';
+        return `<g>
+          <path d="${d}" fill="none" stroke="#4A8EC4" stroke-width="1.5" opacity="0.82"${dash} marker-end="url(#arr)"/>
+          ${labelSvg}
+        </g>`;
+      }
+
+      // ----- Panel data -----
+      const panels = {
+        auth: {
+          title: "Auth Service [Gateway]",
+          color: C4.auth.sub,
+          items: [
+            ["🔐 Token Validation", "Verifies Bearer tokens on every inbound request before passing to any service"],
+            ["🗺️ Route Dispatcher", "Inspects path prefix — routes /wrap, /classify, /queue, /compose to correct downstream"],
+            ["🚦 Rate Limiting", "Per-client throttling to protect backend services"],
+            ["📋 Audit Log", "All auth decisions logged for compliance and debugging"],
+          ],
+          note: "Single entry point. No backend service or Composer is reachable without passing through Auth.",
+        },
+        backend: {
+          title: "Backend Services [Azure Container Apps]",
+          color: C4.container.sub,
+          items: [
+            ["🎁 Wrapper Generator", "Orchestrates wrap creation; calls OLLAMA for generation; writes result to Blob Shareable"],
+            ["📬 Queue", "Azure Service Bus — async job queue for long-running generation tasks"],
+            ["🏷️ Contribution Classifier", "ML pipeline: tags and categorises contributions submitted from the client"],
+          ],
+          note: "All services only reachable via Auth Service. Hosted on Azure Container Apps.",
+        },
+        composer: {
+          title: "Composer [Independent Service]",
+          color: C4.container.sub,
+          items: [
+            ["🎵 Music Assembly", "Selects and layers background music tracks for the wrap"],
+            ["📊 Slide Builder", "Renders contribution data into slide layouts"],
+            ["📦 Package Writer", "Bundles final asset and writes to Blob Download"],
+          ],
+          note: "Independent Azure service — separate from Backend Services boundary. Auth routes POST /compose here directly by path.",
+        },
+        shareable: {
+          title: "Blob: Shareable",
+          color: C4.storage.sub,
+          items: [
+            ["💾 Cache Layer", "Generated asset cache keyed by owner"],
+            ["✏️ Owner Access", "r/w — creator can update their wrap asset"],
+            ["👁️ Public Access", "all:r — share link is publicly readable by anyone"],
+          ],
+          note: "Azure Blob Storage with tiered ACL. Wrapper Generator writes here; shareable links point here.",
+        },
+      };
+
+      // ----- SVG assembly -----
+      function buildSvg() {
+        const legend = [
+          ["Person", C4.person.bg],
+          ["Auth Gateway", C4.auth.bg],
+          ["Container", C4.container.bg],
+          ["Component", C4.component.bg],
+          ["Storage", C4.storage.bg],
+          ["External", C4.external.bg],
+          ["Test Agent", C4.test.bg],
+        ];
+
+        return `
+<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <rect width="40" height="40" fill="#07111F"/>
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#0B1E30" stroke-width="0.5"/>
+    </pattern>
+    <marker id="arr" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M 0 0 L 8 4 L 0 8 z" fill="#4A8EC4"/>
+    </marker>
+    <filter id="sh" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+
+  <rect width="${W}" height="${H}" fill="url(#grid)"/>
+
+  <!-- Boundaries first -->
+  ${Boundary({ x: CLIENT_X, y: CLIENT_Y, w: CLIENT_W, h: CLIENT_H, label: "Client [Browser / Tauri]" })}
+  ${Boundary({ x: SYS_X, y: SYS_Y, w: SYS_W, h: SYS_H, label: "Burrito System [Azure]" })}
+  ${Boundary({ x: BACK_X, y: BACK_Y, w: BACK_W, h: BACK_H, label: "Backend Services [Container Apps]", onClick: 'backend', active: panel === 'backend' })}
+
+  <!-- Arrows -->
+  ${Arrow({ x1: PERSON_X + PERSON_W/2, y1: PERSON_Y + 78, x2: PERSON_X + PERSON_W/2, y2: CLIENT_Y, label: "uses" })}
+  ${Arrow({ x1: ADAPTER_X + ADAPTER_W, y1: AUTH_Y + AUTH_H/2, x2: AUTH_X, y2: AUTH_Y + AUTH_H/2, label: "JSON contract" })}
+  ${Arrow({ x1: AUTH_X + AUTH_W, y1: AUTH_Y + 28, x2: WRAP_X, y2: WRAP_Y + WRAP_H/2,
+            cx1: AUTH_X + AUTH_W + 38, cy1: AUTH_Y + 28,
+            cx2: WRAP_X - 38, cy2: WRAP_Y + WRAP_H/2,
+            label: "POST /wrap",
+            lx: (AUTH_X + AUTH_W + WRAP_X)/2, ly: WRAP_Y + 24 })}
+  ${Arrow({ x1: AUTH_X + AUTH_W, y1: AUTH_Y + AUTH_H/2, x2: QUEUE_X, y2: QUEUE_Y + QUEUE_H/2,
+            cx1: AUTH_X + AUTH_W + 30, cy1: AUTH_Y + AUTH_H/2,
+            cx2: QUEUE_X - 30, cy2: QUEUE_Y + QUEUE_H/2,
+            label: "enqueue" })}
+  ${Arrow({ x1: AUTH_X + AUTH_W, y1: AUTH_Y + AUTH_H - 28, x2: CLASS_X, y2: CLASS_Y + CLASS_H/2,
+            cx1: AUTH_X + AUTH_W + 38, cy1: AUTH_Y + AUTH_H - 28,
+            cx2: CLASS_X - 38, cy2: CLASS_Y + CLASS_H/2,
+            label: "POST /classify",
+            lx: (AUTH_X + AUTH_W + CLASS_X)/2, ly: CLASS_Y + 8 })}
+  ${Arrow({ x1: AUTH_X + AUTH_W/2, y1: AUTH_Y + AUTH_H, x2: COMPOSER_X, y2: COMPOSER_Y + COMPOSER_H/2,
+            cx1: AUTH_X + AUTH_W/2, cy1: COMPOSER_Y + COMPOSER_H/2,
+            cx2: COMPOSER_X - 50, cy2: COMPOSER_Y + COMPOSER_H/2,
+            label: "POST /compose",
+            lx: AUTH_X + AUTH_W/2 + 70, ly: COMPOSER_Y + COMPOSER_H/2 + 14 })}
+  ${Arrow({ x1: WRAP_X + WRAP_W, y1: WRAP_Y + WRAP_H/2, x2: OLLAMA_X, y2: OLLAMA_Y + OLLAMA_H/2, label: "LLM inference" })}
+  ${Arrow({ x1: WRAP_X + WRAP_W, y1: WRAP_Y + WRAP_H - 18, x2: BSHARE_X + 28, y2: BSHARE_Y,
+            cx1: WRAP_X + WRAP_W + 30, cy1: WRAP_Y + WRAP_H + 30,
+            cx2: BSHARE_X + 10, cy2: BSHARE_Y - 30,
+            label: "store result",
+            lx: WRAP_X + WRAP_W + 50, ly: WRAP_Y + WRAP_H + 8 })}
+  ${Arrow({ x1: COMPOSER_X + COMPOSER_W, y1: COMPOSER_Y + COMPOSER_H/2, x2: BDL_X, y2: BDL_Y + BDL_H/2,
+            cx1: COMPOSER_X + COMPOSER_W + 18, cy1: COMPOSER_Y + COMPOSER_H/2,
+            cx2: BDL_X - 18, cy2: BDL_Y + BDL_H/2,
+            label: "write asset" })}
+  ${Arrow({ x1: UAT_X + UAT_W/2, y1: UAT_Y, x2: AUTH_X + AUTH_W/2, y2: AUTH_Y + AUTH_H, dashed: true, label: "test all routes" })}
+
+  <!-- Person -->
+  ${Person({ x: PERSON_X, y: PERSON_Y, w: PERSON_W, label: "User", sub: "Browser / Tauri" })}
+
+  <!-- Client components -->
+  ${Box({ x: COMP_X, y: COMP1_Y, w: COMP_W, h: COMP_H, type: "component", label: "Contribution Timeline", tech: "UI component", desc: "Sync providers + manual input" })}
+  ${Box({ x: COMP_X, y: COMP2_Y, w: COMP_W, h: COMP_H, type: "component", label: "Wrapped Viewer", tech: "UI component", desc: "Playback, request and completed state" })}
+  ${Box({ x: COMP_X, y: COMP3_Y, w: COMP_W, h: COMP_H, type: "component", label: "Auto Classifier", tech: "WASM / JS", desc: "Pre-classification before upload" })}
+  ${Box({ x: COMP_X, y: COMP4_Y, w: COMP_W, h: COMP_H, type: "component", label: "Personal Vault", tech: "IndexedDB", desc: "Encrypted local contribution store" })}
+
+  <!-- Adapter Layer -->
+  <g>
+    <rect x="${ADAPTER_X}" y="${ADAPTER_Y}" width="${ADAPTER_W}" height="${ADAPTER_H}" rx="3" fill="#0F2540" stroke="#1A3A60" stroke-width="1" stroke-dasharray="4,3"/>
+    <text x="${ADAPTER_X + ADAPTER_W/2}" y="${ADAPTER_Y + ADAPTER_H/2}" font-family="${MONO}" font-size="8.5" fill="#2A5A90" text-anchor="middle" transform="rotate(-90 ${ADAPTER_X + ADAPTER_W/2} ${ADAPTER_Y + ADAPTER_H/2})">Adapter Layer</text>
+  </g>
+
+  <!-- Auth + GATEWAY badge -->
+  ${Box({ x: AUTH_X, y: AUTH_Y, w: AUTH_W, h: AUTH_H, type: "auth",
+          label: "Auth Service", tech: "Azure API Management",
+          desc: "Token validation · Route dispatch\nAll traffic enters here first",
+          active: panel === 'auth', onClick: 'auth' })}
+  <g style="pointer-events:none">
+    <rect x="${AUTH_X + AUTH_W - 64}" y="${AUTH_Y + 4}" width="58" height="14" rx="7" fill="#0D5C45" stroke="#5FD9B0" stroke-width="0.8"/>
+    <text x="${AUTH_X + AUTH_W - 35}" y="${AUTH_Y + 14}" font-family="${MONO}" font-weight="bold" font-size="8" fill="#5FD9B0" text-anchor="middle">GATEWAY</text>
+  </g>
+
+  <!-- Backend components -->
+  ${Box({ x: WRAP_X, y: WRAP_Y, w: WRAP_W, h: WRAP_H, type: "container",
+          label: "Wrapper Generator", tech: "Azure Container Apps",
+          desc: "Orchestrates wrap: slides, music, media. Calls OLLAMA." })}
+  ${Box({ x: QUEUE_X, y: QUEUE_Y, w: QUEUE_W, h: QUEUE_H, type: "component",
+          label: "Queue", tech: "Azure Service Bus",
+          desc: "Async job queue for generation tasks" })}
+  ${Box({ x: CLASS_X, y: CLASS_Y, w: CLASS_W, h: CLASS_H, type: "container",
+          label: "Contribution Classifier", tech: "Azure Container Apps",
+          desc: "ML pipeline: tags and categorises contributions" })}
+
+  <!-- Composer + INDEPENDENT badge -->
+  ${Box({ x: COMPOSER_X, y: COMPOSER_Y, w: COMPOSER_W, h: COMPOSER_H, type: "container",
+          label: "Composer", tech: "Azure Container Apps  [independent]",
+          desc: "Assembles slides + music. Auth routes /compose here directly.",
+          active: panel === 'composer', onClick: 'composer' })}
+  <g style="pointer-events:none">
+    <rect x="${COMPOSER_X + 6}" y="${COMPOSER_Y + 4}" width="86" height="14" rx="7" fill="#1168BD" stroke="#9EC5F5" stroke-width="0.8"/>
+    <text x="${COMPOSER_X + 49}" y="${COMPOSER_Y + 14}" font-family="${MONO}" font-weight="bold" font-size="8" fill="#9EC5F5" text-anchor="middle">INDEPENDENT</text>
+  </g>
+
+  <!-- OLLAMA -->
+  ${Box({ x: OLLAMA_X, y: OLLAMA_Y, w: OLLAMA_W, h: OLLAMA_H, type: "external",
+          label: "OLLAMA", tech: "Local LLM Runtime",
+          desc: "Model inference for wrap generation" })}
+
+  <!-- Blob: Shareable -->
+  ${Cylinder({ x: BSHARE_X, y: BSHARE_Y, w: BSHARE_W, h: BSHARE_H,
+               label: "Blob: Shareable", tech: "Azure Blob Storage",
+               desc: "cache · owner:asset\nowner r/w · all:r",
+               active: panel === 'shareable', onClick: 'shareable' })}
+
+  <!-- Blob: Download -->
+  ${Cylinder({ x: BDL_X, y: BDL_Y, w: BDL_W, h: BDL_H,
+               label: "Blob: Download", tech: "Azure Blob Storage",
+               desc: "Final packaged wraps for user download" })}
+
+  <!-- UAT Agent -->
+  ${Box({ x: UAT_X, y: UAT_Y, w: UAT_W, h: UAT_H, type: "test",
+          label: "UAT Agent", tech: "Playwright",
+          desc: "Unit · Integration · e2e — pre-demo validation" })}
+
+  <!-- Legend -->
+  <g transform="translate(40, ${H - 50})">
+    ${legend.map(([name, color], i) => `
+      <g transform="translate(${i * 138}, 0)">
+        <rect width="14" height="14" rx="2" fill="${color}" stroke="#1A3A60" stroke-width="0.5"/>
+        <text x="20" y="11" font-family="${SANS}" font-size="9.5" fill="#4A6A8A">${esc(name)}</text>
+      </g>`).join('')}
+  </g>
+
+  <!-- Footer -->
+  <text x="${W - 24}" y="${H - 18}" font-family="${MONO}" font-size="9" fill="#2A4A6A" text-anchor="end">OUTPUT: JSON · Shareable URL · Download Package</text>
+</svg>`;
+      }
+
+      // ----- Panel HTML -----
+      function buildPanel() {
+        if (!panel || !panels[panel]) return '';
+        const p = panels[panel];
+        const items = p.items.map(([title, body]) => `
+          <div class="panel-item">
+            <div class="panel-item-title">${esc(title)}</div>
+            <div class="panel-item-body">${esc(body)}</div>
+          </div>`).join('');
+        return `
+          <div class="panel" style="border-left:4px solid ${p.color};">
+            <div class="panel-head">
+              <div class="panel-title">${esc(p.title)}</div>
+              <button class="panel-close" data-close="1">Close</button>
+            </div>
+            <div class="panel-grid">${items}</div>
+            ${p.note ? `<div class="panel-note">${esc(p.note)}</div>` : ''}
+          </div>`;
+      }
+
+      // ----- Render + event wiring -----
+      function render() {
+        container.innerHTML = `
+          ${buildSvg()}
+          <div class="hint">Click Auth Service · Backend Services boundary · Composer · Blob: Shareable to expand details</div>
+          ${buildPanel()}
+        `;
+
+        // Wire click handlers on elements with data-onclick
+        container.querySelectorAll('[data-onclick]').forEach(el => {
+          el.addEventListener('click', () => tog(el.getAttribute('data-onclick')));
+        });
+        // Close button
+        const closeBtn = container.querySelector('[data-close]');
+        if (closeBtn) closeBtn.addEventListener('click', () => { panel = null; render(); });
+      }
+
+      render();
+    }
+
+    // Boot
+    App(document.getElementById('root'));
+  </script>
+</body>
+</html>
