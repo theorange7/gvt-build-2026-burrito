@@ -103,8 +103,9 @@ Future / new features:
 | 50 | File-upload contribution provider | Shaped — ready | both | medium |
 | 51 | Reset (clear data) and de-register (forget passphrase) | Shaped — ready | both | medium |
 | 60 | Ollama local provider | Shaped — ready | server | small |
-| 70 | Interactive sense-making session v0 | Shaped — ready | both | large |
-| 71 | Wrap from the record (v1) | Shaped — ready (blocked by 60) | both | medium |
+| 70 | Interactive sense-making session v0 | Shaped — UI superseded by Spec 72; data/server scope consumed | both | large |
+| 71 | Wrap from the record (v1) | Shaped — wrap entry points deferred to a Spec 71 evolution after Spec 72 | both | medium |
+| 72 | UI and functionality overhaul (Claude Design handoff) | Shaped — ready | both | large |
 
 ## Design notes (pre-spec)
 
@@ -113,12 +114,14 @@ shaped specs. Named `design-<slug>.md` (no number); they don't appear
 in the index table above.
 
 - `design-interactive-sensemaking.md` — direction for the sense-making
-  initiative; informs Spec 60 and future specs.
+  initiative; informs Specs 70, 71, and 72.
 - `design-system-reference.md` — extracted reference of the existing
   visual language (philosophy, palette, typography, motifs, copy
   register). Pairs with Claude Design briefs so new surfaces sit
   inside the existing world.
->>>>>>> 7329645 (docs: shape Specs 60 + 61 (interactive sense-making) and design reference)
+- `docs/designs/spec70/burrito/` (in the repo, outside `tasks/`) —
+  the Claude Design handoff bundle that shapes Spec 72. The interactive
+  prototype is `docs/designs/spec70/burrito/project/Burrito Prototype.html`.
 
 ## How an agent should use this directory
 

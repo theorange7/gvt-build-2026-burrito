@@ -268,21 +268,52 @@ as future specs after demo day:
 - A browseable record UI ("read my journal").
 - Telemetry on session edit/lock/skip patterns.
 
+## Decisions made after the Claude Design prototype (2026-05-16)
+
+The Claude Design exploration at `docs/designs/spec70/burrito/`
+shipped a working prototype that answered several previously-open
+questions. The decisions are now anchored in **Spec 72** (UI and
+functionality overhaul):
+
+- **Projects and Collaborators are first-class concepts.** Both get
+  their own top-level navigation tabs (`projects`, `people`), index
+  views, and detail pages. Sessions can be scoped by project or by
+  person, not only by day or range. The previously-open question is
+  resolved: **hybrid** — repo-derived by default, with user-curated
+  grouping deferred to a v2 follow-up.
+- **Onboarding is a single-page scroll.** The 3-step variant is
+  dropped entirely; Spec 72 ships only `OnboardingScroll` from the
+  prototype.
+- **The record gets a dedicated browseable view** (`/record`),
+  replacing the "completed sessions count" pointer pattern.
+- **A timeline view exists** (`/timeline`) — a chronological
+  day-by-day with sessioned/unsessioned markers. Clicking any past
+  day starts a session for that day.
+- **A past-sessions index exists** (`/sessions`) reachable from
+  navigation.
+- **Information architecture is `flat`** for v1: `today / your
+  record / projects / people`. The prototype's `grouped` and
+  `timeline-first` variants are deferred.
+- **Wrap entry points appear on Project and Person detail pages**
+  ("make a wrap about this" / "make a wrap together") — in v1 these
+  are disabled-with-soon-tag; v2 (a Spec 71 evolution) wires them up.
+
 ## Open questions not yet answered
 
-- **Projects and Collaborators as persistent organizational concepts.**
-  Should Burrito have a layer of organization above sessions —
-  long-running Projects (a repo, an initiative) and Collaborators
-  (people the user works with regularly) — that artifacts roll up to?
-  Open exploration in progress via Claude Design visual prototyping
-  (the brief asks for browse views, session starters, and wrap entry
-  points around these concepts). Key sub-decisions when this lands:
-  derived (auto-extracted) vs curated (user-named) vs hybrid (system
-  suggests, user accepts/edits) — this is the brand-identity-shaping
-  decision; whether artifacts belong to one Project or many; how this
-  layers with day-scoped sessions; how it interacts with the record.
-  Not specified in Specs 60 or 61; may become a v2 spec after the
-  visual exploration informs the architectural choice.
+- **Curated projects.** The prototype includes a "+ group your own"
+  affordance and the data model declares `source: "repo" | "curated"`,
+  but the curation UX (naming, picking artifacts, merging across
+  repos) is its own design conversation. Deferred to a v2 spec.
+- **The onboarding "what brings you here" answer.** The prototype
+  captures it but doesn't use it. v1 (Spec 72) persists it to the
+  user profile without varying the experience; v2 may use it to
+  tailor copy or session suggestions.
+- **Empty-state UX when a user has zero artifacts.** Spec 72 v1
+  shows a calm "we haven't seen any artifacts yet" prompt; deeper
+  empty-state choreography is a v2 question.
+- **Anchored deep links in record / timeline.** v1 routes to the
+  surface without scrolling to a specific day or session; v2
+  adds anchored navigation.
 - **When can a user "make a wrap"?** Always available, threshold-gated,
   or context-prompted? Spec 61 takes a position: always available, but
   with a soft state when the record is thin ("Your record is short —
