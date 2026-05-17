@@ -38,6 +38,7 @@ describe('privacy invariants — every Functions handler carries the PRIVACY ban
       expect.arrayContaining([
         join('src', 'functions', 'authRegister.ts'),
         join('src', 'functions', 'classify.ts'),
+        join('src', 'functions', 'meReset.ts'),
         join('src', 'functions', 'wrapEnqueue.ts'),
         join('src', 'functions', 'wrapGet.ts'),
         join('src', 'functions', 'wrapWorker.ts'),
@@ -105,6 +106,37 @@ describe('privacy invariants — no logging of payloads, contributions, or slice
         expect(source, `${file} must not log via ${re}`).not.toMatch(re);
       }
     }
+  });
+});
+
+describe('privacy invariants — meReset never emits identifiers', () => {
+  const meResetPath = join(functionsDir, 'meReset.ts');
+
+  it('meReset.ts exists', () => {
+    let exists = false;
+    try { exists = statSync(meResetPath).isFile(); } catch { /* */ }
+    expect(exists).toBe(true);
+  });
+
+  it('meReset.ts starts with the PRIVACY banner', () => {
+    const source = readFileSync(meResetPath, 'utf8');
+    expect(source).toMatch(/PRIVACY/);
+  });
+
+  it('meReset.ts does not log installId, slug, jobId, or token', () => {
+    const source = readFileSync(meResetPath, 'utf8');
+    expect(source).not.toMatch(/console\.[a-z]+\([^)]*\binstallId\b/);
+    expect(source).not.toMatch(/context\.[a-z]+\([^)]*\binstallId\b/);
+    expect(source).not.toMatch(/console\.[a-z]+\([^)]*\bslug\b/);
+    expect(source).not.toMatch(/console\.[a-z]+\([^)]*\bjobId\b/);
+    expect(source).not.toMatch(/context\.[a-z]+\([^)]*\bjobId\b/);
+    expect(source).not.toMatch(/console\.[a-z]+\([^)]*\btoken\b/);
+  });
+
+  it('meReset.ts does not import node:fs or src/ai/', () => {
+    const source = readFileSync(meResetPath, 'utf8');
+    expect(source).not.toMatch(/from ['"]node:fs['"]/);
+    expect(source).not.toMatch(/from ['"]\.\.\/ai\//);
   });
 });
 

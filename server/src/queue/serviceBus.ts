@@ -1,18 +1,23 @@
 import { ServiceBusClient, type ServiceBusSender } from '@azure/service-bus';
 import { DefaultAzureCredential } from '@azure/identity';
 import type { EnqueueWrapRequest } from '@wrapped/shared';
+import { getEnvMode } from '../env';
 
 let cachedClient: ServiceBusClient | null = null;
 let cachedSender: ServiceBusSender | null = null;
 
 function getSender(): ServiceBusSender {
   if (cachedSender) return cachedSender;
-  const namespace = process.env.AZURE_SERVICE_BUS_NAMESPACE;
   const queueName = process.env.AZURE_SERVICE_BUS_QUEUE_NAME ?? 'wrap-jobs';
-  if (!namespace) {
-    throw new Error('AZURE_SERVICE_BUS_NAMESPACE is not set. Configure it in the Functions app settings.');
+  if (getEnvMode() === 'local') {
+    const cs = process.env.ServiceBusConnection;
+    if (!cs) throw new Error('ServiceBusConnection must be set when ENV_MODE=local');
+    cachedClient = new ServiceBusClient(cs);
+  } else {
+    const namespace = process.env.AZURE_SERVICE_BUS_NAMESPACE;
+    if (!namespace) throw new Error('AZURE_SERVICE_BUS_NAMESPACE must be set when ENV_MODE is dev or prod');
+    cachedClient = new ServiceBusClient(namespace, new DefaultAzureCredential());
   }
-  cachedClient = new ServiceBusClient(namespace, new DefaultAzureCredential());
   cachedSender = cachedClient.createSender(queueName);
   return cachedSender;
 }

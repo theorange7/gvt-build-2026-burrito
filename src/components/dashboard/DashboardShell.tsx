@@ -18,6 +18,7 @@ import { EventDetailDrawer } from '@/components/dashboard/EventDetailDrawer';
 import type { DrawerEvent } from '@/components/dashboard/EventDetailDrawer';
 import { GenerateWrapModal } from '@/components/dashboard/GenerateWrapModal';
 import { ManualInputForm } from '@/components/dashboard/ManualInputForm';
+import { ResetModal } from '@/components/dashboard/ResetModal';
 import { useContributions } from '@/components/dashboard/useContributions';
 import { hasActiveKey } from '@/lib/local-store/crypto';
 import { db } from '@/lib/local-store/db';
@@ -493,15 +494,18 @@ function SettingsTab({
   p,
   profileName,
   onSaveName,
+  onResetSuccess,
 }: {
   p: MxPalette;
   profileName: string;
   onSaveName: (name: string) => void;
+  onResetSuccess?: () => void;
 }) {
   const [draft, setDraft] = useState(profileName);
   const [saved, setSaved] = useState(false);
   const [expandedProviderId, setExpandedProviderId] = useState<string | null>(null);
   const [connectingProviderId, setConnectingProviderId] = useState<string | null>(null);
+  const [showReset, setShowReset] = useState(false);
   const identities = useLiveQuery(loadIdentitiesWithSync, [], [] as IdentityWithSync[]);
 
   useEffect(() => { setDraft(profileName); }, [profileName]);
@@ -706,6 +710,34 @@ function SettingsTab({
         {connectedCount} / {totalProviders} provider{totalProviders !== 1 ? 's' : ''} connected
       </p>
 
+      {/* Reset section */}
+      <div style={{ background: '#fff', border: '2px solid ' + p.ink, borderRadius: 16, boxShadow: '4px 4px 0 ' + p.ink, padding: '22px 26px' }}>
+        <p style={{ fontFamily: mxMono, fontSize: 10, fontWeight: 700, color: '#FF4D2E', letterSpacing: '0.14em', opacity: 0.85, margin: '0 0 6px' }}>DANGER ZONE</p>
+        <h2 style={{ fontFamily: mxFont, fontSize: 18, fontWeight: 700, color: p.ink, margin: '0 0 8px' }}>Reset this device</h2>
+        <p style={{ fontFamily: mxFont, fontSize: 13, color: p.ink, opacity: 0.65, margin: '0 0 14px', lineHeight: 1.5 }}>
+          Clear contributions and wraps, or remove the passphrase and start fresh.
+        </p>
+        <button
+          type="button"
+          onClick={() => setShowReset(true)}
+          style={{
+            background: 'transparent', border: '2px solid #FF4D2E', borderRadius: 10,
+            padding: '9px 20px', fontFamily: mxFont, fontSize: 13, fontWeight: 700,
+            color: '#FF4D2E', cursor: 'pointer',
+          }}
+        >
+          Reset this device…
+        </button>
+      </div>
+
+      {showReset && (
+        <ResetModal
+          open={showReset}
+          onClose={() => setShowReset(false)}
+          onSuccess={onResetSuccess}
+        />
+      )}
+
       {/* Connect modal */}
       {connectingProviderId && (
         <div
@@ -884,7 +916,12 @@ export function DashboardShell() {
 
       {/* Settings tab */}
       {activeTab === 'settings' && (
-        <SettingsTab p={p} profileName={profileName} onSaveName={saveProfileName} />
+        <SettingsTab
+          p={p}
+          profileName={profileName}
+          onSaveName={saveProfileName}
+          onResetSuccess={() => setActiveTab('timeline')}
+        />
       )}
 
       {/* Main content (timeline tab) */}
