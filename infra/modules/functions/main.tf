@@ -64,7 +64,15 @@ resource "azurerm_function_app_flex_consumption" "main" {
     AZURE_TABLES_RESULTS  = var.wrap_tables_results
 
     # Secrets via Key Vault references — Functions resolves @Microsoft.KeyVault(…) at runtime
-    WRAP_JWT_SECRET                = "@Microsoft.KeyVault(SecretUri=${var.key_vault_uri}secrets/wrap-jwt-secret/)"
+
+    # JWT signing — new multi-key scheme (jwt.ts scans WRAP_JWT_KEY_<kid>).
+    # WRAP_JWT_SECRET is retained so tokens signed under the legacy shim still
+    # verify. Once all outstanding tokens have expired, WRAP_JWT_SECRET can be
+    # removed from here and from Key Vault.
+    "WRAP_JWT_KEY_v1"    = "@Microsoft.KeyVault(SecretUri=${var.key_vault_uri}secrets/wrap-jwt-key-v1/)"
+    WRAP_JWT_ACTIVE_KID  = "v1"
+    WRAP_JWT_SECRET      = "@Microsoft.KeyVault(SecretUri=${var.key_vault_uri}secrets/wrap-jwt-secret/)"
+
     ANTHROPIC_API_KEY              = "@Microsoft.KeyVault(SecretUri=${var.key_vault_uri}secrets/anthropic-api-key/)"
     AZURE_FOUNDRY_PROJECT_ENDPOINT = "@Microsoft.KeyVault(SecretUri=${var.key_vault_uri}secrets/azure-foundry-project-endpoint/)"
     AZURE_FOUNDRY_API_VERSION      = "@Microsoft.KeyVault(SecretUri=${var.key_vault_uri}secrets/azure-foundry-api-version/)"
@@ -74,6 +82,12 @@ resource "azurerm_function_app_flex_consumption" "main" {
     WRAP_PER_INSTALL_LIMIT            = tostring(var.wrap_per_install_limit)
     WRAP_RESULT_TTL_HOURS             = tostring(var.wrap_result_ttl_hours)
     WRAP_REGISTER_RATE_LIMIT_PER_HOUR = tostring(var.wrap_register_rate_limit_per_hour)
+    WRAP_MAX_DELIVERIES               = tostring(var.wrap_max_deliveries)
+
+    # Deployment mode — drives whether queue/table clients use connection strings
+    # (local) or DefaultAzureCredential (dev/prod). "staging" maps to "dev"
+    # because both use managed identity; the distinction only matters locally.
+    ENV_MODE = var.env_mode
 
     # CORS — stored here too so the host.json CORS block can reference it
     WRAP_ALLOWED_ORIGINS = var.allowed_origins

@@ -9,11 +9,14 @@ Infra is managed by Terraform (`infra/`); this runbook covers the code deploy on
 - `pnpm` installed (version ≥ 10).
 - `zip` available (macOS: built-in; Linux: `apt install zip`).
 - `npm` available (used during `pnpm package` to install prod deps).
-- The target Function App provisioned via `terraform apply` (sets
-  `WEBSITE_RUN_FROM_PACKAGE=1`).
-- App settings already configured on the Function App (JWT secret, LLM keys,
-  Service Bus namespace, Table Storage endpoint). See
-  `server/local.settings.json.example` for the full list of env vars.
+- The target Function App provisioned via `terraform apply`. Terraform uses Flex
+  Consumption with a blob-container deployment model — it does **not** set
+  `WEBSITE_RUN_FROM_PACKAGE`.
+- All app settings injected by Terraform (`ENV_MODE`, `WRAP_JWT_KEY_v1`,
+  `WRAP_JWT_ACTIVE_KID`, LLM keys via Key Vault references, Service Bus FQDN,
+  Table Storage endpoint, capacity knobs). See `infra/modules/functions/main.tf`
+  for the authoritative list; `server/local.settings.json.example` is for local
+  dev only.
 
 ## Steps
 
@@ -45,6 +48,7 @@ ai/models.js
 ...
 functions/authRegister.js
 functions/classify.js
+functions/meReset.js
 functions/wrapEnqueue.js
 functions/wrapGet.js
 functions/wrapWorker.js
@@ -76,11 +80,14 @@ returns 401 without a valid token (expected — means the function is up):
 ```bash
 HOSTNAME=https://<function-app-name>.azurewebsites.net
 
-# Should return HTTP 401 (function registered, auth working)
-curl -s -o /dev/null -w "%{http_code}" "${HOSTNAME}/api/wrap"
+# Should return HTTP 401 (function registered, auth required)
+curl -s -o /dev/null -w "%{http_code}" -X POST "${HOSTNAME}/api/wrap"
 
 # Should return HTTP 401
-curl -s -o /dev/null -w "%{http_code}" "${HOSTNAME}/api/classify"
+curl -s -o /dev/null -w "%{http_code}" -X POST "${HOSTNAME}/api/classify"
+
+# Should return HTTP 401
+curl -s -o /dev/null -w "%{http_code}" -X DELETE "${HOSTNAME}/api/me/data"
 
 # Should return HTTP 200 with a JWT body
 curl -s -X POST "${HOSTNAME}/api/auth/register"
@@ -108,8 +115,9 @@ commit used for each deploy so you can rebuild the exact artifact if needed.
 | Symptom | Check |
 |---------|-------|
 | Deploy command returns 4xx | `az login` expiration; re-authenticate |
-| Functions 404 after deploy | `WEBSITE_RUN_FROM_PACKAGE=1` on the App; confirm zip was deployed, not a source deploy |
-| All endpoints return 500 | App settings missing — verify env vars match `local.settings.json.example` |
-| `/api/auth/register` returns 500 | `WRAP_JWT_SECRET` not set or empty on the Function App |
-| LLM calls fail | `ANTHROPIC_API_KEY` or `AZURE_FOUNDRY_PROJECT_ENDPOINT` missing/invalid |
-| Jobs stuck in `queued` | `AZURE_SERVICE_BUS_NAMESPACE` and `ServiceBusConnection__fullyQualifiedNamespace` missing |
+| Functions 404 after deploy | Confirm zip was deployed via `az functionapp deployment source config-zip`; Flex Consumption does not use `WEBSITE_RUN_FROM_PACKAGE` |
+| All endpoints return 500 on startup | `ENV_MODE` not set — Terraform injects this; check `az functionapp config appsettings list` |
+| All endpoints return 500 | App settings missing — run `az functionapp config appsettings list` and compare against `infra/modules/functions/main.tf` |
+| `/api/auth/register` returns 500 | Key Vault reference for `WRAP_JWT_KEY_v1` not resolving — check managed identity has `Get`/`List` on Key Vault; `WRAP_JWT_SECRET` is the legacy fallback |
+| LLM calls fail | `ANTHROPIC_API_KEY` or `AZURE_FOUNDRY_PROJECT_ENDPOINT` Key Vault reference not resolving, or secret value empty |
+| Jobs stuck in `queued` | `AZURE_SERVICE_BUS_NAMESPACE` and `ServiceBusConnection__fullyQualifiedNamespace` missing or managed identity lacks Service Bus Data Receiver role |
