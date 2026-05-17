@@ -18,7 +18,9 @@ import { EventDetailDrawer } from '@/components/dashboard/EventDetailDrawer';
 import type { DrawerEvent } from '@/components/dashboard/EventDetailDrawer';
 import { GenerateWrapModal } from '@/components/dashboard/GenerateWrapModal';
 import { ImportFromFileModal } from '@/components/dashboard/ImportFromFileModal';
+import { ImportQueueProvider } from '@/components/dashboard/ImportQueueContext';
 import { ManualInputForm } from '@/components/dashboard/ManualInputForm';
+import { PendingImportsList } from '@/components/dashboard/PendingImportsList';
 import { ResetModal } from '@/components/dashboard/ResetModal';
 import { useContributions } from '@/components/dashboard/useContributions';
 import { hasActiveKey } from '@/lib/local-store/crypto';
@@ -482,13 +484,11 @@ function formatRelative(ts: number | null): string {
 
 const PROVIDER_META: Record<string, { glyph: string; sub: string }> = {
   'gitlab-dedicated': { glyph: '◈', sub: 'MRs · reviews · commits' },
-  'file-upload': { glyph: '↥', sub: 'CSV · log · markdown · JSON' },
 };
 
 function providerColor(providerId: string, p: MxPalette): string {
   const map: Record<string, string> = {
     'gitlab-dedicated': p.lime,
-    'file-upload': p.accent2,
   };
   return map[providerId] ?? p.accent;
 }
@@ -508,7 +508,6 @@ function SettingsTab({
   const [saved, setSaved] = useState(false);
   const [expandedProviderId, setExpandedProviderId] = useState<string | null>(null);
   const [connectingProviderId, setConnectingProviderId] = useState<string | null>(null);
-  const [showFileImport, setShowFileImport] = useState(false);
   const [showReset, setShowReset] = useState(false);
   const identities = useLiveQuery(loadIdentitiesWithSync, [], [] as IdentityWithSync[]);
 
@@ -699,95 +698,6 @@ function SettingsTab({
           );
         })}
 
-        {/* File-upload tile — spec 50. Different connect flow (no remote token);
-            opens the ImportFromFileModal instead of AddProviderForm. */}
-        {(() => {
-          const fuIds = byProvider.get('file-upload') ?? [];
-          const meta = PROVIDER_META['file-upload'];
-          const tone = providerColor('file-upload', p);
-          const isExpanded = expandedProviderId === 'file-upload';
-          const isConnected = fuIds.length > 0;
-          return (
-            <div key="file-upload">
-              <div
-                role="button"
-                tabIndex={0}
-                aria-label="Import from file"
-                onClick={() => {
-                  if (isConnected) setExpandedProviderId(isExpanded ? null : 'file-upload');
-                  else setShowFileImport(true);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key !== 'Enter' && e.key !== ' ') return;
-                  e.preventDefault();
-                  if (isConnected) setExpandedProviderId(isExpanded ? null : 'file-upload');
-                  else setShowFileImport(true);
-                }}
-                style={{
-                  border: '2px solid ' + p.ink, borderRadius: 12, padding: '12px 14px',
-                  background: isConnected ? tone : '#fff',
-                  display: 'flex', alignItems: 'center', gap: 10,
-                  cursor: 'pointer', boxShadow: '3px 3px 0 ' + p.ink,
-                  transition: 'background 0.15s',
-                }}
-              >
-                <div style={{
-                  width: 32, height: 32, borderRadius: 8,
-                  background: isConnected ? '#fff' : tone,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 16, fontWeight: 800, border: '2px solid ' + p.ink, flexShrink: 0,
-                }}>{meta.glyph}</div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontFamily: mxFont, fontWeight: 700, fontSize: 14, color: p.ink }}>
-                    Import from file
-                  </div>
-                  <div style={{ fontFamily: mxMono, fontSize: 10, color: isConnected ? p.ink : '#666' }}>
-                    {isConnected
-                      ? `● ${fuIds.length} batch${fuIds.length === 1 ? '' : 'es'} imported`
-                      : meta.sub}
-                  </div>
-                </div>
-                <div style={{
-                  fontFamily: mxMono, fontSize: 11, fontWeight: 800,
-                  padding: '4px 10px', borderRadius: 999,
-                  background: isConnected ? p.ink : 'transparent',
-                  color: isConnected ? p.cream : p.ink,
-                  border: '1.5px solid ' + p.ink, whiteSpace: 'nowrap',
-                }}>{isConnected ? 'ON' : '+ UPLOAD'}</div>
-              </div>
-
-              {isExpanded && isConnected && (
-                <div style={{
-                  marginTop: 8, background: p.cream, border: '2px solid ' + p.ink,
-                  borderRadius: 12, boxShadow: '3px 3px 0 ' + p.ink, padding: '14px 16px',
-                  display: 'flex', flexDirection: 'column', gap: 12,
-                }}>
-                  {fuIds.map((identity) => (
-                    <div key={identity.id} style={{ background: '#fff', border: '2px solid ' + p.ink, borderRadius: 10, padding: '12px 14px' }}>
-                      <div style={{ fontFamily: mxFont, fontSize: 14, fontWeight: 700, color: p.ink }}>
-                        {identity.displayName ?? identity.externalUserId}
-                      </div>
-                      <div style={{ fontFamily: mxMono, fontSize: 10, color: p.ink, opacity: 0.55, margin: '2px 0 0' }}>
-                        one-shot import · re-uploading under the same label appends here
-                      </div>
-                    </div>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() => setShowFileImport(true)}
-                    style={{
-                      alignSelf: 'flex-start', background: p.paper, border: '2px solid ' + p.ink,
-                      borderRadius: 10, padding: '8px 16px', fontFamily: mxMono, fontSize: 11,
-                      fontWeight: 700, color: p.ink, cursor: 'pointer', letterSpacing: '0.08em',
-                    }}
-                  >
-                    + IMPORT ANOTHER FILE
-                  </button>
-                </div>
-              )}
-            </div>
-          );
-        })()}
       </div>
 
       {/* Privacy banner */}
@@ -831,8 +741,6 @@ function SettingsTab({
           onSuccess={onResetSuccess}
         />
       )}
-
-      <ImportFromFileModal open={showFileImport} onClose={() => setShowFileImport(false)} />
 
       {/* Connect modal */}
       {connectingProviderId && (
@@ -881,7 +789,7 @@ const DEFAULT_MX_PALETTE = {
   accent: '#6B3DFF', accent2: '#7BE3FF', accent3: '#FFB3C7',
 };
 
-export function DashboardShell() {
+function DashboardShellInner() {
   const isMobile = useIsMobile();
   const { data: contributions } = useContributions();
   const [paletteId, setPaletteId] = useState<string>('tomato');
@@ -889,6 +797,7 @@ export function DashboardShell() {
   const [seedChecked, setSeedChecked] = useState(false);
   const [showFirstRun, setShowFirstRun] = useState(false);
   const [showManualInput, setShowManualInput] = useState(false);
+  const [showFileImport, setShowFileImport] = useState(false);
   const [openEvent, setOpenEvent] = useState<DrawerEvent | null>(null);
   const [showWrap, setShowWrap] = useState(false);
   const [profileName, setProfileName] = useState('');
@@ -1074,13 +983,26 @@ export function DashboardShell() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20, position: isMobile ? 'static' : 'sticky', top: 24, alignSelf: 'start', minWidth: 0 }}>
           <WrapCtaCard p={p} onWrap={handleWrap} />
           <CategoryBreakdownCard p={p} />
-          <button
-            type="button"
-            onClick={() => setShowManualInput(true)}
-            style={{ width: '100%', background: p.paper, border: '2px solid ' + p.ink, borderRadius: 12, padding: '10px 16px', fontFamily: 'JetBrains Mono, monospace', fontSize: 11, fontWeight: 700, color: p.ink, cursor: 'pointer', letterSpacing: '0.1em', textAlign: 'left', boxShadow: '3px 3px 0 ' + p.ink }}
-          >
-            + ADD CONTRIBUTION MANUALLY
-          </button>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                type="button"
+                onClick={() => setShowManualInput(true)}
+                style={{ flex: 1, background: p.paper, border: '2px solid ' + p.ink, borderRadius: 12, padding: '10px 14px', fontFamily: 'JetBrains Mono, monospace', fontSize: 11, fontWeight: 700, color: p.ink, cursor: 'pointer', letterSpacing: '0.1em', textAlign: 'left', boxShadow: '3px 3px 0 ' + p.ink }}
+              >
+                + ADD MANUALLY
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowFileImport(true)}
+                aria-label="Import from file"
+                style={{ flex: 1, background: p.paper, border: '2px solid ' + p.ink, borderRadius: 12, padding: '10px 14px', fontFamily: 'JetBrains Mono, monospace', fontSize: 11, fontWeight: 700, color: p.ink, cursor: 'pointer', letterSpacing: '0.1em', textAlign: 'left', boxShadow: '3px 3px 0 ' + p.ink }}
+              >
+                + IMPORT FROM FILE
+              </button>
+            </div>
+            <PendingImportsList p={p} />
+          </div>
           <p style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, color: p.ink, opacity: 0.4, lineHeight: 1.6, paddingTop: 4, margin: 0 }}>
             a mirror, not a judge. burrito drafts. you edit. you own it.
           </p>
@@ -1088,8 +1010,17 @@ export function DashboardShell() {
       </div>}
 
       <ManualInputForm open={showManualInput} onClose={() => setShowManualInput(false)} />
+      <ImportFromFileModal open={showFileImport} onClose={() => setShowFileImport(false)} />
       <GenerateWrapModal open={showWrap} onOpenChange={setShowWrap} />
       <EventDetailDrawer p={p} event={openEvent} onClose={() => setOpenEvent(null)} />
     </div>
+  );
+}
+
+export function DashboardShell() {
+  return (
+    <ImportQueueProvider>
+      <DashboardShellInner />
+    </ImportQueueProvider>
   );
 }

@@ -228,9 +228,12 @@ async function mockGitLab(page: Page) {
  *   POST /auth/register → returns a stable test install token
  *   POST /import        → returns three pre-cooked normalized contributions
  *                         and one rejected row, mirroring what a real
- *                         extraction would shape.
+ *                         extraction would shape. Optional `delayMs` lets
+ *                         screenshots capture the in-flight state of the
+ *                         pending-imports list before the row pops.
  */
-async function mockFileUploadBackend(page: Page) {
+async function mockFileUploadBackend(page: Page, opts: { delayMs?: number } = {}) {
+  const delay = opts.delayMs ?? 0;
   await page.route(`${BACKEND}/auth/register`, async (route) => {
     await route.fulfill({
       status: 200,
@@ -242,6 +245,7 @@ async function mockFileUploadBackend(page: Page) {
     });
   });
   await page.route(`${BACKEND}/import`, async (route) => {
+    if (delay > 0) await new Promise((r) => setTimeout(r, delay));
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -279,6 +283,18 @@ async function mockFileUploadBackend(page: Page) {
       }),
     });
   });
+}
+
+async function submitImport(page: Page, label: string, fileName = 'commits.txt') {
+  await page.getByRole('button', { name: /^import from file$/i }).click();
+  await page.getByPlaceholder(/work laptop/i).fill(label);
+  await page.getByRole('button', { name: 'next →' }).click();
+  await page.setInputFiles('input[type="file"]', {
+    name: fileName,
+    mimeType: 'text/plain',
+    buffer: Buffer.from(`commits dump labelled ${label}`),
+  });
+  await page.getByRole('button', { name: /upload and extract/i }).click();
 }
 
 async function unlock(page: Page) {
@@ -402,17 +418,17 @@ test.describe('UI screenshots', () => {
   // Spec 50 — file-upload provider screenshots
   // ---------------------------------------------------------------------
 
-  test('10 — settings panel showing the Import-from-file tile', async ({ page }) => {
+  test('10 — timeline sidebar showing the Import-from-file button next to Manual input', async ({ page }) => {
     await unlock(page);
-    await page.getByRole('button', { name: /^settings$/i }).click();
-    await expect(page.getByRole('button', { name: /import from file/i })).toBeVisible();
-    await shot(page, '10-settings-file-upload-tile');
+    // The two buttons live side-by-side under the wrap CTA on the timeline.
+    await expect(page.getByRole('button', { name: /^import from file$/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /add manually/i })).toBeVisible();
+    await shot(page, '10-timeline-action-buttons');
   });
 
-  test('11 — import modal step 1 (label the batch)', async ({ page }) => {
+  test('11 — import modal step 1 (label the batch), opened from the timeline', async ({ page }) => {
     await unlock(page);
-    await page.getByRole('button', { name: /^settings$/i }).click();
-    await page.getByRole('button', { name: /import from file/i }).click();
+    await page.getByRole('button', { name: /^import from file$/i }).click();
     await expect(page.getByRole('heading', { name: /import from a file/i })).toBeVisible();
     await page.getByPlaceholder(/work laptop/i).fill('Q1 commits from work laptop');
     await shot(page, '11-import-step1-label');
@@ -421,16 +437,16 @@ test.describe('UI screenshots', () => {
   test('12 — import modal step 2 (file + model + egress disclosure)', async ({ page }) => {
     await mockFileUploadBackend(page);
     await unlock(page);
-    await page.getByRole('button', { name: /^settings$/i }).click();
-    await page.getByRole('button', { name: /import from file/i }).click();
+    await page.getByRole('button', { name: /^import from file$/i }).click();
     await page.getByPlaceholder(/work laptop/i).fill('Q1 commits from work laptop');
     await page.getByRole('button', { name: 'next →' }).click();
 
-    // The disclosure copy and model picker should both be visible.
+    // The disclosure copy, the 3-parallel callout, and the model picker
+    // should all be visible.
     await expect(page.getByTestId('egress-disclosure')).toBeVisible();
     await expect(page.getByTestId('egress-provider')).toBeVisible();
+    await expect(page.getByText(/up to 3 imports run in parallel/i)).toBeVisible();
 
-    // Attach a small fixture file so the form looks "ready to submit".
     await page.setInputFiles('input[type="file"]', {
       name: 'q1-commits.txt',
       mimeType: 'text/plain',
@@ -445,52 +461,41 @@ test.describe('UI screenshots', () => {
     await shot(page, '12-import-step2-disclosure');
   });
 
-  test('13 — import result panel after a successful upload', async ({ page }) => {
-    await mockFileUploadBackend(page);
+  test('13 — pending import row appears in the timeline sidebar', async ({ page }) => {
+    // Slow the /import response down so the row stays visible long enough
+    // to capture before it auto-pops on completion.
+    await mockFileUploadBackend(page, { delayMs: 3000 });
     await unlock(page);
-    await page.getByRole('button', { name: /^settings$/i }).click();
-    await page.getByRole('button', { name: /import from file/i }).click();
-    await page.getByPlaceholder(/work laptop/i).fill('Q1 commits from work laptop');
-    await page.getByRole('button', { name: 'next →' }).click();
-    await page.setInputFiles('input[type="file"]', {
-      name: 'q1-commits.txt',
-      mimeType: 'text/plain',
-      buffer: Buffer.from('three rows worth of contributions, plus one junk row'),
-    });
-    await page.getByRole('button', { name: /upload and extract/i }).click();
-    await expect(page.getByRole('heading', { name: /all done/i })).toBeVisible({
-      timeout: 15_000,
-    });
-    await expect(page.getByText(/your file has been discarded/i)).toBeVisible();
-    await shot(page, '13-import-result');
+    await submitImport(page, 'Q1 commits from work laptop');
+
+    const row = page.getByTestId('pending-import-row');
+    await expect(row).toBeVisible();
+    await expect(row).toHaveAttribute('data-status', /queued|running/);
+    await expect(row).toContainText('Q1 commits from work laptop');
+    await shot(page, '13-timeline-pending-import');
   });
 
-  test('14 — file-upload identity appears in the settings tile', async ({ page }) => {
-    await mockFileUploadBackend(page);
+  test('14 — concurrency cap: 3 running + 1 queued in the sidebar', async ({ page }) => {
+    // Slow uploads so all four are still in flight when we screenshot.
+    await mockFileUploadBackend(page, { delayMs: 4000 });
     await unlock(page);
-    await page.getByRole('button', { name: /^settings$/i }).click();
-    await page.getByRole('button', { name: /import from file/i }).click();
-    await page.getByPlaceholder(/work laptop/i).fill('Q1 commits from work laptop');
-    await page.getByRole('button', { name: 'next →' }).click();
-    await page.setInputFiles('input[type="file"]', {
-      name: 'q1-commits.txt',
-      mimeType: 'text/plain',
-      buffer: Buffer.from('three rows worth of contributions'),
-    });
-    await page.getByRole('button', { name: /upload and extract/i }).click();
-    await expect(page.getByRole('heading', { name: /all done/i })).toBeVisible({
-      timeout: 15_000,
-    });
-    await page.getByRole('button', { name: /^done$/i }).click();
 
-    // The tile should now read "● 1 batch imported"; expand it to surface
-    // the identity row underneath.
-    const tile = page.getByRole('button', { name: /import from file/i });
-    await expect(tile).toBeVisible();
-    await expect(page.getByText(/1 batch imported/i)).toBeVisible();
-    await tile.click();
-    await expect(page.getByText(/Q1 commits from work laptop/)).toBeVisible();
-    await shot(page, '14-settings-file-upload-connected');
+    await submitImport(page, 'Batch one');
+    await submitImport(page, 'Batch two');
+    await submitImport(page, 'Batch three');
+    await submitImport(page, 'Batch four');
+
+    const rows = page.getByTestId('pending-import-row');
+    await expect(rows).toHaveCount(4);
+
+    // Exactly 3 should be running; the fourth waits in the queue.
+    await expect(rows.filter({ has: page.locator('[data-status="running"]') })).toHaveCount(0);
+    // Use the attribute selector directly — Playwright doesn't drill into
+    // attributes via `filter`, so re-query.
+    await expect(page.locator('[data-testid="pending-import-row"][data-status="running"]')).toHaveCount(3);
+    await expect(page.locator('[data-testid="pending-import-row"][data-status="queued"]')).toHaveCount(1);
+
+    await shot(page, '14-timeline-concurrency-cap');
   });
 
   // ---------------------------------------------------------------------

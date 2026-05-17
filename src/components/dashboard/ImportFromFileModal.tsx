@@ -1,33 +1,27 @@
 'use client';
 
 /*
- * Spec 50 — file-upload contribution provider.
+ * Spec 50 — file-upload contribution provider (timeline UX revision).
  *
  * Two-step modal:
  *   Step 1 — user labels the batch (e.g. "Q1 commits from work laptop").
  *   Step 2 — user picks a model + file. A non-collapsible egress
  *            disclosure naming the chosen model's provider sits above
- *            the action buttons. The disclosure is mandatory: this is
- *            the only feature in the app that egresses contribution
- *            content, so the user must see it before clicking upload.
+ *            the action buttons.
  *
- * On success, shows a result panel with the added / duplicate / rejected
- * counts and a "Your file has been discarded." line — same reassurance
- * the spec mandates.
+ * On submit we enqueue the upload into the shared in-memory ImportQueue
+ * (capped at 3 concurrent) and close the modal immediately — the
+ * pending row appears below the timeline action buttons and pops off
+ * when the upload completes.
  */
-import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
 import { MODEL_OPTIONS, DEFAULT_MODEL_ID } from '@/lib/ai/models';
-import {
-  connectFileUploadIdentity,
-  importIntoIdentity,
-} from '@/lib/providers/orchestrator';
+import { useImportQueue } from './ImportQueueContext';
 
 const INK = '#0A0A0A';
 const CREAM = '#FFF4DE';
 const PAPER = '#FBF5E5';
 const HOT = '#FF4D2E';
-const LIME = '#C6FF3B';
 
 const MAX_FILE_BYTES = 256 * 1024;
 
@@ -38,40 +32,15 @@ function providerLabel(modelId: string): string {
   return 'the configured model provider';
 }
 
-type Stage = 'label' | 'file' | 'result';
-
-type ImportSummary = {
-  added: number;
-  skippedExisting: number;
-  rejectedRows: number;
-};
+type Stage = 'label' | 'file';
 
 export function ImportFromFileModal({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const queryClient = useQueryClient();
+  const { enqueue } = useImportQueue();
   const [stage, setStage] = useState<Stage>('label');
   const [label, setLabel] = useState('');
   const [modelId, setModelId] = useState<string>(DEFAULT_MODEL_ID);
   const [file, setFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
-  const [summary, setSummary] = useState<ImportSummary | null>(null);
-
-  const mutation = useMutation({
-    mutationFn: async (): Promise<ImportSummary> => {
-      if (!file) throw new Error('Pick a file to upload.');
-      const { identityId } = await connectFileUploadIdentity({ label: label.trim() });
-      const result = await importIntoIdentity(identityId, file, {
-        modelId,
-        label: label.trim(),
-      });
-      return result;
-    },
-    onSuccess: (result) => {
-      setSummary(result);
-      setStage('result');
-      queryClient.invalidateQueries({ queryKey: ['contributions'] });
-      queryClient.invalidateQueries({ queryKey: ['identities'] });
-    },
-  });
 
   useEffect(() => {
     if (!open) return;
@@ -86,11 +55,8 @@ export function ImportFromFileModal({ open, onClose }: { open: boolean; onClose:
       setLabel('');
       setFile(null);
       setFileError(null);
-      setSummary(null);
       setModelId(DEFAULT_MODEL_ID);
-      mutation.reset();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   const provider = useMemo(() => providerLabel(modelId), [modelId]);
@@ -134,7 +100,7 @@ export function ImportFromFileModal({ open, onClose }: { open: boolean; onClose:
       }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
           <p style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, letterSpacing: '0.14em', color: HOT, fontWeight: 700, margin: 0 }}>
-            {stage === 'result' ? 'IMPORTED' : `STEP ${stage === 'label' ? '1' : '2'} OF 2`}
+            STEP {stage === 'label' ? '1' : '2'} OF 2
           </p>
           <button
             type="button"
@@ -151,7 +117,7 @@ export function ImportFromFileModal({ open, onClose }: { open: boolean; onClose:
           fontFamily: 'Space Grotesk, sans-serif', fontSize: 24, fontWeight: 700,
           color: INK, margin: '0 0 14px',
         }}>
-          {stage === 'result' ? 'All done.' : 'Import from a file'}
+          Import from a file
         </h2>
 
         {stage === 'label' && (
@@ -206,7 +172,9 @@ export function ImportFromFileModal({ open, onClose }: { open: boolean; onClose:
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              if (file && !mutation.isPending) mutation.mutate();
+              if (!file) return;
+              enqueue({ label: labelTrimmed, modelId, file });
+              onClose();
             }}
             style={{ display: 'grid', gap: 14 }}
           >
@@ -267,15 +235,9 @@ export function ImportFromFileModal({ open, onClose }: { open: boolean; onClose:
                 contributions are encrypted and stored only on this device.
               </p>
               <p style={{ margin: 0, fontFamily: 'JetBrains Mono, monospace', fontSize: 11, opacity: 0.7 }}>
-                Max file size: 256 KB. Text-based files only.
+                Max file size: 256 KB. Text-based files only. Up to 3 imports run in parallel.
               </p>
             </div>
-
-            {mutation.isError && (
-              <p role="alert" style={{ fontSize: 13, color: HOT, fontFamily: 'Space Grotesk, sans-serif', margin: 0 }}>
-                {mutation.error instanceof Error ? mutation.error.message : 'Import failed.'}
-              </p>
-            )}
 
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
               <button
@@ -291,57 +253,19 @@ export function ImportFromFileModal({ open, onClose }: { open: boolean; onClose:
               </button>
               <button
                 type="submit"
-                disabled={!file || mutation.isPending}
+                disabled={!file}
                 style={{
-                  background: file && !mutation.isPending ? HOT : '#ccc',
+                  background: file ? HOT : '#ccc',
                   border: `2px solid ${INK}`, borderRadius: 10, boxShadow: `3px 3px 0 ${INK}`,
                   padding: '10px 22px', fontFamily: 'Space Grotesk, sans-serif',
                   fontSize: 14, fontWeight: 700, color: CREAM,
-                  cursor: file && !mutation.isPending ? 'pointer' : 'not-allowed',
+                  cursor: file ? 'pointer' : 'not-allowed',
                 }}
               >
-                {mutation.isPending ? 'uploading…' : 'upload and extract'}
+                upload and extract
               </button>
             </div>
           </form>
-        )}
-
-        {stage === 'result' && summary && (
-          <div style={{ display: 'grid', gap: 12 }}>
-            <p style={{ fontSize: 16, margin: 0, color: INK }}>
-              Imported <strong>{summary.added}</strong> contribution{summary.added === 1 ? '' : 's'}.
-            </p>
-            {summary.skippedExisting > 0 && (
-              <p style={{ fontSize: 14, margin: 0, color: INK, opacity: 0.75 }}>
-                {summary.skippedExisting} {summary.skippedExisting === 1 ? 'was a duplicate' : 'were duplicates'} (already in your dashboard).
-              </p>
-            )}
-            {summary.rejectedRows > 0 && (
-              <p style={{ fontSize: 14, margin: 0, color: INK, opacity: 0.75 }}>
-                {summary.rejectedRows} {summary.rejectedRows === 1 ? "row didn't" : "rows didn't"} parse cleanly and {summary.rejectedRows === 1 ? 'was' : 'were'} skipped.
-              </p>
-            )}
-            <p style={{
-              fontFamily: 'JetBrains Mono, monospace', fontSize: 11, color: INK,
-              opacity: 0.6, margin: '8px 0 0',
-            }}>
-              Your file has been discarded.
-            </p>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
-              <button
-                type="button"
-                onClick={onClose}
-                style={{
-                  background: LIME, border: `2px solid ${INK}`, borderRadius: 10,
-                  boxShadow: `3px 3px 0 ${INK}`, padding: '10px 22px',
-                  fontFamily: 'Space Grotesk, sans-serif', fontSize: 14, fontWeight: 700,
-                  color: INK, cursor: 'pointer',
-                }}
-              >
-                done
-              </button>
-            </div>
-          </div>
         )}
       </div>
     </div>
