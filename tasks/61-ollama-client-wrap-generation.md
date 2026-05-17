@@ -2,8 +2,8 @@
 
 **Status**: Shaped — ready to pick up
 **Branch**: both (client + small docs touch on server)
-**Appetite**: medium (≤ 3 days)
-**Last shaped**: 2026-05-16
+**Appetite**: medium-to-large (≤ 4 days — the settings UI + status badge add a half-day on top of the original medium estimate)
+**Last shaped**: 2026-05-16 (revised same day to add piece 6: settings UI + status indicator)
 
 ## Problem
 
@@ -202,9 +202,10 @@ Extend `test/unit/privacy-invariants.test.ts` accordingly:
   must not contain `console.log(...)`, `console.info(...)`, or
   similar with `messages`, `systemPrompt`, `userMessage`, `signal`,
   or `contributions` in the argument list.
-- A new assertion: the *only* fetch URL allowed in
-  `src/lib/ai/ollama.ts` is `${baseUrl}/api/chat` (regex-grep the
-  source for `fetch(` calls and assert the literal pattern). This
+- A new assertion: the only fetch URLs allowed in
+  `src/lib/ai/ollama.ts` are `${baseUrl}/api/chat` (generation) and
+  `${baseUrl}/api/tags` (probe — see piece 6). Regex-grep the
+  source for `fetch(` calls and assert the literal patterns. This
   guards against a future copy-paste that lets prompt content travel
   to a different URL.
 
@@ -213,16 +214,154 @@ Server-side, only one cosmetic change: the prompt files move out of
 `server/src/ai/generate.ts` imports them from `@wrapped/shared`. The
 server `generateWrap` shape is unchanged.
 
+### 6. Settings UI + status indicator
+
+Users need a place to (a) configure their local Ollama endpoint and
+preferred model and (b) see at a glance whether their current
+session is operating against the local model. Both live on the
+existing `/dashboard/settings` page (`SettingsShell.tsx`), gated
+behind the unlock flow exactly like provider settings.
+
+**New persisted preferences (Dexie `meta` table):**
+
+```ts
+// src/lib/local-store/db.ts — extend META_KEYS
+export const META_KEYS = {
+  // … existing …
+  ollamaBaseUrl: 'ollamaBaseUrl',           // string, e.g. "http://localhost:11434"
+  ollamaSelectedModelId: 'ollamaSelectedModelId',  // string, an ollama:* id from the catalog
+  ollamaLastProbeAt: 'ollamaLastProbeAt',   // ISO timestamp
+  ollamaLastProbeStatus: 'ollamaLastProbeStatus',  // 'ok' | 'unreachable' | 'model_missing'
+} as const;
+```
+
+`meta` rows go through the same envelope-encryption path as the rest
+of the local store. Values are read and written via a tiny
+`src/lib/local-store/preferences.ts` module (mirrors `tokens.ts` in
+spirit — typed get/set helpers, no schema duplication elsewhere).
+None of these keys leave the device; they're never sent to the
+server.
+
+**New component — `src/components/settings/LocalOllamaSection.tsx`:**
+
+A section block inserted into `SettingsShell.tsx` between the
+header and `<ProvidersList />`. Sketch:
+
+```
+┌─────────────────────────────────────────────────────┐
+│ LOCAL OLLAMA  ·  Offline-only generation            │
+│ ─────────────────────────────────────────────────── │
+│ Generation runs entirely on this device. Nothing    │
+│ leaves the browser tab when an Ollama model is      │
+│ selected.                                           │
+│                                                     │
+│ Ollama base URL                                     │
+│ ┌─────────────────────────────────────────────────┐ │
+│ │ http://localhost:11434                          │ │
+│ └─────────────────────────────────────────────────┘ │
+│                                                     │
+│ Default model                                       │
+│ ┌─────────────────────────────────────────────────┐ │
+│ │ ▼ llama3.1:8b  (Llama 3.1 8B, Ollama local)     │ │
+│ └─────────────────────────────────────────────────┘ │
+│ Dropdown lists models from the catalog whose        │
+│ provider is 'ollama'. If none are configured,       │
+│ show: "Add an `ollama:*` entry to your model        │
+│ catalog to enable this." (linking to CLAUDE.md).    │
+│                                                     │
+│ [ Save ]   [ Test connection ]                      │
+│                                                     │
+│ ✓ Reachable · llama3.1:8b is pulled · checked 2m ago│
+│ (or)                                                │
+│ ⚠ Unreachable at http://localhost:11434.            │
+│   Start it with `ollama serve`.                     │
+│ (or)                                                │
+│ ⚠ Reachable, but `llama3.1:8b` is not pulled.       │
+│   Run: ollama pull llama3.1:8b                      │
+└─────────────────────────────────────────────────────┘
+```
+
+Behaviour:
+
+- The URL field defaults to whatever's saved in `meta`, falling
+  back to `NEXT_PUBLIC_OLLAMA_BASE_URL`, falling back to
+  `http://localhost:11434`. Same resolution order as
+  `src/lib/ai/ollama.ts`.
+- "Save" persists URL + model to `meta` and re-resolves the
+  default-model used by `GenerateWrapModal` (see below).
+- "Test connection" calls a new helper
+  `probeOllama(baseUrl): Promise<ProbeResult>` exported from
+  `src/lib/ai/ollama.ts` (alongside the `chat` call). The probe
+  hits `GET ${baseUrl}/api/tags` — Ollama's installed-models
+  endpoint — and returns `{ ok, models?, error? }` where `models`
+  is the list of pulled tags. The result is used both for the
+  inline status line ("✓ reachable · `<modelId>` is pulled") and
+  to write `ollamaLastProbeAt` + `ollamaLastProbeStatus` to `meta`.
+  `model_missing` fires when the probe is reachable but the
+  configured `ollamaSelectedModelId`'s `modelId` tag isn't in
+  the returned list.
+- The probe call itself is also subject to the privacy invariant:
+  same `src/lib/ai/ollama.ts` file, same "no console logging"
+  rule, same restricted URL allowlist (now `chat` + `tags`).
+
+**New component — `src/components/dashboard/LocalModeBadge.tsx`:**
+
+A compact status chip rendered in the dashboard header
+(`DashboardShell.tsx`) and the settings header
+(`SettingsShell.tsx`). Three states, derived purely from `meta`
+plus the last probe — no on-render network call:
+
+| Condition                                              | Badge                                       |
+|--------------------------------------------------------|---------------------------------------------|
+| No `ollamaSelectedModelId` in `meta`                   | (no badge — feature is opt-in)              |
+| Configured + last probe `ok` within 24h                | `🟢 Local · llama3.1:8b`                    |
+| Configured + last probe `unreachable` or `model_missing` | `🔴 Local · check settings`                |
+| Configured + no probe yet, or probe > 24h old          | `⚪ Local · not yet checked`                |
+
+Clicking the badge navigates to `/dashboard/settings#local-ollama`
+(anchor on the new section). The badge is informational; it does
+**not** force the model picker (see Rabbit holes for why).
+
+**Pre-select the configured Ollama model in `GenerateWrapModal`:**
+
+`GenerateWrapModal.tsx` today initialises `modelId` to
+`DEFAULT_MODEL_ID`. Update to:
+
+```ts
+const [modelId, setModelId] = useState<string>(
+  () => preferredLocalModelId() ?? DEFAULT_MODEL_ID,
+);
+```
+
+where `preferredLocalModelId()` reads `META_KEYS.ollamaSelectedModelId`
+synchronously from a small cache populated at provider bootstrap
+(same shape as the install-token cache). The dropdown still shows
+all models; the user can override per-generation. **No filtering of
+non-Ollama entries** — that's spec 60's Rabbit hole.
+
+**Refreshing the probe in the background (small, optional):**
+
+When the dashboard mounts and a local-Ollama preference exists, fire
+one `probeOllama` call if `ollamaLastProbeAt` is older than 5 minutes.
+Don't block render on it; the badge re-renders when the probe writes
+back. This keeps the badge accurate across "I started Ollama after
+opening the tab" / "I killed Ollama" without polling. If even this
+feels like scope creep, defer — the explicit "Test connection"
+button is sufficient for V1.
+
 ### What does *not* change
 
 - The model picker UI. The same dropdown surfaces Ollama entries
   exactly as today; selection just routes differently behind the
-  scenes.
+  scenes. The settings preference *pre-selects* the user's
+  preferred Ollama model — it does not filter, hide, or disable
+  other entries.
 - The wrap viewer (`src/app/wrap/[id]/page.tsx`). It reads from the
   local wraps store via `getWrap(id)` — agnostic to how the
   `sliceContent` got there.
 - The encryption-at-rest story. `saveWrap` already envelope-encrypts
-  `sliceContent`; the local path uses the same call.
+  `sliceContent`; the local path uses the same call. The new
+  `meta` keys go through the same envelope.
 - `pollWrap` and the pending-wraps state machine. Both keep their
   current shape; the local path simply doesn't enter them.
 - The server queue, worker, Tables, or Service Bus. They keep
@@ -238,6 +377,20 @@ server `generateWrap` shape is unchanged.
 
 ## Rabbit holes
 
+- **Reconciling with spec 60's "no local-mode toggle" guidance.**
+  Spec 60 explicitly listed *"Adding a 'local mode' toggle to the UI"*
+  as a Rabbit hole because a toggle becomes a second source of truth
+  that drifts from the dropdown. This spec **respects that constraint**:
+  the new settings panel is a *configuration surface* (URL + preferred
+  model + reachability probe), not a mode switch. The status badge is
+  *informational* — derived from `meta` plus the last probe — and never
+  forces the model picker. The model picker still shows every catalogued
+  model; the user remains free to pick a cloud model per generation.
+  If you find yourself adding code that filters the dropdown by
+  provider, hides cloud models when "offline mode is on," or gates
+  the Generate button on Ollama reachability, you've slid into the
+  rabbit hole — back out.
+
 - **Streaming responses.** Same trap as spec 60: Ollama supports
   `stream: true`, the UI could render slices progressively. Tempting
   because client-local generation is the natural place to add it
@@ -246,6 +399,45 @@ server `generateWrap` shape is unchanged.
   streaming means redesigning the contract for both server and client
   callers. Land the dispatch first, revisit streaming as a separate
   spec with a measured "is this actually nicer?" check.
+
+- **Continuous polling of `/api/tags` to keep the badge live.**
+  Tempting because it would auto-detect "I just killed Ollama" without
+  user action. Wrong because (a) it adds a background network call on
+  every dashboard render, (b) it complicates the privacy invariant —
+  is a 5-second `tags` poll really "thin"? — and (c) it's a battery /
+  CPU tax for a feature with rare state changes. The on-mount probe
+  (≤ 1 call when older than 5 minutes) plus the explicit "Test
+  connection" button is enough. If users complain the badge is stale,
+  add a manual refresh icon next to it before reaching for polling.
+
+- **Storing the preferred model as a model-id reference instead of
+  a snapshot.** If the user picks `ollama:llama3.1-8b` in settings and
+  later removes that entry from the catalog, the preference dangles.
+  Don't try to "snapshot" the model entry into `meta` — instead, when
+  resolving `preferredLocalModelId()`, validate against the live
+  catalog and clear the preference (and surface a one-time toast in
+  settings) if the id no longer resolves. Same pattern as a token
+  whose identity has been revoked.
+
+- **Letting the settings panel write the catalog itself.** The catalog
+  (`src/lib/ai/models.ts` / `server/src/ai/models.config.json`) is
+  operator-controlled and ships with the deploy. The settings panel
+  *reads* the catalog (filtered to ollama entries) for the dropdown;
+  it does **not** add, edit, or remove entries. A "manage models from
+  the UI" spec is a separate, larger piece — and probably belongs on
+  the server (the catalog is the operator's contract, not the user's).
+
+- **Putting the test-connection result anywhere except the settings
+  panel + `meta`.** Tempting to fire a toast at the top of the
+  dashboard ("Ollama is now reachable!"). Don't — the badge already
+  communicates state, toasts are noisy, and "is Ollama up?" is a
+  question only the settings page should answer authoritatively.
+
+- **An "offline mode" CSS theme.** It would be visually satisfying to
+  tint the dashboard a different colour when the local-mode badge is
+  green. Don't — the existing design system is already loaded;
+  conditional theming is a maintenance tax with no functional payoff.
+  A single badge in the header is enough.
 
 - **Sharing the model catalog as one file across client and server.**
   Today the server has `server/src/ai/models.config.json` and the
@@ -346,6 +538,24 @@ server `generateWrap` shape is unchanged.
 - **Adding any `process.env.*` read to a file under `src/lib/ai/`
   that isn't `NEXT_PUBLIC_*`.** Server-only env stays on the server.
 
+- **Sending the configured `ollamaBaseUrl`, the selected model id,
+  or the probe result to the server in any request.** None of these
+  fields belong on the wire. They live in `meta`, encrypted at rest,
+  read only by client code. The `/wrap` enqueue payload's existing
+  shape is unchanged; the new settings preferences are invisible to
+  the server.
+
+- **A "force offline mode" toggle that disables the cloud model
+  entries in the picker.** This is the rabbit hole spec 60 named and
+  this spec re-affirms. The settings panel is a configuration
+  surface, not a mode switch. Per-generation choice stays in the
+  dropdown.
+
+- **A second status badge for the cloud path** ("☁ Cloud · azure-foundry").
+  Asymmetric on purpose: the cloud path is the default and the absence
+  of a badge means "nothing special is happening." Adding a cloud
+  badge clutters the header for the common case to gain nothing.
+
 ## Verification
 
 - **Shared prompt move**:
@@ -387,23 +597,87 @@ server `generateWrap` shape is unchanged.
   - `kind: 'local-complete'` path: `saveWrap` is called directly,
     `addPendingWrap` is **not** called, the modal navigates to
     `/wrap/{jobId}`.
+  - When `META_KEYS.ollamaSelectedModelId` is set, the modal opens
+    with that model pre-selected; when it's unset, the modal opens
+    with `DEFAULT_MODEL_ID` (existing behaviour preserved).
+  - The dropdown still lists every entry from the catalog regardless
+    of the preference (Rabbit hole: no provider filtering).
+
+- **Probe helper** (`test/unit/ai/ollama-probe.test.ts`, new):
+  - `probeOllama('http://localhost:11434')` GETs `/api/tags`,
+    parses the response, returns `{ ok: true, models: [...] }`.
+  - Connection-refused → `{ ok: false, error: { code: 'ollama_unreachable', baseUrl } }`.
+  - HTTP 5xx → `{ ok: false, error: { code: 'http_error', status } }`.
+  - Sends no `Authorization` header. (Mirrors the chat-call assertions.)
+
+- **Preferences module** (`test/unit/local-store/preferences.test.ts`,
+  new):
+  - `setOllamaPreferences({ baseUrl, modelId })` writes to `meta`
+    through the same envelope-encryption path as the rest of the
+    store (raw IDB rows opaque).
+  - `getOllamaPreferences()` round-trips the values.
+  - `recordOllamaProbe({ status })` persists `ollamaLastProbeAt` +
+    `ollamaLastProbeStatus`; subsequent reads reflect the result.
+  - Unsetting a preference (e.g. removing the model id) actually
+    clears the `meta` row — it doesn't leave a stale value behind.
+
+- **Settings panel** (`test/component/LocalOllamaSection.test.tsx`,
+  new):
+  - Initial render reflects existing `meta` values (URL +
+    model + last probe status).
+  - Save persists URL + modelId to `meta` via the preferences
+    module; the form does not write directly to Dexie.
+  - "Test connection" with a mocked-OK Ollama populates the
+    success line and writes `ollamaLastProbeStatus = 'ok'`.
+  - "Test connection" with a mocked-unreachable Ollama renders
+    the unreachable hint *naming the configured baseUrl* and
+    writes `ollamaLastProbeStatus = 'unreachable'`.
+  - "Test connection" with a reachable Ollama but a missing tag
+    renders the `ollama pull <modelId>` hint and writes
+    `ollamaLastProbeStatus = 'model_missing'`.
+  - When the catalog has zero `ollama:*` entries, the model
+    dropdown is replaced with the "add an entry to your catalog"
+    helper text and the Save button is disabled.
+
+- **Status badge** (`test/component/LocalModeBadge.test.tsx`, new):
+  - No `ollamaSelectedModelId` in `meta` → renders nothing.
+  - Configured + recent (< 24h) `ok` probe → renders green badge
+    with the configured `modelId`.
+  - Configured + last probe `unreachable` or `model_missing` →
+    renders red "check settings" badge linking to
+    `/dashboard/settings#local-ollama`.
+  - Configured + no probe or > 24h-old probe → renders the
+    neutral "not yet checked" badge.
+  - The badge does **not** make a network call on render — only
+    the explicit "Test connection" button or the optional
+    dashboard-mount probe does.
 
 - **E2E** (`test/e2e/`, one new spec):
-  - With an `ollama:*` entry in the client catalog and an MSW
-    intercept of `localhost:11434/api/chat`, the user can click
-    "Generate," see no `/wrap` request to the backend, and land
-    on a fully-rendered wrap page within the e2e timeout.
+  - Open `/dashboard/settings`, fill in URL + select an Ollama
+    model, click "Test connection" against an MSW-mocked Ollama,
+    see the success line, return to the dashboard, observe the
+    green `🟢 Local · <modelId>` badge.
+  - Open `GenerateWrapModal`: the configured Ollama model is the
+    default selection. Click "Generate," see no `/wrap` request
+    to the backend, land on a fully-rendered wrap page within the
+    e2e timeout.
   - The existing locality / encryption-at-rest invariants still
     pass — `sliceContent` lands in IndexedDB encrypted, no
-    identifiers appear in any outbound request.
+    identifiers appear in any outbound request. The Ollama
+    preferences in `meta` are also encrypted-at-rest (raw IDB
+    rows opaque).
 
 - **Privacy invariants** (`test/unit/privacy-invariants.test.ts`,
   extended per piece 5):
   - The "expected wrapper files" list includes `ollama.ts` and
     `localGenerate.ts`.
   - Banned-log patterns extend to the new files.
-  - `src/lib/ai/ollama.ts`'s only `fetch(...)` argument literal is
-    `${baseUrl}/api/chat`.
+  - The only `fetch(...)` URL literals in `src/lib/ai/ollama.ts`
+    are `${baseUrl}/api/chat` and `${baseUrl}/api/tags`. No
+    other URL pattern is permitted in that file.
+  - The `/wrap` enqueue payload contract (no `ollamaBaseUrl`, no
+    `ollamaSelectedModelId`, no probe status) is asserted in the
+    same e2e network-minimality check that already runs.
 
 - **Tauri smoke** (manual runbook in `tasks/runbooks/`, not
   automated): build a Tauri shell with `NEXT_PUBLIC_OLLAMA_BASE_URL`
@@ -439,13 +713,22 @@ server `generateWrap` shape is unchanged.
   - Unify the client and server model catalogs into a single
     `@wrapped/shared` source of truth, gated by what each side
     actually needs.
-  - Surface a status badge in the dashboard header: "Ollama
-    reachable / unreachable" — once we're confident the probe is
-    cheap and doesn't surprise users. Today's design defers this to
-    the generate flow's error path.
   - A small in-memory queue inside the browser tab if a user starts
     two wraps in quick succession (rare; Ollama serializes anyway).
+  - User-editable model catalog (CRUD on `ollama:*` entries from the
+    settings panel) — would let a user add `mistral:7b` without
+    redeploying. Larger spec; needs to decide whether the catalog
+    becomes meta-table-owned or stays operator-deployed with a
+    user-override layer on top.
+  - Periodic background re-probe on a long interval (15+ minutes)
+    if usage data shows the staleness UX is annoying.
   Defer all of these.
+
+- **The "status badge in the dashboard header" follow-up from spec 60
+  is folded into this spec** (piece 6). Spec 60's Notes mentioned it
+  as a defer; once we have a settings panel to anchor it to, the badge
+  has a real home and a real on-click destination, which it didn't have
+  before.
 
 - **Cross-reference: spec 60's "Notes" section already named this
   spec.** Quoting the relevant fragment so the design rationale
