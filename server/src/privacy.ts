@@ -4,13 +4,20 @@
  * test scans for it.
  *
  * `safeError` returns ONLY a fixed-allowlist code (and optionally a status
- * number). It deliberately does not surface `Error.message`, because upstream
- * SDKs (Anthropic, Azure OpenAI, Azure Tables) embed request URLs, request
- * IDs, prompt fragments, and response bodies in their messages. Anything that
- * doesn't map to a known code collapses to `'unknown'`.
+ * number, and an optional `hint` populated by the caller). It deliberately
+ * does not surface `Error.message`, because upstream SDKs (Anthropic, Azure
+ * OpenAI, Azure Tables) embed request URLs, request IDs, prompt fragments,
+ * and response bodies in their messages. Anything that doesn't map to a known
+ * code collapses to `'unknown'`.
+ *
+ * `hint` is opt-in per UpstreamError: callers decide whether the content is
+ * safe to surface to the user. Today only the ollama adapter populates it
+ * (with the configured baseUrl on `ollama_unreachable`, and with the model
+ * id on `not_found`). Adapters that touch external SDK error messages must
+ * NOT plumb them into `hint`.
  */
 
-export type SafeError = { code: string; status?: number };
+export type SafeError = { code: string; status?: number; hint?: string };
 
 const ALLOWED_CODES = new Set<string>([
   'auth_failed',
@@ -18,6 +25,7 @@ const ALLOWED_CODES = new Set<string>([
   'invalid_payload',
   'max_retries',
   'not_found',
+  'ollama_unreachable',
   'parse_failed',
   'queue_unavailable',
   'rate_limited',
@@ -29,19 +37,24 @@ const ALLOWED_CODES = new Set<string>([
 ]);
 
 /**
- * Marker class for upstream-provider failures (Anthropic, Azure Foundry).
- * Throwers must construct it with a fixed `code` from the allowlist; the
- * Error.message is intentionally generic so it can be logged verbatim.
+ * Marker class for upstream-provider failures (Anthropic, Azure Foundry,
+ * Ollama, …). Throwers must construct it with a fixed `code` from the
+ * allowlist; the Error.message is intentionally generic so it can be logged
+ * verbatim. `hint` is optional and may carry operator-safe context (e.g. a
+ * configured base URL, a model id) to surface in the HTTP response — never
+ * an upstream response body.
  */
 export class UpstreamError extends Error {
   readonly code: string;
   readonly status?: number;
+  readonly hint?: string;
 
-  constructor(code: string, status?: number) {
+  constructor(code: string, status?: number, hint?: string) {
     super(`upstream-error:${code}`);
     this.name = 'UpstreamError';
     this.code = code;
     this.status = status;
+    this.hint = hint;
   }
 }
 
@@ -58,7 +71,10 @@ function codeFromStatus(status: number): string {
 export function safeError(err: unknown): SafeError {
   if (err instanceof UpstreamError) {
     const code = ALLOWED_CODES.has(err.code) ? err.code : 'unknown';
-    return err.status !== undefined ? { code, status: err.status } : { code };
+    const out: SafeError = { code };
+    if (err.status !== undefined) out.status = err.status;
+    if (err.hint && code !== 'unknown') out.hint = err.hint;
+    return out;
   }
   if (err instanceof Error && err.name === 'ZodError') {
     return { code: 'invalid_payload' };

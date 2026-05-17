@@ -38,6 +38,7 @@ describe('privacy invariants — every Functions handler carries the PRIVACY ban
       expect.arrayContaining([
         join('src', 'functions', 'authRegister.ts'),
         join('src', 'functions', 'classify.ts'),
+        join('src', 'functions', 'meReset.ts'),
         join('src', 'functions', 'wrapEnqueue.ts'),
         join('src', 'functions', 'wrapGet.ts'),
         join('src', 'functions', 'wrapWorker.ts'),
@@ -108,6 +109,37 @@ describe('privacy invariants — no logging of payloads, contributions, or slice
   });
 });
 
+describe('privacy invariants — meReset never emits identifiers', () => {
+  const meResetPath = join(functionsDir, 'meReset.ts');
+
+  it('meReset.ts exists', () => {
+    let exists = false;
+    try { exists = statSync(meResetPath).isFile(); } catch { /* */ }
+    expect(exists).toBe(true);
+  });
+
+  it('meReset.ts starts with the PRIVACY banner', () => {
+    const source = readFileSync(meResetPath, 'utf8');
+    expect(source).toMatch(/PRIVACY/);
+  });
+
+  it('meReset.ts does not log installId, slug, jobId, or token', () => {
+    const source = readFileSync(meResetPath, 'utf8');
+    expect(source).not.toMatch(/console\.[a-z]+\([^)]*\binstallId\b/);
+    expect(source).not.toMatch(/context\.[a-z]+\([^)]*\binstallId\b/);
+    expect(source).not.toMatch(/console\.[a-z]+\([^)]*\bslug\b/);
+    expect(source).not.toMatch(/console\.[a-z]+\([^)]*\bjobId\b/);
+    expect(source).not.toMatch(/context\.[a-z]+\([^)]*\bjobId\b/);
+    expect(source).not.toMatch(/console\.[a-z]+\([^)]*\btoken\b/);
+  });
+
+  it('meReset.ts does not import node:fs or src/ai/', () => {
+    const source = readFileSync(meResetPath, 'utf8');
+    expect(source).not.toMatch(/from ['"]node:fs['"]/);
+    expect(source).not.toMatch(/from ['"]\.\.\/ai\//);
+  });
+});
+
 describe('privacy invariants — installId never enters Service Bus message metadata (#7)', () => {
   it('queue/serviceBus.ts does not put installId in applicationProperties', () => {
     const file = join(srcDir, 'queue', 'serviceBus.ts');
@@ -118,6 +150,34 @@ describe('privacy invariants — installId never enters Service Bus message meta
     expect(appPropsBlock).not.toBeNull();
     expect(appPropsBlock![0]).not.toMatch(/\binstallId\b/);
     expect(appPropsBlock![0]).toMatch(/\bjobLookupToken\b/);
+  });
+});
+
+describe('privacy invariants — Ollama adapter never logs, only hints with safe content', () => {
+  const ollamaFile = join(srcDir, 'ai', 'providers', 'ollama.ts');
+  const source = readFileSync(ollamaFile, 'utf8');
+
+  it('contains no console.* calls', () => {
+    expect(source).not.toMatch(/\bconsole\.[a-z]+\s*\(/);
+  });
+
+  it('contains no context.log/info/warn/error calls', () => {
+    expect(source).not.toMatch(/\bcontext\.(?:log|info|warn|error)\s*\(/);
+  });
+
+  it('only references baseUrl in the ollama_unreachable hint (not in any other thrown UpstreamError)', () => {
+    // Capture every `new UpstreamError(...)` constructor call.
+    const ctorRe = /new UpstreamError\(([^)]*)\)/g;
+    let m: RegExpExecArray | null;
+    while ((m = ctorRe.exec(source)) !== null) {
+      const args = m[1];
+      const mentionsBaseUrl = /\bbaseUrl\b/.test(args);
+      if (mentionsBaseUrl) {
+        expect(args, `baseUrl may only appear in the ollama_unreachable hint, found in: ${args}`).toMatch(
+          /'ollama_unreachable'/,
+        );
+      }
+    }
   });
 });
 

@@ -10,6 +10,7 @@
  */
 import { useCallback, useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { ResetModal } from '@/components/dashboard/ResetModal';
 import {
   deriveKey,
   generateSalt,
@@ -34,6 +35,7 @@ export function UnlockGate({ children }: { children: React.ReactNode }) {
   const [confirm, setConfirm] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [showForgetDevice, setShowForgetDevice] = useState(false);
 
   useEffect(() => {
     if (!isBrowser()) return;
@@ -372,8 +374,47 @@ export function UnlockGate({ children }: { children: React.ReactNode }) {
             >
               {busy ? 'Unlocking…' : 'Unlock'}
             </button>
+
+            <p
+              style={{
+                fontFamily: 'JetBrains Mono, monospace',
+                fontSize: '11px',
+                color: INK,
+                opacity: 0.55,
+                margin: 0,
+                textAlign: 'center',
+              }}
+            >
+              Forgot your passphrase?{' '}
+              <button
+                type="button"
+                onClick={() => setShowForgetDevice(true)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  padding: 0,
+                  fontFamily: 'JetBrains Mono, monospace',
+                  fontSize: '11px',
+                  color: HOT,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  textDecoration: 'underline',
+                }}
+              >
+                Forget this device.
+              </button>
+            </p>
           </form>
         ) : null}
+
+        {showForgetDevice && (
+          <ResetModal
+            open={showForgetDevice}
+            onClose={() => setShowForgetDevice(false)}
+            initialMode="forget-device"
+            lockMode={true}
+          />
+        )}
       </section>
     </main>
   );

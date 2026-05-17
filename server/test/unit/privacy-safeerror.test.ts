@@ -52,4 +52,38 @@ describe('safeError + UpstreamError (#6)', () => {
     expect(err.message).toBe('upstream-error:upstream_5xx');
     expect(err.message).not.toMatch(/[A-Za-z]\.[a-z]+/); // no embedded URLs
   });
+
+  it("accepts 'ollama_unreachable' as an allowlisted code and preserves the hint", () => {
+    const err = new UpstreamError(
+      'ollama_unreachable',
+      undefined,
+      "Ollama isn't reachable at http://localhost:11434. Start it with `ollama serve` and pull the model.",
+    );
+    const safe = safeError(err);
+    expect(safe.code).toBe('ollama_unreachable');
+    expect(safe.status).toBeUndefined();
+    expect(safe.hint).toContain('http://localhost:11434');
+  });
+
+  it('preserves a hint on not_found (used by the Ollama adapter for `ollama pull <model>` suggestions)', () => {
+    const err = new UpstreamError('not_found', 404, 'Ollama model not found. Run `ollama pull llama3.1:8b` on the host.');
+    expect(safeError(err)).toEqual({
+      code: 'not_found',
+      status: 404,
+      hint: 'Ollama model not found. Run `ollama pull llama3.1:8b` on the host.',
+    });
+  });
+
+  it('drops the hint when the code collapses to unknown (defense in depth)', () => {
+    const bogus = new UpstreamError('arbitrary_code' as never, 418, 'leaky http://internal');
+    const safe = safeError(bogus);
+    expect(safe).toEqual({ code: 'unknown', status: 418 });
+    expect(JSON.stringify(safe)).not.toContain('internal');
+  });
+
+  it('omits hint entirely when the UpstreamError did not set one', () => {
+    const safe = safeError(new UpstreamError('upstream_5xx', 502));
+    expect(safe).toEqual({ code: 'upstream_5xx', status: 502 });
+    expect('hint' in safe).toBe(false);
+  });
 });

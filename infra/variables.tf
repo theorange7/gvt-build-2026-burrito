@@ -84,6 +84,12 @@ variable "wrap_register_rate_limit_per_hour" {
   default     = 10
 }
 
+variable "wrap_max_deliveries" {
+  description = "Max Service Bus delivery attempts before a wrap job is marked failed. Must match the queue's max_delivery_count."
+  type        = number
+  default     = 3
+}
+
 # ── Azure resource names ──────────────────────────────────────────────────────
 
 variable "wrap_service_bus_queue_name" {
@@ -107,5 +113,4 @@ variable "wrap_tables_results" {
 variable "wrap_allowed_origins" {
   description = "Comma-separated list of CORS origins the Function app permits."
   type        = string
-  default     = "https://app.wrapped-for-work.example.com"
 }

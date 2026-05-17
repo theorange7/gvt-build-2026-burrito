@@ -1,0 +1,48 @@
+# Local dev stack: Azurite (Storage + Tables), Service Bus emulator, SQL Server (emulator dependency).
+# Run: docker compose up -d
+# By accepting EULA: "Y" you agree to the Azure Service Bus emulator EULA
+# (https://github.com/Azure/azure-service-bus-emulator-installer/blob/main/EMULATOR_EULA.txt)
+# and the SQL Server Linux EULA (https://go.microsoft.com/fwlink/?LinkId=746388).
+name: wrapped-local
+
+services:
+  azurite:
+    container_name: azurite
+    image: mcr.microsoft.com/azure-storage/azurite:latest
+    pull_policy: always
+    ports:
+      - "10000:10000"
+      - "10001:10001"
+      - "10002:10002"
+    networks:
+      - local-dev
+
+  mssql:
+    container_name: mssql
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "${MSSQL_SA_PASSWORD:-Wrapped_Dev_Local_2026!}"
+    networks:
+      - local-dev
+
+  servicebus:
+    container_name: servicebus-emulator
+    image: mcr.microsoft.com/azure-messaging/servicebus-emulator:latest
+    pull_policy: always
+    volumes:
+      - "./servicebus-config.json:/ServiceBus_Emulator/ConfigFiles/Config.json"
+    ports:
+      - "5672:5672"
+      - "5300:5300"
+    environment:
+      SQL_SERVER: mssql
+      MSSQL_SA_PASSWORD: "${MSSQL_SA_PASSWORD:-Wrapped_Dev_Local_2026!}"
+      ACCEPT_EULA: "Y"
+    depends_on:
+      - mssql
+    networks:
+      - local-dev
+
+networks:
+  local-dev:

@@ -14,6 +14,13 @@ import modelsConfig from './models.config.json';
  * deployments work through @azure/ai-projects' getAzureOpenAIClient. Non-OpenAI
  * Foundry models (Phi, Llama, Mistral) are served by the separate Model
  * Inference API and would need @azure-rest/ai-inference to be wired up.
+ *
+ * For provider 'ollama', `modelId` is the tag passed to `ollama pull`
+ * (e.g. `llama3.1:8b`). The optional `baseUrl` overrides the default
+ * `http://localhost:11434` for a single entry; the env var `OLLAMA_BASE_URL`
+ * applies deployment-wide. `parameters` is forwarded into Ollama's `options`
+ * blob, so power users can tune `num_ctx`, `num_predict`, `top_k`, `top_p`,
+ * `repeat_penalty`, `keep_alive`, etc. without code changes.
  */
 
 const ParameterValueSchema = z.union([z.string(), z.number(), z.boolean()]);
@@ -23,9 +30,13 @@ export type ModelParameters = Record<string, ModelParameterValue>;
 const ModelOptionSchema = z.object({
   id: z.string().min(1),
   label: z.string().min(1),
-  provider: z.enum(['anthropic', 'azure-foundry']),
+  provider: z.enum(['anthropic', 'azure-foundry', 'ollama']),
   modelId: z.string().min(1),
   version: z.string().optional(),
+  // Per-entry override for the upstream base URL. Used by the ollama adapter;
+  // ignored by anthropic / azure-foundry (which derive endpoints from env or
+  // the project client). Operator-controlled — never accepted on the wire.
+  baseUrl: z.string().url().optional(),
   parameters: z.record(ParameterValueSchema).optional(),
 });
 

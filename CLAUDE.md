@@ -211,10 +211,44 @@ Edit `server/src/ai/models.config.json`. Schema:
 ```
 
 - `id` must be unique (enforced at import).
-- `provider` is `'anthropic'` or `'azure-foundry'`.
+- `provider` is `'anthropic'`, `'azure-foundry'`, or `'ollama'`.
 - For Azure, `modelId` is the **deployment name** in your Foundry project,
   and `version` is the api-version forwarded to Azure OpenAI.
-- `parameters` is spread verbatim into the upstream chat-completions request.
+- For Ollama, `modelId` is the tag passed to `ollama pull` (e.g.
+  `llama3.1:8b`). Optional `baseUrl` overrides the default
+  `http://localhost:11434` for a single entry; the env var
+  `OLLAMA_BASE_URL` applies deployment-wide. No Ollama entry ships
+  enabled by default — operators opt in.
+- `parameters` is spread verbatim into the upstream chat-completions request
+  (Anthropic / Azure) or into Ollama's `options` blob (Ollama).
+
+Example Ollama entry (add to `models.config.json` after `ollama serve` is
+running and `ollama pull llama3.1:8b` has completed):
+
+```json
+{
+  "id": "ollama:llama3.1-8b",
+  "label": "Llama 3.1 8B (Ollama, local)",
+  "provider": "ollama",
+  "modelId": "llama3.1:8b",
+  "baseUrl": "http://localhost:11434",
+  "parameters": { "temperature": 0.7, "num_ctx": 8192 }
+}
+```
+
+### Adding a new provider
+
+Dispatch lives in `server/src/ai/providers/`. Each adapter is a single file
+implementing `ProviderAdapter = (systemPrompt, userMessage, model) =>
+Promise<string>`. To add a new target:
+
+1. Add the new provider id to the `provider` enum in `server/src/ai/models.ts`.
+2. Create `server/src/ai/providers/<name>.ts` exporting a `ProviderAdapter`.
+   Failures must collapse to `UpstreamError` codes from the allowlist in
+   `server/src/privacy.ts`.
+3. Register it in `server/src/ai/providers/index.ts` — the
+   `Record<ModelProvider, ProviderAdapter>` type makes an unregistered
+   provider a compile error.
 
 The Azure path uses `@azure/ai-projects`' `getAzureOpenAIClient`, which
 only handles Azure OpenAI–compatible deployments. Phi/Llama/Mistral need
@@ -253,6 +287,7 @@ lot of small follow-ups, or `tasks/` for shaped specs that have a design).
 | Wrap enqueue 404 / Functions unreachable | `NEXT_PUBLIC_WRAP_API_URL` in `.env.local`; confirm `func start` is running on :7071 |
 | Wrap generation 404 from LLM       | `server/src/ai/client.ts` — Azure deployment name + api-version in `models.config.json` |
 | Wrap generation 401/403 from LLM   | Azure CLI login (`az login`) for DefaultAzureCredential, or `ANTHROPIC_API_KEY` in `server/local.settings.json` |
+| Wrap generation 503 "Ollama unreachable" | `ollama serve` running? `OLLAMA_BASE_URL` (or the per-model `baseUrl`) reachable? `ollama pull <model>` for the configured `modelId`? See `server/src/ai/providers/ollama.ts`. |
 | Job stuck in `queued`               | Service Bus connection — check `AZURE_SERVICE_BUS_NAMESPACE` and `ServiceBusConnection__fullyQualifiedNamespace` |
 | Slices fall back to placeholder     | Look at the slice's prompt in `server/src/ai/prompts/` and the JSON parse path in `server/src/ai/shared.ts` |
 | Locked out of dashboard             | `src/components/unlock/UnlockGate.tsx` — passphrase or salt mismatch |

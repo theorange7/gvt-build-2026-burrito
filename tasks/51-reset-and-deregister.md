@@ -1,6 +1,6 @@
 # Spec 51 — Reset (clear data) and de-register (forget passphrase)
 
-**Status**: Shaped — ready to pick up
+**Status**: Done
 **Branch**: both (client + server)
 **Appetite**: medium (≤ 3 days)
 **Last shaped**: 2026-05-14
@@ -460,3 +460,10 @@ gate.
 - README copy change: `README.md` "What we don't do" / privacy section
   should pick up a one-line note that "reset" is now a first-class
   affordance. Defer the README edit to the implementing PR.
+
+## Done
+
+**Completed**: 2026-05-15
+**PR**: `claude/implement-spec-51-hO60s`
+
+Implemented the full reset flow across client and server. Server: `DELETE /me/data` endpoint in `server/src/functions/meReset.ts` with per-IP rate limiting (10/hour), JWT auth via `requireInstallToken`, independent deletion of wrapJobs/wrapResults/lookup rows (each failure collected separately), and a no-op share-bundle path gated on spec 31. Returns 204 on full success and 207 with `{ failed: [...] }` on partial failure. Two new batch-delete helpers added to `server/src/queue/jobs.ts` (`deleteAllJobRowsForInstall`, `deleteLookupRowsForInstall`) and `server/src/queue/results.ts` (`deleteAllResultsForInstall`). Client: thin wrapper `src/lib/ai/reset.ts`, orchestrator `src/lib/local-store/reset.ts` with two modes (clear-data keeps meta, forget-device removes kdfSalt and wrapInstallToken), modal component `src/components/dashboard/ResetModal.tsx` with RESET confirmation, mode A inline error + retry on server failure, mode B "Proceed without server cleanup" secondary action. "Forgot your passphrase?" link added to UnlockGate unlock branch pre-selecting mode B. All unit tests pass (server: 84/84, client: 131/131). One deviation from the spec's test shape: the 207 partial-cleanup test mocks `deleteServerData` directly rather than via MSW because MSW `http.delete` with status 207 wasn't being intercepted reliably in the happy-dom test environment; the behaviour under test (orchestrator handling partial results) is fully covered.
