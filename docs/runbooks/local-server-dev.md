@@ -73,10 +73,11 @@ Service Bus trigger (`wrapWorker`) register on start. You should see:
 
 ```
 Functions:
-  authRegister: [POST] http://localhost:7071/api/auth/register
-  classify:     [POST] http://localhost:7071/api/classify
-  wrapEnqueue:  [POST] http://localhost:7071/api/wrap
-  wrapGet:      [GET]  http://localhost:7071/api/wrap/{jobId}
+  authRegister: [POST]   http://localhost:7071/api/auth/register
+  classify:     [POST]   http://localhost:7071/api/classify
+  meReset:      [DELETE] http://localhost:7071/api/me/data
+  wrapEnqueue:  [POST]   http://localhost:7071/api/wrap
+  wrapGet:      [GET]    http://localhost:7071/api/wrap/{jobId}
   wrapWorker:   serviceBusTrigger
 ```
 
@@ -124,12 +125,37 @@ To wipe emulator state between runs: `docker compose down -v` (drops volumes).
 | Client gets CORS errors | Confirm `local.settings.json` `Host.CORS` includes `http://localhost:3000` (it does in the example) |
 | Job stuck in `queued` | Check `ServiceBusConnection` string in `local.settings.json` matches the emulator (it does in the example) |
 
-## Coming up: Ollama provider (local-only mode)
+## Optional: Ollama provider (fully offline mode)
 
-A future spec will wire an **Ollama provider** into `server/src/ai/client.ts`,
-letting the Functions host call a locally-running Ollama instance instead of
-Anthropic or Azure Foundry. Once that lands, the full wrap-generation pipeline
-— contribution ingestion, classification, and all ten slice generators — will
-run completely offline with no external API keys required. The local dev setup
-above will remain the foundation; the only addition will be a running Ollama
-process and an `OLLAMA_BASE_URL` entry in `local.settings.json`.
+The Ollama provider is shipped (spec 60). It lets the Functions host call a
+locally-running Ollama instance instead of Anthropic or Azure Foundry — no
+external API keys required.
+
+### Setup
+
+1. Install Ollama and pull a model:
+   ```bash
+   brew install ollama        # or download from https://ollama.com
+   ollama serve               # start the Ollama daemon (default: http://localhost:11434)
+   ollama pull llama3.1:8b    # or whichever model you prefer
+   ```
+
+2. Add an Ollama entry to `server/src/ai/models.config.json`:
+   ```json
+   {
+     "id": "ollama:llama3.1-8b",
+     "label": "Llama 3.1 8B (Ollama, local)",
+     "provider": "ollama",
+     "modelId": "llama3.1:8b",
+     "parameters": { "temperature": 0.7, "num_ctx": 8192 }
+   }
+   ```
+
+3. If Ollama is not running on the default port, add to `local.settings.json`:
+   ```json
+   "OLLAMA_BASE_URL": "http://localhost:<port>"
+   ```
+   Per-model `baseUrl` in `models.config.json` overrides this env var.
+
+4. Start the Functions host (`func start`) and select the Ollama model in the
+   client's model picker.
