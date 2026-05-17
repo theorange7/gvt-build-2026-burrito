@@ -424,7 +424,7 @@ test.describe('UI screenshots', () => {
     await page.getByRole('button', { name: /^settings$/i }).click();
     await page.getByRole('button', { name: /import from file/i }).click();
     await page.getByPlaceholder(/work laptop/i).fill('Q1 commits from work laptop');
-    await page.getByRole('button', { name: /next/i }).click();
+    await page.getByRole('button', { name: 'next →' }).click();
 
     // The disclosure copy and model picker should both be visible.
     await expect(page.getByTestId('egress-disclosure')).toBeVisible();
@@ -451,7 +451,7 @@ test.describe('UI screenshots', () => {
     await page.getByRole('button', { name: /^settings$/i }).click();
     await page.getByRole('button', { name: /import from file/i }).click();
     await page.getByPlaceholder(/work laptop/i).fill('Q1 commits from work laptop');
-    await page.getByRole('button', { name: /next/i }).click();
+    await page.getByRole('button', { name: 'next →' }).click();
     await page.setInputFiles('input[type="file"]', {
       name: 'q1-commits.txt',
       mimeType: 'text/plain',
@@ -471,7 +471,7 @@ test.describe('UI screenshots', () => {
     await page.getByRole('button', { name: /^settings$/i }).click();
     await page.getByRole('button', { name: /import from file/i }).click();
     await page.getByPlaceholder(/work laptop/i).fill('Q1 commits from work laptop');
-    await page.getByRole('button', { name: /next/i }).click();
+    await page.getByRole('button', { name: 'next →' }).click();
     await page.setInputFiles('input[type="file"]', {
       name: 'q1-commits.txt',
       mimeType: 'text/plain',
