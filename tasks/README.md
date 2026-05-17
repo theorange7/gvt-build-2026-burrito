@@ -101,7 +101,8 @@ Future / new features:
 | 31 | Shareable highlight wheels (public bundle + revoke) | Shaped — ready | both | large |
 | 40 | Tauri 2 macOS shell bootstrap | Shaped — ready | client | medium |
 | 50 | File-upload contribution provider | Shaped — ready | both | medium |
-| 51 | Reset (clear data) and de-register (forget passphrase) | Done — 2026-05-15 | both | medium |
+| 51 | Reset (clear data) and de-register (forget passphrase) | Shaped — ready | both | medium |
+| 60 | Ollama local provider | Shaped — ready | server | small |
 
 ## How an agent should use this directory
 
