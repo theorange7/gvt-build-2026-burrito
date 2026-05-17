@@ -49,6 +49,11 @@ locals {
   # Shared suffix keeps names unique across environments
   suffix = "${var.environment}-${var.location_short}"
 
+  # Map Terraform's environment values to the server's ENV_MODE enum.
+  # "staging" shares the managed-identity code path with "dev"; only "local"
+  # uses connection strings, and Terraform never deploys to local.
+  env_mode = var.environment == "staging" ? "dev" : var.environment
+
   common_tags = {
     project     = "burrito"
     team        = "Fancy Burritos"
@@ -91,6 +96,7 @@ module "service_bus" {
   location            = azurerm_resource_group.main.location
   suffix              = local.suffix
   queue_name          = var.wrap_service_bus_queue_name
+  max_delivery_count  = var.wrap_max_deliveries
   tags                = local.common_tags
 }
 
@@ -131,9 +137,11 @@ module "functions" {
   wrap_per_install_limit             = var.wrap_per_install_limit
   wrap_result_ttl_hours              = var.wrap_result_ttl_hours
   wrap_register_rate_limit_per_hour  = var.wrap_register_rate_limit_per_hour
+  wrap_max_deliveries                = var.wrap_max_deliveries
   wrap_tables_jobs                   = var.wrap_tables_jobs
   wrap_tables_results                = var.wrap_tables_results
   allowed_origins                    = var.wrap_allowed_origins
+  env_mode                           = local.env_mode
   tags                               = local.common_tags
 }
 

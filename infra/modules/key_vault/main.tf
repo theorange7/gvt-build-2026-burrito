@@ -28,6 +28,16 @@ resource "azurerm_key_vault_secret" "wrap_jwt_secret" {
   depends_on   = [azurerm_key_vault_access_policy.deployer]
 }
 
+# New multi-key signing secret. jwt.ts scans WRAP_JWT_KEY_<kid> env vars and
+# picks the active kid from WRAP_JWT_ACTIVE_KID. wrap-jwt-secret is kept for
+# tokens already signed under the legacy shim.
+resource "azurerm_key_vault_secret" "wrap_jwt_key_v1" {
+  name         = "wrap-jwt-key-v1"
+  value        = var.wrap_jwt_secret
+  key_vault_id = azurerm_key_vault.main.id
+  depends_on   = [azurerm_key_vault_access_policy.deployer]
+}
+
 resource "azurerm_key_vault_secret" "anthropic_api_key" {
   count        = var.anthropic_api_key != "" ? 1 : 0
   name         = "anthropic-api-key"
