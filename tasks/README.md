@@ -104,6 +104,7 @@ Future / new features:
 | 51 | Reset (clear data) and de-register (forget passphrase) | Shaped — ready | both | medium |
 | 60 | Ollama local provider | Shaped — ready | server | small |
 | 61 | Client-side Ollama wrap generation (skip the queue) + settings UI + status badge | Shaped — ready | both | medium-large |
+| 62 | GitLab sync throttling and call visibility | Shaped — ready | client | small |
 | 70 | Interactive sense-making session v0 | Shaped — UI superseded by Spec 72; data/server scope consumed | both | large |
 | 71 | Wrap from the record (v1) | Shaped — wrap entry points deferred to a Spec 71 evolution after Spec 72 | both | medium |
 | 72 | UI and functionality overhaul (Claude Design handoff) | Shaped — ready | both | large |
