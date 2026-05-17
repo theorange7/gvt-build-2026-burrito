@@ -30,6 +30,7 @@ import {
   type ImportResponse,
 } from '@wrapped/shared';
 import { callModel } from '../ai/client';
+import { extractText } from '../files/extract';
 import {
   IMPORT_EXTRACT_SYSTEM_PROMPT,
   buildImportExtractPrompt,
@@ -40,16 +41,8 @@ import { safeError } from '../privacy';
 
 const MAX_FILE_BYTES = 256 * 1024;
 
-function decodeUtf8Strict(bytes: Uint8Array): string | null {
-  try {
-    return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
-  } catch {
-    return null;
-  }
-}
-
 async function readMultipart(request: HttpRequest): Promise<
-  | { kind: 'ok'; file: Uint8Array; metaRaw: string }
+  | { kind: 'ok'; file: Uint8Array; filename: string; metaRaw: string }
   | { kind: 'error'; status: number; body: { error: string } }
 > {
   let form: FormData;
@@ -72,7 +65,12 @@ async function readMultipart(request: HttpRequest): Promise<
   if (buffer.byteLength > MAX_FILE_BYTES) {
     return { kind: 'error', status: 413, body: { error: 'file-too-large' } };
   }
-  return { kind: 'ok', file: buffer, metaRaw: meta };
+  return {
+    kind: 'ok',
+    file: buffer,
+    filename: typeof file.name === 'string' ? file.name : '',
+    metaRaw: meta,
+  };
 }
 
 export async function importHandler(
@@ -101,19 +99,16 @@ export async function importHandler(
     return { status: 400, jsonBody: { error: 'invalid-meta' } };
   }
 
-  const text = decodeUtf8Strict(multipart.file);
-  if (text === null) {
-    return { status: 415, jsonBody: { error: 'unreadable-text' } };
-  }
-  if (text.trim().length === 0) {
-    return { status: 400, jsonBody: { error: 'empty-file' } };
+  const extracted = await extractText(multipart.filename, multipart.file);
+  if (extracted.kind === 'error') {
+    return { status: extracted.status, jsonBody: { error: extracted.code } };
   }
 
   let raw: string;
   try {
     raw = await callModel(
       IMPORT_EXTRACT_SYSTEM_PROMPT,
-      buildImportExtractPrompt({ label: meta.label, fileText: text }),
+      buildImportExtractPrompt({ label: meta.label, fileText: extracted.text }),
       meta.modelId,
     );
   } catch (err) {

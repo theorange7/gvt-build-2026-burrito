@@ -1,4 +1,6 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { http, HttpResponse } from 'msw';
 import type { HttpRequest, InvocationContext } from '@azure/functions';
 import { signInstallToken } from '../../src/auth/jwt';
@@ -50,13 +52,18 @@ function makeContext(logs?: unknown[]): InvocationContext {
 function makeForm(args: {
   fileText?: string;
   fileBytes?: Uint8Array;
+  filename?: string;
   meta: unknown;
 }): FormData {
   const fd = new FormData();
+  // Default filename to .txt so bytes-vs-text tests share the plaintext
+  // extractor; per-test overrides can pass `filename` to exercise other
+  // extension paths (.docx, unsupported types, etc).
+  const filename = (args as { filename?: string }).filename ?? 'upload.txt';
   if (args.fileBytes) {
-    fd.append('file', new Blob([args.fileBytes]), 'upload.bin');
+    fd.append('file', new Blob([args.fileBytes]), filename);
   } else {
-    fd.append('file', new Blob([args.fileText ?? ''], { type: 'text/plain' }), 'upload.txt');
+    fd.append('file', new Blob([args.fileText ?? ''], { type: 'text/plain' }), filename);
   }
   fd.append('meta', typeof args.meta === 'string' ? args.meta : JSON.stringify(args.meta));
   return fd;
@@ -161,6 +168,76 @@ describe('POST /import — size and encoding bounds', () => {
       makeContext(),
     );
     expect(res.status).toBe(400);
+  });
+
+  it('returns 415 when the filename has an unsupported extension', async () => {
+    const { token } = await signInstallToken();
+    const res = await importHandler(
+      makeRequest({
+        body: makeForm({ fileText: 'log', filename: 'report.pdf', meta: META }),
+        token,
+      }),
+      makeContext(),
+    );
+    expect(res.status).toBe(415);
+    expect(res.jsonBody).toEqual({ error: 'unsupported-file-type' });
+  });
+});
+
+describe('POST /import — .docx extraction', () => {
+  it('extracts plain text from a .docx and feeds it to the model', async () => {
+    const { token } = await signInstallToken();
+    const docx = new Uint8Array(
+      readFileSync(join(__dirname, '..', 'fixtures', 'sample.docx')),
+    );
+
+    // Capture what the model receives so we can confirm the docx text
+    // (not the raw zip bytes) hit the prompt.
+    let receivedUserMessage = '';
+    server.use(
+      http.post('https://api.anthropic.com/v1/messages', async ({ request }) => {
+        const body = (await request.json()) as {
+          messages?: Array<{ role: string; content: string }>;
+        };
+        receivedUserMessage = body.messages?.[0]?.content ?? '';
+        return HttpResponse.json({
+          id: 'msg_test',
+          type: 'message',
+          role: 'assistant',
+          model: 'claude-sonnet-4-20250514',
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({
+                contributions: [
+                  {
+                    source: 'github',
+                    category: 'delivery',
+                    signal: 'Shipped login redesign (PR #42)',
+                    occurredAt: '2026-02-01T00:00:00Z',
+                    weight: 4,
+                    externalId: 'gh:42',
+                  },
+                ],
+              }),
+            },
+          ],
+          stop_reason: 'end_turn',
+          usage: { input_tokens: 10, output_tokens: 20 },
+        });
+      }),
+    );
+
+    const res = await importHandler(
+      makeRequest({
+        body: makeForm({ fileBytes: docx, filename: 'sample.docx', meta: META }),
+        token,
+      }),
+      makeContext(),
+    );
+    expect(res.status).toBe(200);
+    expect(receivedUserMessage).toContain('Shipped login redesign');
+    expect(receivedUserMessage).toContain('Reviewed payments PR');
   });
 });
 

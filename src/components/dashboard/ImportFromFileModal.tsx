@@ -24,6 +24,13 @@ const PAPER = '#FBF5E5';
 const HOT = '#FF4D2E';
 
 const MAX_FILE_BYTES = 256 * 1024;
+const ACCEPT_ATTR = '.txt,.md,.docx,text/plain,text/markdown,application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+const ALLOWED_EXTS = new Set(['txt', 'md', 'docx']);
+
+function extOf(name: string): string {
+  const dot = name.lastIndexOf('.');
+  return dot < 0 ? '' : name.slice(dot + 1).toLowerCase();
+}
 
 function providerLabel(modelId: string): string {
   if (modelId.startsWith('anthropic:')) return 'Anthropic';
@@ -67,6 +74,11 @@ export function ImportFromFileModal({ open, onClose }: { open: boolean; onClose:
     setFileError(null);
     if (!picked) {
       setFile(null);
+      return;
+    }
+    if (!ALLOWED_EXTS.has(extOf(picked.name))) {
+      setFile(null);
+      setFileError('Only .txt, .md, and .docx files are supported.');
       return;
     }
     if (picked.size > MAX_FILE_BYTES) {
@@ -203,6 +215,7 @@ export function ImportFromFileModal({ open, onClose }: { open: boolean; onClose:
               </span>
               <input
                 type="file"
+                accept={ACCEPT_ATTR}
                 onChange={(e) => handleFile(e.target.files?.[0] ?? null)}
                 style={{
                   background: '#fff', border: `2px solid ${INK}`, borderRadius: 10,
@@ -239,7 +252,7 @@ export function ImportFromFileModal({ open, onClose }: { open: boolean; onClose:
                 let your laptop sleep until the row clears — the queue isn&apos;t saved.
               </p>
               <p style={{ margin: 0, fontFamily: 'JetBrains Mono, monospace', fontSize: 11, opacity: 0.7 }}>
-                Max file size: 256 KB. Text-based files only. Up to 3 imports run in parallel.
+                Max file size: 256 KB. Accepted: .txt, .md, .docx. Up to 3 imports run in parallel.
               </p>
             </div>
 
