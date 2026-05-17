@@ -13,4 +13,5 @@ import './functions/classify';
 import './functions/meReset';
 import './functions/wrapEnqueue';
 import './functions/wrapGet';
+import './functions/wrapShareDelete';
 import './functions/wrapWorker';

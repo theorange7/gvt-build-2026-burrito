@@ -24,6 +24,18 @@ export const contributionForAiSchema = z.object({
 
 export const wrapModeSchema = z.enum(['snapshot', 'year-end']);
 
+// Share display name: opt-in title shown in the published bundle. Capped to
+// 80 chars and stripped of control chars (server scrubs before persisting).
+// Identifiers and email addresses are deliberately not validated out here —
+// the user owns this string; we just guard against terminal/ANSI injection
+// and oversized payloads.
+const shareNameSchema = z
+  .string()
+  .max(80)
+  // eslint-disable-next-line no-control-regex
+  .regex(/^[^\x00-\x1f\x7f]*$/, 'control characters not allowed')
+  .optional();
+
 export const enqueueWrapRequestSchema = z.object({
   jobId: z.string().uuid(),
   contributions: z.array(contributionForAiSchema),
@@ -31,6 +43,8 @@ export const enqueueWrapRequestSchema = z.object({
   windowStart: z.string(),
   windowEnd: z.string(),
   modelId: z.string().optional(),
+  share: z.boolean().optional(),
+  shareName: shareNameSchema,
 });
 
 export const sliceContentSchema = z.object({
@@ -51,7 +65,12 @@ export const enqueueWrapResponseSchema = z.object({
 
 export const getWrapResponseSchema = z.discriminatedUnion('status', [
   z.object({ status: z.enum(['queued', 'running']), busy: z.boolean().optional() }),
-  z.object({ status: z.literal('complete'), sliceContent: z.array(sliceContentSchema) }),
+  z.object({
+    status: z.literal('complete'),
+    sliceContent: z.array(sliceContentSchema),
+    shareUrl: z.string().url().optional(),
+    shareSlug: z.string().optional(),
+  }),
   z.object({ status: z.literal('failed'), error: z.string() }),
 ]);
 

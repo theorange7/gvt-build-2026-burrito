@@ -28,3 +28,19 @@ resource "azurerm_storage_table" "results" {
   name                 = var.results_table_name
   storage_account_name = azurerm_storage_account.main.name
 }
+
+# Spec 31 — shareLinks: revoke-authorisation table (slug → installId).
+resource "azurerm_storage_table" "share_links" {
+  name                 = var.share_links_table_name
+  storage_account_name = azurerm_storage_account.main.name
+}
+
+# Spec 31 — `wraps` blob container holding published share bundles.
+# `blob` access type allows anonymous *object* reads (anyone with the full
+# path can fetch a single file) but DISALLOWS container listing — so the
+# slug is a capability URL, not a public directory.
+resource "azurerm_storage_container" "wraps" {
+  name                  = "wraps"
+  storage_account_name  = azurerm_storage_account.main.name
+  container_access_type = "blob"
+}

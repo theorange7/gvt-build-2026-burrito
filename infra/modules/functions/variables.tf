@@ -25,6 +25,15 @@ variable "wrap_register_rate_limit_per_hour" { type = number }
 variable "wrap_max_deliveries" { type = number }
 variable "wrap_tables_jobs" { type = string }
 variable "wrap_tables_results" { type = string }
+variable "wrap_tables_share_links" {
+  type    = string
+  default = "shareLinks"
+}
+variable "wrap_share_base_url" {
+  description = "Optional CDN / custom-domain base URL for share bundles. Falls back to the blob storage account URL when empty."
+  type        = string
+  default     = ""
+}
 variable "allowed_origins" { type = string }
 variable "env_mode" { type = string }
 variable "tags" { type = map(string) }

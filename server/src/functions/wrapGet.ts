@@ -36,13 +36,21 @@ export async function wrapGetHandler(
     }
 
     if (row.status === 'complete') {
-      const sliceContent = await getAndDeleteResult(installId, jobId);
+      const result = await getAndDeleteResult(installId, jobId);
       await deleteJobRow(installId, jobId);
       await deleteLookupRowsForJob(installId, jobId);
-      if (!sliceContent) {
+      if (!result) {
         return { status: 410, jsonBody: { error: 'result-already-fetched' } };
       }
-      return { status: 200, jsonBody: { status: 'complete', sliceContent } };
+      const body: {
+        status: 'complete';
+        sliceContent: typeof result.sliceContent;
+        shareUrl?: string;
+        shareSlug?: string;
+      } = { status: 'complete', sliceContent: result.sliceContent };
+      if (result.shareUrl) body.shareUrl = result.shareUrl;
+      if (result.shareSlug) body.shareSlug = result.shareSlug;
+      return { status: 200, jsonBody: body };
     }
 
     if (row.status === 'failed') {

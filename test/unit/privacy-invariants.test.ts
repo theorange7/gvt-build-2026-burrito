@@ -60,6 +60,7 @@ describe('privacy invariants — client AI wrappers stay thin', () => {
         join('src', 'lib', 'ai', 'endpoint.ts'),
         join('src', 'lib', 'ai', 'models.ts'),
         join('src', 'lib', 'ai', 'reset.ts'),
+        join('src', 'lib', 'ai', 'share.ts'),
       ]),
     );
   });
@@ -232,6 +233,35 @@ describe('privacy invariants — reset module boundaries', () => {
     for (const imp of aiImports) {
       expect(imp, `local-store/reset.ts must only import from ai/reset`).toBe('reset');
     }
+  });
+});
+
+describe('privacy invariants — share-viewer bundle has no telemetry (spec 31)', () => {
+  const viewerJsPath = join(repoRoot, 'share-viewer', 'dist', 'viewer.js');
+
+  it('contains no XMLHttpRequest or sendBeacon usage', () => {
+    const raw = readFileSync(viewerJsPath, 'utf8');
+    // Strip comments — the file's own docstring mentions these names while
+    // forbidding their use.
+    const source = raw
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/(^|[^:'"`])\/\/.*$/gm, '$1');
+    expect(source).not.toMatch(/\bnew\s+XMLHttpRequest\b/);
+    expect(source).not.toMatch(/\bsendBeacon\s*\(/);
+  });
+
+  it('contains no third-party hostnames', () => {
+    const source = readFileSync(viewerJsPath, 'utf8');
+    const urls = source.match(/https?:\/\/[^\s'"`)]+/g) ?? [];
+    expect(urls).toEqual([]);
+  });
+
+  it('the only fetch() call is the same-origin ./video.mp4 HEAD probe', () => {
+    const source = readFileSync(viewerJsPath, 'utf8');
+    const fetchCalls = [...source.matchAll(/\bfetch\s*\(\s*(['"`])([^'"`]+)\1/g)].map(
+      (m) => m[2],
+    );
+    expect(fetchCalls).toEqual(['./video.mp4']);
   });
 });
 

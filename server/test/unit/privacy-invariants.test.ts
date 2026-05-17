@@ -41,6 +41,7 @@ describe('privacy invariants — every Functions handler carries the PRIVACY ban
         join('src', 'functions', 'meReset.ts'),
         join('src', 'functions', 'wrapEnqueue.ts'),
         join('src', 'functions', 'wrapGet.ts'),
+        join('src', 'functions', 'wrapShareDelete.ts'),
         join('src', 'functions', 'wrapWorker.ts'),
       ]),
     );
@@ -181,7 +182,7 @@ describe('privacy invariants — Ollama adapter never logs, only hints with safe
   });
 });
 
-describe('privacy invariants — result row contains only sliceContent + jobId + timestamps', () => {
+describe('privacy invariants — result row contains only sliceContent + jobId + timestamps + share fields', () => {
   it('queue/results.ts persists no IP, token, or contributions', () => {
     const file = join(srcDir, 'queue', 'results.ts');
     const source = readFileSync(file, 'utf8');
@@ -190,14 +191,75 @@ describe('privacy invariants — result row contains only sliceContent + jobId +
     expect(source).not.toMatch(/contributions/);
   });
 
-  it('the ResultEntity row shape only carries payload + createdAt (no installId column)', () => {
+  it('the ResultEntity row shape never carries installId, IP, or token columns', () => {
     const file = join(srcDir, 'queue', 'results.ts');
     const source = readFileSync(file, 'utf8');
-    // installId may appear as a parameter name (it's now the partition key
-    // owner) but must NOT show up as a row column. The TableEntity literal
-    // is the only place where columns are declared.
+    // The TableEntity literal is the only place where columns are declared.
+    // `shareSlug`/`shareUrl` are allowed (spec 31); installId / IP / token are not.
     const entityDecl = source.match(/type ResultEntity = TableEntity<\{[^}]*\}>/);
     expect(entityDecl).not.toBeNull();
     expect(entityDecl![0]).not.toMatch(/installId/);
+    expect(entityDecl![0]).not.toMatch(/\bip\b/i);
+    expect(entityDecl![0]).not.toMatch(/token/i);
+  });
+});
+
+describe('privacy invariants — share function carries the PRIVACY banner and never logs slugs', () => {
+  const shareDeletePath = join(functionsDir, 'wrapShareDelete.ts');
+  const workerPath = join(functionsDir, 'wrapWorker.ts');
+
+  it('wrapShareDelete.ts exists and starts with the PRIVACY banner', () => {
+    const source = readFileSync(shareDeletePath, 'utf8');
+    expect(source).toMatch(/PRIVACY/);
+  });
+
+  it('wrapShareDelete.ts does not log the slug, installId, or blob path', () => {
+    const source = readFileSync(shareDeletePath, 'utf8');
+    expect(source).not.toMatch(/console\.[a-z]+\([^)]*\bslug\b/);
+    expect(source).not.toMatch(/context\.[a-z]+\([^)]*\bslug\b/);
+    expect(source).not.toMatch(/console\.[a-z]+\([^)]*\binstallId\b/);
+    expect(source).not.toMatch(/context\.[a-z]+\([^)]*\binstallId\b/);
+  });
+
+  it('wrapWorker.ts does not log the slug, installId, or blob path', () => {
+    const source = readFileSync(workerPath, 'utf8');
+    expect(source).not.toMatch(/console\.[a-z]+\([^)]*\bslug\b/);
+    expect(source).not.toMatch(/context\.[a-z]+\([^)]*\bslug\b/);
+    expect(source).not.toMatch(/console\.[a-z]+\([^)]*\binstallId\b/);
+    expect(source).not.toMatch(/context\.[a-z]+\([^)]*\binstallId\b/);
+  });
+});
+
+describe('privacy invariants — share viewer bundle has no telemetry', () => {
+  const viewerJsPath = join(serverRoot, '..', 'share-viewer', 'dist', 'viewer.js');
+
+  it('contains no XMLHttpRequest or sendBeacon usage', () => {
+    // Strip comments first so the file's own "no telemetry" docstring doesn't
+    // false-positive against the very rules it documents.
+    const raw = readFileSync(viewerJsPath, 'utf8');
+    const source = raw
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/(^|[^:'"`])\/\/.*$/gm, '$1');
+    expect(source).not.toMatch(/\bnew\s+XMLHttpRequest\b/);
+    expect(source).not.toMatch(/\bsendBeacon\s*\(/);
+    expect(source).not.toMatch(/\bnavigator\.sendBeacon\b/);
+  });
+
+  it('contains no third-party hostnames (only same-origin paths)', () => {
+    const source = readFileSync(viewerJsPath, 'utf8');
+    const urls = source.match(/https?:\/\/[^\s'"`)]+/g) ?? [];
+    expect(urls, `unexpected URL(s) in viewer bundle: ${urls.join(', ')}`).toEqual([]);
+  });
+
+  it('the only fetch() call is the same-origin ./video.mp4 HEAD probe', () => {
+    const source = readFileSync(viewerJsPath, 'utf8');
+    // Capture every fetch( ... ) call's first argument (literal string).
+    const fetchCalls = [...source.matchAll(/\bfetch\s*\(\s*(['"`])([^'"`]+)\1/g)].map(
+      (m) => m[2],
+    );
+    expect(fetchCalls).toEqual(['./video.mp4']);
+    // And the only call must be method=HEAD — anything else opens a body
+    // payload surface that the spec explicitly forbids.
+    expect(source).toMatch(/fetch\(['"`]\.\/video\.mp4['"`],\s*\{\s*method:\s*['"`]HEAD['"`]/);
   });
 });

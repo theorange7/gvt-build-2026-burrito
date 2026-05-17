@@ -23,6 +23,18 @@ copyFileSync(
 );
 console.log('Copied ai/models.config.json');
 
+// share-viewer bundle (spec 31). The publish step in wrapWorker reads
+// these at runtime; loadShareViewerAssets resolves them relative to the
+// compiled module under dist/share/. Mirroring them to dist/share-viewer/
+// matches the `resolve(__dirname, '..', 'share-viewer')` lookup.
+const shareViewerSrc = resolve(serverRoot, '..', 'share-viewer', 'dist');
+const shareViewerDest = resolve(distDir, 'share-viewer');
+mkdirSync(shareViewerDest, { recursive: true });
+for (const f of ['index.template.html', 'viewer.js', 'viewer.css']) {
+  copyFileSync(resolve(shareViewerSrc, f), resolve(shareViewerDest, f));
+}
+console.log('Copied share-viewer/ bundle');
+
 // Runtime dist/package.json — production deps only, main → index.js.
 // @wrapped/shared is replaced by the local _shared build (pre-compiled by
 // build-shared.mjs). The file: reference is resolved by npm install during

@@ -1,0 +1,190 @@
+/*
+ * Standalone viewer styles for shared wraps. System fonts only — no web
+ * font loads (which would be a network call). CSS transitions, not Framer
+ * Motion. Keeps bundle weight under the spec's 150KB budget.
+ */
+:root {
+  --ink: #0a0a0a;
+  --cream: #fff4de;
+  --paper: #fbf5e5;
+  --hot: #ff4d2e;
+  --lime: #c6ff3b;
+  --accent: #6b3dff;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--cream);
+  color: var(--ink);
+  font-family:
+    'Space Grotesk',
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    Roboto,
+    Oxygen,
+    Ubuntu,
+    Cantarell,
+    'Helvetica Neue',
+    sans-serif;
+  min-height: 100vh;
+}
+
+.viewer-root {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 40px 24px 64px;
+}
+
+.viewer-header {
+  border-bottom: 2px solid var(--ink);
+  padding-bottom: 24px;
+  margin-bottom: 32px;
+}
+
+.viewer-title {
+  font-size: 36px;
+  font-weight: 700;
+  margin: 0;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+}
+
+.viewer-stage {
+  position: relative;
+  min-height: 60vh;
+}
+
+.slide {
+  display: none;
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  box-shadow: 6px 6px 0 var(--ink);
+  border-radius: 18px;
+  padding: 40px 36px;
+  transition: opacity 0.18s ease;
+  opacity: 0;
+}
+
+.slide.is-current {
+  display: block;
+  opacity: 1;
+}
+
+.slide-chapter {
+  font-family: 'JetBrains Mono', 'Fira Mono', 'Courier New', monospace;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 18px;
+}
+
+.slide-stat {
+  font-family: 'JetBrains Mono', 'Fira Mono', 'Courier New', monospace;
+  font-size: 56px;
+  font-weight: 700;
+  color: var(--hot);
+  line-height: 1;
+  margin-bottom: 16px;
+  letter-spacing: -0.02em;
+}
+
+.slide-headline {
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1.15;
+  margin: 0 0 16px;
+  letter-spacing: -0.01em;
+}
+
+.slide-body {
+  font-size: 17px;
+  line-height: 1.55;
+  margin: 0 0 24px;
+}
+
+.slide-supporting {
+  list-style: none;
+  margin: 0;
+  padding: 16px 0 0;
+  border-top: 1px dashed rgba(10, 10, 10, 0.3);
+  display: grid;
+  gap: 8px;
+}
+
+.slide-supporting li {
+  font-family: 'JetBrains Mono', 'Fira Mono', 'Courier New', monospace;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: rgba(10, 10, 10, 0.75);
+}
+
+.viewer-nav {
+  margin-top: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.viewer-nav-button {
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  background: var(--cream);
+  border: 2px solid var(--ink);
+  box-shadow: 3px 3px 0 var(--ink);
+  border-radius: 8px;
+  padding: 10px 18px;
+  cursor: pointer;
+  transition: transform 0.08s ease;
+}
+
+.viewer-nav-button:hover:not(:disabled) {
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0 var(--ink);
+}
+
+.viewer-nav-button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  box-shadow: 2px 2px 0 var(--ink);
+}
+
+.viewer-nav-status {
+  font-family: 'JetBrains Mono', 'Fira Mono', 'Courier New', monospace;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(10, 10, 10, 0.55);
+}
+
+.viewer-error {
+  font-size: 14px;
+  color: var(--ink);
+  opacity: 0.7;
+}
+
+#video-link {
+  display: inline-block;
+  margin-top: 24px;
+  font-family: 'JetBrains Mono', 'Fira Mono', 'Courier New', monospace;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink);
+  text-decoration: none;
+  background: var(--lime);
+  border: 2px solid var(--ink);
+  box-shadow: 3px 3px 0 var(--ink);
+  padding: 8px 16px;
+  border-radius: 6px;
+}

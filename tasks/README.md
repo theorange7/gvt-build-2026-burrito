@@ -98,7 +98,7 @@ Future / new features:
 | ID | Title | Status | Branch | Appetite |
 |----|-------|--------|--------|----------|
 | 30 | Composer — music-synced video render service | Shaped — ready | composer + server + client | large |
-| 31 | Shareable highlight wheels (public bundle + revoke) | Shaped — ready | both | large |
+| 31 | Shareable highlight wheels (public bundle + revoke) | Done — 2026-05-17 (claude/implement-spec-31-OdDUF) | both | large |
 | 40 | Tauri 2 macOS shell bootstrap | Shaped — ready | client | medium |
 | 50 | File-upload contribution provider | Shaped — ready | both | medium |
 | 51 | Reset (clear data) and de-register (forget passphrase) | Shaped — ready | both | medium |

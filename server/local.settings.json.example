@@ -25,7 +25,13 @@
 
     "AZURE_TABLES_CONNECTION_STRING": "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;TableEndpoint=http://127.0.0.1:10002/devstoreaccount1;",
     "AZURE_TABLES_JOBS": "wrapJobs",
-    "AZURE_TABLES_RESULTS": "wrapResults"
+    "AZURE_TABLES_RESULTS": "wrapResults",
+    "AZURE_TABLES_SHARE_LINKS": "shareLinks",
+
+    "_comment_AZURE_BLOB_STORAGE_ACCOUNT": "Spec 31 — Azure Storage account hosting the `wraps` blob container. Leave empty locally; share publishing silently no-ops without it.",
+    "AZURE_BLOB_STORAGE_ACCOUNT": "",
+    "_comment_WRAP_SHARE_BASE_URL": "Optional CDN / custom-domain override for share URLs. Blob path is identical either way.",
+    "WRAP_SHARE_BASE_URL": ""
   },
   "Host": {
     "CORS": "http://localhost:3000,tauri://localhost",
