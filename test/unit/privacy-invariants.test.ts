@@ -59,6 +59,7 @@ describe('privacy invariants — client AI wrappers stay thin', () => {
         join('src', 'lib', 'ai', 'generate.ts'),
         join('src', 'lib', 'ai', 'endpoint.ts'),
         join('src', 'lib', 'ai', 'models.ts'),
+        join('src', 'lib', 'ai', 'reset.ts'),
       ]),
     );
   });
@@ -195,6 +196,41 @@ describe('privacy invariants — provider modules are storage-pure', () => {
     for (const file of indexFiles) {
       const source = readFileSync(file, 'utf8');
       expect(source, `${file} must include a PRIVACY banner`).toMatch(/PRIVACY/);
+    }
+  });
+});
+
+describe('privacy invariants — reset module boundaries', () => {
+  const aiResetPath = join(repoRoot, 'src', 'lib', 'ai', 'reset.ts');
+  const localStoreResetPath = join(repoRoot, 'src', 'lib', 'local-store', 'reset.ts');
+
+  it('src/lib/ai/reset.ts does not import any LLM or Azure SDK', () => {
+    const source = readFileSync(aiResetPath, 'utf8');
+    const banned = [
+      /from ['"]@anthropic-ai\/sdk['"]/,
+      /from ['"]@azure\/ai-projects['"]/,
+      /from ['"]@azure\/identity['"]/,
+      /from ['"]@azure\/data-tables['"]/,
+      /from ['"]openai['"]/,
+      /from ['"]jose['"]/,
+    ];
+    for (const re of banned) {
+      expect(source, `ai/reset.ts must not import via ${re}`).not.toMatch(re);
+    }
+  });
+
+  it('src/lib/ai/reset.ts does not log the install token', () => {
+    const source = readFileSync(aiResetPath, 'utf8');
+    expect(source).not.toMatch(/console\.[a-z]+\([^)]*\btoken\b/i);
+    expect(source).not.toMatch(/console\.[a-z]+\([^)]*\bauthorization\b/i);
+  });
+
+  it('src/lib/local-store/reset.ts only imports from src/lib/ai/ via reset.ts', () => {
+    const source = readFileSync(localStoreResetPath, 'utf8');
+    // May import from ai/reset but not other ai modules
+    const aiImports = [...source.matchAll(/from ['"]@\/lib\/ai\/([^'"]+)['"]/g)].map((m) => m[1]);
+    for (const imp of aiImports) {
+      expect(imp, `local-store/reset.ts must only import from ai/reset`).toBe('reset');
     }
   });
 });

@@ -1,24 +1,31 @@
 import { TableClient, type TableEntity } from '@azure/data-tables';
 import { DefaultAzureCredential } from '@azure/identity';
 import type { SliceContent } from '@wrapped/shared';
+import { getEnvMode } from '../env';
 
 type ResultEntity = TableEntity<{ payload: string; createdAt: string }>;
 
-let cachedClient: TableClient | null = null;
+let cachedClient: Promise<TableClient> | null = null;
 
-function getClient(): TableClient {
+async function getClient(): Promise<TableClient> {
   if (cachedClient) return cachedClient;
-  const endpoint = process.env.AZURE_TABLES_ENDPOINT;
   const tableName = process.env.AZURE_TABLES_RESULTS ?? 'wrapResults';
-  if (!endpoint) {
-    throw new Error('AZURE_TABLES_ENDPOINT is not set. Configure it in the Functions app settings.');
+  if (getEnvMode() === 'local') {
+    const cs = process.env.AZURE_TABLES_CONNECTION_STRING;
+    if (!cs) throw new Error('AZURE_TABLES_CONNECTION_STRING must be set when ENV_MODE=local');
+    const client = TableClient.fromConnectionString(cs, tableName, { allowInsecureConnection: true });
+    // Auto-create the table on first use; swallow 409 if it already exists.
+    cachedClient = client.createTable().catch(() => undefined).then(() => client);
+  } else {
+    const endpoint = process.env.AZURE_TABLES_ENDPOINT;
+    if (!endpoint) throw new Error('AZURE_TABLES_ENDPOINT must be set when ENV_MODE is dev or prod');
+    cachedClient = Promise.resolve(new TableClient(endpoint, tableName, new DefaultAzureCredential()));
   }
-  cachedClient = new TableClient(endpoint, tableName, new DefaultAzureCredential());
   return cachedClient;
 }
 
 export function _setResultsClientForTests(client: TableClient | null): void {
-  cachedClient = client;
+  cachedClient = client ? Promise.resolve(client) : null;
 }
 
 /**
@@ -33,7 +40,7 @@ export async function putResult(
   jobId: string,
   sliceContent: SliceContent[],
 ): Promise<void> {
-  const client = getClient();
+  const client = await getClient();
   const entity: ResultEntity = {
     partitionKey,
     rowKey: jobId,
@@ -43,11 +50,26 @@ export async function putResult(
   await client.upsertEntity(entity, 'Replace');
 }
 
+export async function deleteAllResultsForInstall(partitionKey: string): Promise<number> {
+  const client = await getClient();
+  const filter = `PartitionKey eq '${partitionKey.replace(/'/g, "''")}'`;
+  let removed = 0;
+  for await (const entity of client.listEntities<ResultEntity>({ queryOptions: { filter, select: ['rowKey'] } })) {
+    try {
+      await client.deleteEntity(partitionKey, entity.rowKey as string);
+      removed += 1;
+    } catch (err) {
+      if ((err as { statusCode?: number }).statusCode !== 404) throw err;
+    }
+  }
+  return removed;
+}
+
 export async function getAndDeleteResult(
   partitionKey: string,
   jobId: string,
 ): Promise<SliceContent[] | null> {
-  const client = getClient();
+  const client = await getClient();
   let entity: ResultEntity | null = null;
   try {
     entity = (await client.getEntity(partitionKey, jobId)) as ResultEntity;

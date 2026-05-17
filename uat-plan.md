@@ -39,6 +39,9 @@ this UAT plan as the source of truth for what to test, not the README.
   full wrap pipeline is being tested. If only client-only flows (UAT-001,
   UAT-002, UAT-003, UAT-004, UAT-007) are in scope, the backend can be
   skipped.
+- **Docker with Compose v2** (≥ 24), required for the backend emulators
+  (Azurite + Azure Service Bus emulator). Install Docker Desktop or Docker
+  Engine — `docker compose version` should succeed before §0.3.
 
 ### 0.2 Repo bootstrap
 ```bash
@@ -51,19 +54,51 @@ pnpm install
 Do not change unless running the server elsewhere.
 
 ### 0.3 Backend bootstrap (only required for wrap-generation flows)
+
+#### 1. Start the local emulators (from repo root)
+```bash
+docker compose up -d
+```
+
+This starts three containers: **azurite** (Azure Storage/Tables on
+ports 10000–10002), **mssql** (Service Bus dependency), and
+**servicebus-emulator** (Service Bus on port 5672 with the `wrap-jobs`
+queue pre-configured). Wait ~10 s for SQL Server to initialise before
+continuing — confirm readiness with `docker compose ps` (all three
+should show `running`).
+
+#### 2. Configure and start the Functions host
 ```bash
 cd server
 cp local.settings.json.example local.settings.json
 pnpm install
-# fill in WRAP_JWT_SECRET, ANTHROPIC_API_KEY (or AZURE_FOUNDRY_*),
-# ServiceBusConnection, AZURE_TABLES_ENDPOINT inside local.settings.json
+```
+
+Open `server/local.settings.json` and fill in **only** the LLM key —
+everything else (Storage, Service Bus, `WRAP_JWT_SECRET`) is pre-wired
+to the emulators in the example file:
+
+```
+"ANTHROPIC_API_KEY": "sk-ant-…"
+```
+
+or for Azure Foundry:
+
+```
+"AZURE_FOUNDRY_PROJECT_ENDPOINT": "https://<hub>.services.ai.azure.com/…"
+"AZURE_FOUNDRY_API_VERSION":      "2024-12-01-preview"
+```
+
+```bash
 func start
 ```
 
+All four HTTP functions (`authRegister`, `classify`, `wrapEnqueue`,
+`wrapGet`) and the Service Bus trigger (`wrapWorker`) should register.
+
 If the backend is **not** running, the tester should expect:
 - `UAT-001`, `UAT-002`, `UAT-003` — pass (purely client-side).
-- `UAT-004` (manual entry) — **already broken regardless of backend**, see
-  Known Gaps section. Mark KG-1 as confirmed.
+- `UAT-004` (manual entry) — fail at `/api/classify`.
 - `UAT-005` (wrap generation) — fail at the network step
   (`POST http://localhost:7071/api/wrap` → connection refused). The tester
   should record this as "backend unavailable" rather than a regression.
@@ -219,7 +254,7 @@ plaintext, AND correct passphrase restores full functionality.
 
 ---
 
-### UAT-004 — Manual contribution entry **(KNOWN BROKEN, see KG-1)**
+### UAT-004 — Manual contribution entry
 
 **Preconditions**: store unlocked from UAT-002 or UAT-003. Network tab open.
 
@@ -896,18 +931,6 @@ state — a passing UAT here means "matches the documented gap." Treat any
 deviation (e.g. behaviour suddenly works) as worth flagging back to the
 human, since it likely means an undocumented change landed.
 
-### KG-1 — Manual contribution entry uses the wrong endpoint
-- **Symptom**: `ManualInputForm.tsx:35` calls `fetch('/api/classify', ...)`
-  with a relative URL. The Next.js app has no `src/app/api/` directory
-  (privacy-invariants.test.ts asserts its absence). Server-side classify
-  lives at `${NEXT_PUBLIC_WRAP_API_URL}/classify`.
-- **Should use**: the `classify()` helper in `src/lib/ai/classify.ts`
-  which already calls `backendUrl('/classify')` with auth headers.
-- **UAT confirmation**: UAT-004 — visible `Classification failed.` error
-  on every save attempt.
-- **Status**: not on any active spec; appears to be a live regression
-  introduced when the queue migration moved API routes off the Next app.
-
 ### KG-2 — `pendingWrapRequests` table is not encrypted (Spec 12)
 - **Symptom**: rows in `pendingWrapRequests` have plaintext
   `mode`, `windowStart`, `windowEnd`, `requestedAt`, `status`, `busy`,
@@ -919,18 +942,16 @@ human, since it likely means an undocumented change landed.
   human-readable.
 - **Status**: Spec 12 "Shaped — ready", not implemented.
 
-### KG-3 — Wrap viewer renders mock data, ignores `sliceContent`
-- **Symptom**: `WrapExperience.tsx:46-50` renders `<WrapPhone>` /
-  `<WrapDesktop>` without forwarding `slices`/`mode`/`title`. Both
-  components display hardcoded mocks (`WrapPhone.tsx:30-43` MOCK
-  object). The 10 slide components in `src/components/slides/` are not
-  imported by anything (`grep -rln 'from.*slides/' src` returns 0
-  results outside the slides directory itself).
-- **Implication**: every generated wrap looks identical. The encryption
-  and pipeline work; the rendering is detached.
-- **UAT confirmation**: UAT-006.
-- **Status**: not tracked in any spec; this appears to be a design /
-  refactor in flight.
+### KG-3 — Wrap viewer renders mock data, ignores `sliceContent` ✅ RESOLVED
+- **Resolved**: `WrapExperience.tsx` now passes `slices`, `mode`, and
+  `title` to both `WrapPhone` and `WrapDesktop` (lines 47–50). All 10
+  slide components are imported in both viewer components. The rendered
+  wrap reflects real `sliceContent` from the pipeline.
+- **UAT-006 expected results need updating**: the "hardcoded mock content"
+  assertions are stale. The DOM should now contain slice headlines from
+  the actual generated wrap, not the `181`/`OCT`/`payment-rail v2` mock strings.
+- **Status**: Fixed (undocumented). KG-11 note about slides/ being dead
+  code is also stale.
 
 ### KG-4 — Palette switcher does not persist (tasks.md High Priority)
 - **Symptom**: `DashboardShell.tsx:759` initializes `paletteId` to
@@ -938,14 +959,15 @@ human, since it likely means an undocumented change landed.
 - **UAT confirmation**: UAT-012.
 - **Status**: tasks.md "High Priority", not started.
 
-### KG-5 — Pending-wrap polling does not pause on lock (Spec 1 — P0)
-- **Symptom**: `usePendingWrap` (`src/lib/local-store/hooks.ts:61-129`)
-  does not call `hasActiveKey()` before polling or before `saveWrap`.
-  A `complete` response received while the store is locked surfaces
-  as `phase: 'failed'` and the server-side result row has been deleted.
-- **UAT confirmation**: UAT-014.
-- **Status**: Spec 1 "Shaped — ready (P0)", not started. Severity
-  P0 — silent permanent data loss.
+### KG-5 — Pending-wrap polling does not pause on lock (Spec 1 — P0) ✅ RESOLVED
+- **Resolved**: `usePendingWrap` (`hooks.ts:72-78`) now checks
+  `hasActiveKey()` before each poll, transitions to `phase: 'paused-locked'`,
+  and listens for the `store-unlocked` event to resume. Silent data loss
+  no longer occurs on idle lock during wrap generation.
+- **UAT-014 expected results need updating**: the "actual current behaviour"
+  description of `phase: 'failed'` is stale. The page should now show an
+  unlock prompt.
+- **Status**: Fixed (undocumented). Spec 1 status should be updated.
 
 ### KG-6 — `/wrap?id=...` 404 on pending row → bad failure copy (Spec 13)
 - **Symptom**: when a pending row exists locally but the server returns
@@ -1004,7 +1026,8 @@ isn't surprised:
 - `src/components/ui/MxButton.tsx`
 - `src/components/ui/MxPaletteSwitcher.tsx`
 - `src/components/settings/ConnectToolsModal.tsx`
-- `src/components/slides/*` (all 10 + `SlideFrame`)
+- ~~`src/components/slides/*` (all 10 + `SlideFrame`)~~ **STALE** — slides
+  are now imported by `WrapPhone.tsx` and `WrapDesktop.tsx`.
 
 ---
 
@@ -1031,6 +1054,7 @@ than a stale test.
 | Locality                               | yes — `test/e2e/locality.spec.ts`                       |
 | Network minimality                     | yes — `test/e2e/network-minimality.spec.ts`             |
 | GitLab provider end-to-end             | yes — `test/e2e/gitlab-provider.spec.ts`                |
+| Server pipeline (emulator)             | yes — `server/test/integration/emulator/wrap-pipeline.test.ts` (gated: `EMULATOR=1`; requires Docker emulators running) |
 
 ---
 
