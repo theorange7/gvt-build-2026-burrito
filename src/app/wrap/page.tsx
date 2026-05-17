@@ -18,8 +18,29 @@ function WrapPageInner() {
 
   if (pending === undefined) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[#0a0a0f] text-white">
-        <p className="text-sm text-white/55">Loading…</p>
+      <main
+        style={{ background: '#FFF4DE' }}
+        className="flex min-h-screen items-center justify-center"
+      >
+        <div
+          style={{
+            background: '#FBF5E5',
+            border: '2px solid #0A0A0A',
+            boxShadow: '3px 3px 0 #0A0A0A',
+          }}
+          className="flex items-center gap-3 px-8 py-6"
+        >
+          <span
+            style={{ background: '#FF4D2E' }}
+            className="inline-block h-2.5 w-2.5 animate-pulse"
+          />
+          <span
+            style={{ color: '#0A0A0A', fontFamily: 'JetBrains Mono, monospace' }}
+            className="text-xs uppercase tracking-[0.18em]"
+          >
+            Loading…
+          </span>
+        </div>
       </main>
     );
   }
