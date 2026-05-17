@@ -1,6 +1,6 @@
 # Spec 60 — Ollama local provider
 
-**Status**: Shaped — ready to pick up
+**Status**: Done
 **Branch**: server (with a tiny docs touch on the client)
 **Appetite**: small (≤ 1 day)
 **Last shaped**: 2026-05-15
@@ -404,3 +404,36 @@ The README's "Where to look first when something breaks" table in
     (Phi / Llama / Mistral served by the Model Inference API) — this
     was already a parking-lot item before Ollama and remains
     independent of it.
+
+## Done
+
+**Completed**: 2026-05-16
+**PR**: claude/ollama-llm-adapters-8DpaB (branch)
+**Summary**: Added `provider: 'ollama'` to the model catalog, optional
+`baseUrl` on every entry, and a `callOllama` adapter that POSTs to
+`${baseUrl}/api/chat` with `stream: false`, threads `parameters` into
+Ollama's `options` blob, and reuses the existing `RETRY_DELAYS`
+schedule. A new `ollama_unreachable` code joined the privacy allowlist;
+`UpstreamError` now carries an optional `hint` so the unreachable case
+can name the configured baseUrl and the 404 case can suggest
+`ollama pull <modelId>` — both surface via `safeError` without ever
+embedding upstream response bodies.
+
+**Deviation from the Solution shape**: the spec described
+`callOllama` as a near-twin of `callAnthropic` added inside
+`client.ts`. The user (alongside picking up the spec) asked to look
+for refactoring opportunities that make new providers trivial, so the
+three providers were extracted into
+`server/src/ai/providers/{anthropic,azureFoundry,ollama}.ts` and
+`client.ts` was reduced to a `Record<ModelProvider, ProviderAdapter>`
+dispatcher. The exhaustive `Record` type means an unregistered
+provider is a compile error. No behavior changes for the existing
+Anthropic / Azure Foundry paths; the `callClaude` shim still works
+for `classify.ts`. `models.config.json` ships with **zero** Ollama
+entries enabled (asserted in tests) — operators opt in.
+
+Verification: `pnpm -C server typecheck` clean; `pnpm -C server test`
+passes 101 tests across 13 files (added `test/unit/ai/ollama.test.ts`,
+`test/unit/ai/dispatcher.test.ts`, `test/unit/ai/models-config.test.ts`,
+plus extensions to `privacy-invariants.test.ts` and
+`privacy-safeerror.test.ts`).

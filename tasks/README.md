@@ -102,7 +102,8 @@ Future / new features:
 | 40 | Tauri 2 macOS shell bootstrap | Shaped — ready | client | medium |
 | 50 | File-upload contribution provider | Shaped — ready | both | medium |
 | 51 | Reset (clear data) and de-register (forget passphrase) | Shaped — ready | both | medium |
-| 60 | Ollama local provider | Shaped — ready | server | small |
+| 60 | Ollama local provider | Shaped - ready | server | small |
+| 61 | Client-side Ollama wrap generation (skip the queue) + settings UI + status badge | Shaped — ready | both | medium-large |
 
 ## How an agent should use this directory
 

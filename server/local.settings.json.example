@@ -16,8 +16,9 @@
     "ANTHROPIC_API_KEY": "",
     "AZURE_FOUNDRY_PROJECT_ENDPOINT": "",
     "AZURE_FOUNDRY_API_VERSION": "",
-
-    "ServiceBusConnection": "Endpoint=sb://localhost;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;",
+    "_comment_OLLAMA_BASE_URL": "Optional. Override the default http://localhost:11434 when Ollama runs elsewhere on your network. Per-model overrides via models.config.json's baseUrl field take precedence. Leave unset to use the default.",
+    "OLLAMA_BASE_URL": "",
+    "AZURE_SERVICE_BUS_NAMESPACE": "Endpoint=sb://localhost;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;",
     "AZURE_SERVICE_BUS_QUEUE_NAME": "wrap-jobs",
 
     "AZURE_TABLES_CONNECTION_STRING": "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;TableEndpoint=http://127.0.0.1:10002/devstoreaccount1;",
