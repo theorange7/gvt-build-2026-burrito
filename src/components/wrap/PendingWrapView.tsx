@@ -14,46 +14,93 @@ export function PendingWrapView({ id, mode }: { id: string; mode: WrapMode }) {
   const state = usePendingWrap(id);
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[#0a0a0f] px-4 text-center text-white">
-      <div className="w-full max-w-xl rounded-[28px] border border-white/10 bg-[#111118] px-8 py-10">
-        <p className="text-xs uppercase tracking-[0.36em] text-white/45">
+    <main
+      style={{ background: '#FFF4DE' }}
+      className="flex min-h-screen items-center justify-center px-4 text-center"
+    >
+      <div
+        style={{
+          background: '#FBF5E5',
+          border: '2px solid #0A0A0A',
+          boxShadow: '4px 4px 0 #0A0A0A',
+        }}
+        className="w-full max-w-xl px-8 py-10"
+      >
+        <p
+          style={{ fontFamily: 'JetBrains Mono, monospace', color: '#0A0A0A' }}
+          className="text-xs uppercase tracking-[0.36em] opacity-60"
+        >
           {mode === 'year-end' ? 'Year-End wrap' : 'Snapshot wrap'}
         </p>
-        <h1 className="mt-4 font-display text-4xl">
+        <h1
+          style={{ fontFamily: 'Space Grotesk, sans-serif', color: '#0A0A0A' }}
+          className="mt-4 text-4xl font-black leading-tight"
+        >
           {state.phase === 'failed' ? 'Generation failed.' : 'Generating your wrap…'}
         </h1>
 
         {state.phase === 'loading' || state.phase === 'queued' || state.phase === 'running' ? (
-          <div className="mt-6 flex items-center justify-center gap-3 text-sm text-white/65">
-            <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-[color:var(--accent)]" />
-            {state.phase === 'loading'
-              ? 'Checking status…'
-              : 'busy' in state && state.busy
-                ? "We're a little busy — this might take longer than usual."
-                : state.phase === 'queued'
-                  ? 'Queued — picking it up shortly.'
-                  : 'Drafting your slices.'}
+          <div
+            style={{ fontFamily: 'JetBrains Mono, monospace', color: '#0A0A0A' }}
+            className="mt-6 flex items-center justify-center gap-3 text-xs uppercase tracking-[0.18em]"
+          >
+            <span
+              style={{ background: '#FF4D2E' }}
+              className="inline-block h-2.5 w-2.5 animate-pulse"
+            />
+            <span className="opacity-75">
+              {state.phase === 'loading'
+                ? 'Checking status…'
+                : 'busy' in state && state.busy
+                  ? "We're a little busy — this might take longer than usual."
+                  : state.phase === 'queued'
+                    ? 'Queued — picking it up shortly.'
+                    : 'Drafting your slices.'}
+            </span>
           </div>
         ) : null}
 
         {state.phase === 'paused-locked' ? (
-          <div className="mt-6 text-sm text-white/65">
+          <div
+            style={{ fontFamily: 'JetBrains Mono, monospace', color: '#0A0A0A' }}
+            className="mt-6 space-y-1 text-xs leading-7 opacity-70"
+          >
             <p>Your wrap is still generating.</p>
-            <p className="mt-1">Unlock your local store to resume.</p>
+            <p>Unlock your local store to resume.</p>
           </div>
         ) : null}
 
         {state.phase === 'failed' ? (
-          <div className="mt-6 space-y-4 text-sm text-white/65">
-            <p className="text-[rgb(255,193,168)]">{state.error}</p>
-            <Link href="/dashboard" className="inline-flex rounded-full border border-white/10 px-4 py-2 text-white">
-              Back to dashboard
+          <div className="mt-6 space-y-5">
+            <p
+              style={{ fontFamily: 'JetBrains Mono, monospace', color: '#FF4D2E' }}
+              className="text-xs leading-6"
+            >
+              {state.error}
+            </p>
+            <Link
+              href="/dashboard"
+              style={{
+                fontFamily: 'JetBrains Mono, monospace',
+                background: '#FF4D2E',
+                border: '2px solid #0A0A0A',
+                boxShadow: '3px 3px 0 #0A0A0A',
+                color: '#0A0A0A',
+              }}
+              className="inline-block px-6 py-2.5 text-xs uppercase tracking-[0.18em] font-bold hover:translate-x-[1px] hover:translate-y-[1px] transition-transform"
+            >
+              ← Back to Dashboard
             </Link>
           </div>
         ) : null}
 
         {state.phase === 'complete' ? (
-          <p className="mt-6 text-sm text-white/65">Your wrap is ready. Loading…</p>
+          <p
+            style={{ fontFamily: 'JetBrains Mono, monospace', color: '#0A0A0A' }}
+            className="mt-6 text-xs uppercase tracking-[0.18em] opacity-70"
+          >
+            Your wrap is ready. Loading…
+          </p>
         ) : null}
       </div>
     </main>
