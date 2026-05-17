@@ -21,6 +21,7 @@ import path from 'node:path';
 const PASSPHRASE = 'screenshot-passphrase';
 const PAT = 'glpat-screenshot-fixture-token';
 const INSTANCE = 'https://gitlab.test.example.com';
+const BACKEND = 'http://localhost:7071/api';
 
 const USER = {
   id: 4242,
@@ -220,6 +221,66 @@ async function mockGitLab(page: Page) {
   });
 }
 
+/**
+ * Spec 50 — stubs the backend endpoints the file-upload flow touches so
+ * the screenshot tests can run without a live Functions instance.
+ *
+ *   POST /auth/register → returns a stable test install token
+ *   POST /import        → returns three pre-cooked normalized contributions
+ *                         and one rejected row, mirroring what a real
+ *                         extraction would shape.
+ */
+async function mockFileUploadBackend(page: Page) {
+  await page.route(`${BACKEND}/auth/register`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        token: 'screenshot-install-token',
+        expiresAt: Math.floor(Date.now() / 1000) + 3600,
+      }),
+    });
+  });
+  await page.route(`${BACKEND}/import`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        contributions: [
+          {
+            source: 'github',
+            category: 'delivery',
+            signal: 'Shipped login redesign (PR #42)',
+            rawData: { pr: 42 },
+            occurredAt: recentISO(10),
+            weight: 4,
+            externalId: 'gh:42',
+          },
+          {
+            source: 'github',
+            category: 'collaboration',
+            signal: 'Reviewed payments PR (PR #43)',
+            rawData: {},
+            occurredAt: recentISO(7),
+            weight: 2,
+            externalId: 'gh:43',
+          },
+          {
+            source: 'manual',
+            category: 'delivery',
+            signal: 'Wrote runbook for incident-response',
+            rawData: {},
+            occurredAt: recentISO(3),
+            weight: 3,
+            externalId: 'rb:001',
+          },
+        ],
+        rejectedRows: 1,
+      }),
+    });
+  });
+}
+
 async function unlock(page: Page) {
   await page.goto('/dashboard');
   const fields = page.getByPlaceholder(/passphrase/i);
@@ -337,7 +398,106 @@ test.describe('UI screenshots', () => {
     await shot(page, '09-dashboard-with-gitlab-data');
   });
 
-  test('10 — wrap status viewer, pending state', async ({ page }) => {
+  // ---------------------------------------------------------------------
+  // Spec 50 — file-upload provider screenshots
+  // ---------------------------------------------------------------------
+
+  test('10 — settings panel showing the Import-from-file tile', async ({ page }) => {
+    await unlock(page);
+    await page.getByRole('button', { name: /^settings$/i }).click();
+    await expect(page.getByRole('button', { name: /import from file/i })).toBeVisible();
+    await shot(page, '10-settings-file-upload-tile');
+  });
+
+  test('11 — import modal step 1 (label the batch)', async ({ page }) => {
+    await unlock(page);
+    await page.getByRole('button', { name: /^settings$/i }).click();
+    await page.getByRole('button', { name: /import from file/i }).click();
+    await expect(page.getByRole('heading', { name: /import from a file/i })).toBeVisible();
+    await page.getByPlaceholder(/work laptop/i).fill('Q1 commits from work laptop');
+    await shot(page, '11-import-step1-label');
+  });
+
+  test('12 — import modal step 2 (file + model + egress disclosure)', async ({ page }) => {
+    await mockFileUploadBackend(page);
+    await unlock(page);
+    await page.getByRole('button', { name: /^settings$/i }).click();
+    await page.getByRole('button', { name: /import from file/i }).click();
+    await page.getByPlaceholder(/work laptop/i).fill('Q1 commits from work laptop');
+    await page.getByRole('button', { name: /next/i }).click();
+
+    // The disclosure copy and model picker should both be visible.
+    await expect(page.getByTestId('egress-disclosure')).toBeVisible();
+    await expect(page.getByTestId('egress-provider')).toBeVisible();
+
+    // Attach a small fixture file so the form looks "ready to submit".
+    await page.setInputFiles('input[type="file"]', {
+      name: 'q1-commits.txt',
+      mimeType: 'text/plain',
+      buffer: Buffer.from(
+        [
+          '2026-02-01  Shipped login redesign (PR #42)',
+          '2026-02-03  Reviewed payments PR (PR #43)',
+          '2026-02-05  Wrote runbook for incident-response',
+        ].join('\n'),
+      ),
+    });
+    await shot(page, '12-import-step2-disclosure');
+  });
+
+  test('13 — import result panel after a successful upload', async ({ page }) => {
+    await mockFileUploadBackend(page);
+    await unlock(page);
+    await page.getByRole('button', { name: /^settings$/i }).click();
+    await page.getByRole('button', { name: /import from file/i }).click();
+    await page.getByPlaceholder(/work laptop/i).fill('Q1 commits from work laptop');
+    await page.getByRole('button', { name: /next/i }).click();
+    await page.setInputFiles('input[type="file"]', {
+      name: 'q1-commits.txt',
+      mimeType: 'text/plain',
+      buffer: Buffer.from('three rows worth of contributions, plus one junk row'),
+    });
+    await page.getByRole('button', { name: /upload and extract/i }).click();
+    await expect(page.getByRole('heading', { name: /all done/i })).toBeVisible({
+      timeout: 15_000,
+    });
+    await expect(page.getByText(/your file has been discarded/i)).toBeVisible();
+    await shot(page, '13-import-result');
+  });
+
+  test('14 — file-upload identity appears in the settings tile', async ({ page }) => {
+    await mockFileUploadBackend(page);
+    await unlock(page);
+    await page.getByRole('button', { name: /^settings$/i }).click();
+    await page.getByRole('button', { name: /import from file/i }).click();
+    await page.getByPlaceholder(/work laptop/i).fill('Q1 commits from work laptop');
+    await page.getByRole('button', { name: /next/i }).click();
+    await page.setInputFiles('input[type="file"]', {
+      name: 'q1-commits.txt',
+      mimeType: 'text/plain',
+      buffer: Buffer.from('three rows worth of contributions'),
+    });
+    await page.getByRole('button', { name: /upload and extract/i }).click();
+    await expect(page.getByRole('heading', { name: /all done/i })).toBeVisible({
+      timeout: 15_000,
+    });
+    await page.getByRole('button', { name: /^done$/i }).click();
+
+    // The tile should now read "● 1 batch imported"; expand it to surface
+    // the identity row underneath.
+    const tile = page.getByRole('button', { name: /import from file/i });
+    await expect(tile).toBeVisible();
+    await expect(page.getByText(/1 batch imported/i)).toBeVisible();
+    await tile.click();
+    await expect(page.getByText(/Q1 commits from work laptop/)).toBeVisible();
+    await shot(page, '14-settings-file-upload-connected');
+  });
+
+  // ---------------------------------------------------------------------
+  // Wrap status + wrapped tab screenshots
+  // ---------------------------------------------------------------------
+
+  test('15 — wrap status viewer, pending state', async ({ page }) => {
     await mockWrapBackend(page, { pollResponse: 'running' });
     await unlock(page);
     await page.getByRole('button', { name: /try with demo data/i }).click();
@@ -348,10 +508,10 @@ test.describe('UI screenshots', () => {
     await expect(page.getByRole('heading', { name: /generating your wrap/i })).toBeVisible({
       timeout: 15_000,
     });
-    await shot(page, '10-wrap-status-pending');
+    await shot(page, '15-wrap-status-pending');
   });
 
-  test('11 — wrapped tab, populated', async ({ page }) => {
+  test('16 — wrapped tab, populated', async ({ page }) => {
     await mockWrapBackend(page, { pollResponse: 'complete' });
     await unlock(page);
     await page.getByRole('button', { name: /try with demo data/i }).click();
@@ -366,6 +526,6 @@ test.describe('UI screenshots', () => {
     await page.getByRole('button', { name: /^wrapped$/i }).click();
     await expect(page.getByRole('heading', { name: /^wrapped\.$/i })).toBeVisible();
     await expect(page.getByText(/year-end|snapshot/i).first()).toBeVisible({ timeout: 10_000 });
-    await shot(page, '11-wrapped-tab-populated');
+    await shot(page, '16-wrapped-tab-populated');
   });
 });
