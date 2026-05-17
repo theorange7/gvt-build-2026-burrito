@@ -1,6 +1,7 @@
 import { TableClient, type TableEntity } from '@azure/data-tables';
 import { DefaultAzureCredential } from '@azure/identity';
 import type { JobStatus } from '@wrapped/shared';
+import { getEnvMode } from '../env';
 
 export type JobRow = {
   installId: string;
@@ -22,21 +23,27 @@ type JobEntity = TableEntity<{
 
 export type JobRowWithEtag = JobRow & { etag: string };
 
-let cachedClient: TableClient | null = null;
+let cachedClient: Promise<TableClient> | null = null;
 
-function getClient(): TableClient {
+async function getClient(): Promise<TableClient> {
   if (cachedClient) return cachedClient;
-  const endpoint = process.env.AZURE_TABLES_ENDPOINT;
   const tableName = process.env.AZURE_TABLES_JOBS ?? 'wrapJobs';
-  if (!endpoint) {
-    throw new Error('AZURE_TABLES_ENDPOINT is not set. Configure it in the Functions app settings.');
+  if (getEnvMode() === 'local') {
+    const cs = process.env.AZURE_TABLES_CONNECTION_STRING;
+    if (!cs) throw new Error('AZURE_TABLES_CONNECTION_STRING must be set when ENV_MODE=local');
+    const client = TableClient.fromConnectionString(cs, tableName, { allowInsecureConnection: true });
+    // Auto-create the table on first use; swallow 409 if it already exists.
+    cachedClient = client.createTable().catch(() => undefined).then(() => client);
+  } else {
+    const endpoint = process.env.AZURE_TABLES_ENDPOINT;
+    if (!endpoint) throw new Error('AZURE_TABLES_ENDPOINT must be set when ENV_MODE is dev or prod');
+    cachedClient = Promise.resolve(new TableClient(endpoint, tableName, new DefaultAzureCredential()));
   }
-  cachedClient = new TableClient(endpoint, tableName, new DefaultAzureCredential());
   return cachedClient;
 }
 
 export function _setJobsClientForTests(client: TableClient | null): void {
-  cachedClient = client;
+  cachedClient = client ? Promise.resolve(client) : null;
 }
 
 function entityToRow(e: JobEntity): JobRow {
@@ -52,7 +59,7 @@ function entityToRow(e: JobEntity): JobRow {
 }
 
 export async function upsertJobRow(row: JobRow): Promise<void> {
-  const client = getClient();
+  const client = await getClient();
   const entity: JobEntity = {
     partitionKey: row.installId,
     rowKey: row.jobId,
@@ -72,7 +79,7 @@ export async function upsertJobRow(row: JobRow): Promise<void> {
  * code-review notes).
  */
 export async function createJobRow(row: JobRow): Promise<void> {
-  const client = getClient();
+  const client = await getClient();
   const entity: JobEntity = {
     partitionKey: row.installId,
     rowKey: row.jobId,
@@ -90,7 +97,7 @@ export function isConflictError(err: unknown): boolean {
 }
 
 export async function getJobRow(installId: string, jobId: string): Promise<JobRow | null> {
-  const client = getClient();
+  const client = await getClient();
   try {
     const entity = (await client.getEntity(installId, jobId)) as JobEntity;
     return entityToRow(entity);
@@ -107,7 +114,7 @@ export async function getJobRow(installId: string, jobId: string): Promise<JobRo
  * to guard status transitions against redelivery races (see #3).
  */
 export async function getJobRowWithEtag(installId: string, jobId: string): Promise<JobRowWithEtag | null> {
-  const client = getClient();
+  const client = await getClient();
   try {
     const entity = (await client.getEntity(installId, jobId)) as JobEntity;
     const etag = entity.etag ?? '';
@@ -129,7 +136,7 @@ export async function getJobRowWithEtag(installId: string, jobId: string): Promi
  * intervening read.
  */
 export async function updateJobRow(row: JobRow, etag: string): Promise<string> {
-  const client = getClient();
+  const client = await getClient();
   const entity: JobEntity = {
     partitionKey: row.installId,
     rowKey: row.jobId,
@@ -165,7 +172,7 @@ export async function createLookupRow(args: {
   installId: string;
   jobId: string;
 }): Promise<void> {
-  const client = getClient();
+  const client = await getClient();
   const entity: LookupEntity = {
     partitionKey: LOOKUP_PARTITION,
     rowKey: args.jobLookupToken,
@@ -179,7 +186,7 @@ export async function createLookupRow(args: {
 export async function resolveInstallIdFromToken(
   jobLookupToken: string,
 ): Promise<{ installId: string; jobId: string } | null> {
-  const client = getClient();
+  const client = await getClient();
   try {
     const entity = (await client.getEntity(LOOKUP_PARTITION, jobLookupToken)) as LookupEntity;
     return { installId: entity.installId, jobId: entity.jobId };
@@ -190,7 +197,7 @@ export async function resolveInstallIdFromToken(
 }
 
 export async function deleteLookupRow(jobLookupToken: string): Promise<void> {
-  const client = getClient();
+  const client = await getClient();
   try {
     await client.deleteEntity(LOOKUP_PARTITION, jobLookupToken);
   } catch (err) {
@@ -204,7 +211,7 @@ export async function deleteLookupRow(jobLookupToken: string): Promise<void> {
  * lookup row are dropped together. Returns the number of rows removed.
  */
 export async function deleteLookupRowsForJob(installId: string, jobId: string): Promise<number> {
-  const client = getClient();
+  const client = await getClient();
   const filter =
     `PartitionKey eq '${LOOKUP_PARTITION}' and jobId eq '${jobId.replace(/'/g, "''")}' and installId eq '${installId.replace(/'/g, "''")}'`;
   let removed = 0;
@@ -216,7 +223,7 @@ export async function deleteLookupRowsForJob(installId: string, jobId: string): 
 }
 
 export async function deleteJobRow(installId: string, jobId: string): Promise<void> {
-  const client = getClient();
+  const client = await getClient();
   try {
     await client.deleteEntity(installId, jobId);
   } catch (err) {
@@ -226,7 +233,7 @@ export async function deleteJobRow(installId: string, jobId: string): Promise<vo
 }
 
 export async function deleteAllJobRowsForInstall(installId: string): Promise<number> {
-  const client = getClient();
+  const client = await getClient();
   const filter = `PartitionKey eq '${installId.replace(/'/g, "''")}'`;
   let removed = 0;
   for await (const entity of client.listEntities<JobEntity>({ queryOptions: { filter, select: ['rowKey'] } })) {
@@ -241,7 +248,7 @@ export async function deleteAllJobRowsForInstall(installId: string): Promise<num
 }
 
 export async function deleteLookupRowsForInstall(installId: string): Promise<number> {
-  const client = getClient();
+  const client = await getClient();
   const filter = `PartitionKey eq '${LOOKUP_PARTITION}' and installId eq '${installId.replace(/'/g, "''")}'`;
   let removed = 0;
   for await (const entity of client.listEntities<LookupEntity>({ queryOptions: { filter } })) {
@@ -256,7 +263,7 @@ export async function deleteLookupRowsForInstall(installId: string): Promise<num
 }
 
 export async function countInflight(filter?: { installId?: string }): Promise<number> {
-  const client = getClient();
+  const client = await getClient();
   const baseFilter = `(status eq 'queued' or status eq 'running')`;
   const queryFilter = filter?.installId
     ? `${baseFilter} and PartitionKey eq '${filter.installId.replace(/'/g, "''")}'`

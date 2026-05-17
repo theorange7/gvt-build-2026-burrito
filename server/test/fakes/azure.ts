@@ -51,7 +51,15 @@ function newEtag(): string {
 // ── @azure/data-tables ───────────────────────────────────────────────────────
 
 export class FakeTableClient {
-  constructor(public endpoint: string, public name: string, public _credential: unknown) {}
+  constructor(public endpoint: string, public name: string, public _credential?: unknown) {}
+
+  static fromConnectionString(_cs: string, tableName: string): FakeTableClient {
+    return new FakeTableClient(_cs, tableName);
+  }
+
+  async createTable(): Promise<void> {
+    tableFor(this.name);
+  }
 
   async upsertEntity(entity: Entity, _mode?: 'Replace' | 'Merge'): Promise<void> {
     const stored = { ...entity, etag: newEtag() };
@@ -167,7 +175,7 @@ export type SentServiceBusMessage = {
 const sentMessages: SentServiceBusMessage[] = [];
 
 export class FakeServiceBusClient {
-  constructor(public namespace: string, public _credential: unknown) {}
+  constructor(public namespace: string, public _credential?: unknown) {}
 
   createSender(_queue: string) {
     return {

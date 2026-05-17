@@ -2,7 +2,7 @@
   "name": "@wrapped/server",
   "version": "0.0.0",
   "private": true,
-  "main": "src/index.ts",
+  "main": "dist/index.js",
   "scripts": {
     "build": "node scripts/build-shared.mjs && tsc -p tsconfig.build.json && node scripts/copy-assets.mjs",
     "package": "pnpm build && node scripts/zip-artifact.mjs",
