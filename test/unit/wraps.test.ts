@@ -120,4 +120,56 @@ describe('local-store/wraps', () => {
     expect(fetched?.sliceContent).toEqual(slices);
     expect(fetched?.title).toBe('A');
   });
+
+  it('updateWrapShare scrubs the prior slug/url from the raw IndexedDB row (spec 31 revoke privacy)', async () => {
+    // The plaintext-column check below would catch a regression where the
+    // slug or url were mistakenly promoted out of the encrypted envelope.
+    // The full-row dump catches a subtler bug: a partial write that left
+    // the *old* ciphertext intact would still decode to the old slug, even
+    // though the StoredWrap getter would (incorrectly) report it cleared.
+    // Re-encrypting under a fresh IV guarantees the rotated ciphertext is
+    // byte-different from the previous one; the old slug/url string must
+    // appear nowhere in the raw row.
+    const slug = 'aaaaBBBBccccDDDDeeeeFF';
+    const url = `https://example.test/${slug}/index.html`;
+    const stored = await saveWrap({
+      mode: 'snapshot',
+      windowStart: new Date('2025-04-01'),
+      windowEnd: new Date('2025-06-30'),
+      title: 'A',
+      sliceContent: slices,
+      shareSlug: slug,
+      shareUrl: url,
+    });
+
+    await updateWrapShare(stored.id, {});
+
+    const raw = await db().wraps.get(stored.id);
+    expect(raw).toBeDefined();
+
+    // 1) Plaintext columns must never carry the slug/url (consistent with
+    // the saveWrap envelope-contract test above).
+    const plaintextDump = JSON.stringify({
+      id: raw!.id,
+      mode: raw!.mode,
+      windowStart: raw!.windowStart,
+      windowEnd: raw!.windowEnd,
+      createdAt: raw!.createdAt,
+    });
+    expect(plaintextDump).not.toContain(slug);
+    expect(plaintextDump).not.toContain(url);
+
+    // 2) The full row, including iv + ciphertext, must not contain the
+    // old slug/url substring either. Random 16-byte IVs and AES-GCM
+    // ciphertext are statistically guaranteed not to coincidentally
+    // contain a 22-char base64url slug — a hit here means the rotated
+    // envelope still has the old payload baked in.
+    const fullDump = Buffer.concat([
+      Buffer.from(plaintextDump, 'utf8'),
+      Buffer.from(raw!.iv),
+      Buffer.from(raw!.ct),
+    ]).toString('binary');
+    expect(fullDump).not.toContain(slug);
+    expect(fullDump).not.toContain(url);
+  });
 });
