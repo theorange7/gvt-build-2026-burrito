@@ -246,11 +246,13 @@ describe('gitlab-dedicated/sync — throttling', () => {
       }),
     );
     const ctrl = new AbortController();
-    const collectPromise = collect(
+    // Attach .catch immediately so the rejection is handled before runAllTimersAsync
+    // fires the timers that cause the throw — prevents an unhandled rejection warning.
+    const caught = collect(
       gitlabSync.run({ instanceUrl: TEST_GITLAB_BASE, identity, tokens, cursor: null, signal: ctrl.signal }),
-    );
+    ).catch((e) => e);
     await vi.runAllTimersAsync();
-    await expect(collectPromise).rejects.toBeInstanceOf(ProviderRateLimitError);
+    await expect(caught).resolves.toBeInstanceOf(ProviderRateLimitError);
   });
 
   it('handles 100-page sync quickly with fake timers', async () => {
