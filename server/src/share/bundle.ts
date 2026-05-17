@@ -1,5 +1,5 @@
 import type { SliceContent, WrapMode } from '@wrapped/shared';
-import { loadShareViewerAssets, type ShareViewerAssets } from './assets';
+import type { ShareViewerAssets } from './assets';
 
 export type ShareBundleInput = {
   sliceContent: SliceContent[];
@@ -21,18 +21,24 @@ const DEFAULT_TITLE = 'Wrapped for Work — 2026';
  * Build the shareable static bundle for a single wrap. Stamps the pre-built
  * template with the wrap's slice content and an optional opt-in display name.
  *
- * - `displayName` is the *only* user-supplied string that propagates into the
- *   bundle title. Identifiers (installId, userId, jobId, externalId) are not
- *   in the input type and therefore cannot leak.
- * - JSON is escaped via the `</script>` defeat described in the spec
- *   (`</` → `<`) — the only injection vector inside the inline JSON
- *   payload — so HTML/JS string interpolation can be a plain `replace`.
+ * `assets` is required: this function does **not** touch disk. Callers
+ * supply a `ShareViewerAssets` (typically from `loadShareViewerAssets()`
+ * memoised once at worker startup, or constructed inline in unit tests).
+ * Keeping IO out of the renderer means unit tests don't depend on the
+ * dist layout or any module-level cache state.
+ *
+ * Privacy contract:
+ * - `displayName` is the *only* user-supplied string that propagates into
+ *   the bundle title. Identifiers (installId, userId, jobId, externalId)
+ *   are not in the input type and therefore cannot leak.
+ * - JSON is escaped via the `</script>` defeat (`<` → `<`) — the only
+ *   injection vector inside the inline JSON payload — so HTML/JS string
+ *   interpolation can be a plain `replace`.
  */
 export function renderShareBundle(
   input: ShareBundleInput,
-  preloaded?: ShareViewerAssets,
+  assets: ShareViewerAssets,
 ): ShareBundle {
-  const assets = preloaded ?? loadShareViewerAssets();
   const title = input.displayName?.trim() || DEFAULT_TITLE;
   const payload = {
     title,
