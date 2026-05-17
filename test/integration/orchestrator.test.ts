@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   backfillIdentity,
   connectIdentityWithApiToken,
@@ -12,7 +12,8 @@ import { getTokens } from '@/lib/local-store/tokens';
 import { getSyncState } from '@/lib/local-store/syncState';
 import { listImportedRanges } from '@/lib/local-store/importedRanges';
 import { db } from '@/lib/local-store/db';
-import { TEST_GITLAB_BASE, TEST_GITLAB_PAT } from '../mocks/gitlab';
+import { TEST_GITLAB_BASE, TEST_GITLAB_PAT, clearGitlabCalls } from '../mocks/gitlab';
+import type { SyncPageProgress } from '@/lib/providers/types';
 import { loadTestKey } from '../setup/key';
 import { hasProvider, registerProvider } from '@/lib/providers/registry';
 import { gitlabDedicatedProvider } from '@/lib/providers/gitlab-dedicated';
@@ -24,7 +25,10 @@ beforeEach(async () => {
   }
 });
 
-afterEach(() => {});
+afterEach(() => {
+  clearGitlabCalls();
+  vi.useRealTimers();
+});
 
 async function connect() {
   return connectIdentityWithApiToken({
@@ -138,5 +142,33 @@ describe('orchestrator — connect / sync / backfill / disconnect', () => {
     await disconnectIdentity(identityId, { deleteContributions: false });
     expect(await listIdentities()).toHaveLength(0);
     expect((await listContributions()).length).toBe(before);
+  });
+
+  it('onProgress is called once per page with strictly-increasing callsMade and eventsReceived', async () => {
+    const { identityId } = await connect();
+    const progressCalls: SyncPageProgress[] = [];
+    await syncIdentity(identityId, {
+      onProgress: (p) => progressCalls.push({ ...p }),
+    });
+
+    // Default mock has 2 pages.
+    expect(progressCalls).toHaveLength(2);
+    // Pages are 1-based.
+    expect(progressCalls[0].page).toBe(1);
+    expect(progressCalls[1].page).toBe(2);
+    // callsMade and eventsReceived are strictly increasing.
+    expect(progressCalls[1].callsMade).toBeGreaterThan(progressCalls[0].callsMade);
+    expect(progressCalls[1].eventsReceived).toBeGreaterThan(progressCalls[0].eventsReceived);
+  });
+
+  it('persists callsMadeLastSync, pagesLastSync, and lastSyncDurationMs to syncState', async () => {
+    const { identityId } = await connect();
+    await syncIdentity(identityId);
+
+    const state = await getSyncState(identityId);
+    expect(state?.callsMadeLastSync).toBeGreaterThan(0);
+    expect(state?.pagesLastSync).toBeGreaterThan(0);
+    expect(state?.lastSyncDurationMs).toBeGreaterThanOrEqual(0);
+    expect(state?.eventsReceivedLastSync).toBeGreaterThan(0);
   });
 });

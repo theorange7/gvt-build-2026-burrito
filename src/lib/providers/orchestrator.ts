@@ -39,6 +39,7 @@ import {
   type ExternalIdentity,
   type RawEvent,
   type SyncCursor,
+  type SyncPageProgress,
   type TokenSet,
 } from './types';
 
@@ -164,10 +165,14 @@ async function persistEvents(
 
 export async function syncIdentity(
   identityId: string,
-  options: { signal?: AbortSignal } = {},
+  options: {
+    signal?: AbortSignal;
+    onProgress?: (progress: SyncPageProgress) => void;
+  } = {},
 ): Promise<SyncResult> {
   const { provider, identity, tokens } = await loadProviderContext(identityId);
   const state = await getSyncState(identityId);
+  const startTime = Date.now();
 
   const ctrl = new AbortController();
   if (options.signal) {
@@ -182,6 +187,11 @@ export async function syncIdentity(
     ? state.cursor.eventsAfter
     : null;
 
+  // Accumulated from the last onProgress call
+  let callsMadeLastSync = 0;
+  let eventsReceivedLastSync = 0;
+  let pagesLastSync = 0;
+
   try {
     for await (const event of provider.sync.run({
       instanceUrl: identity.instanceUrl,
@@ -191,6 +201,12 @@ export async function syncIdentity(
       signal: ctrl.signal,
       onTokensRefreshed: async (next) => {
         await putTokens(identityId, next);
+      },
+      onProgress: (progress) => {
+        callsMadeLastSync = progress.callsMade;
+        eventsReceivedLastSync = progress.eventsReceived;
+        pagesLastSync = progress.page;
+        options.onProgress?.(progress);
       },
     })) {
       buffer.push(event);
@@ -219,7 +235,15 @@ export async function syncIdentity(
         eventsAfter: latestOccurredAt,
       } as SyncCursor);
     }
-    await setSyncResult(identityId, { lastSyncAt: Date.now(), lastError: null });
+    const lastSyncDurationMs = Date.now() - startTime;
+    await setSyncResult(identityId, {
+      lastSyncAt: Date.now(),
+      lastError: null,
+      callsMadeLastSync,
+      eventsReceivedLastSync,
+      pagesLastSync,
+      lastSyncDurationMs,
+    });
     return { added, skippedExisting, errors: 0 };
   } catch (e) {
     const message = e instanceof Error ? e.message : 'Sync failed';

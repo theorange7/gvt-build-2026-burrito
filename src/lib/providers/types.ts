@@ -80,6 +80,13 @@ export interface ExternalIdentity {
   raw?: unknown;
 }
 
+export type SyncPageProgress = {
+  page: number;           // 1-based page number just completed
+  callsMade: number;      // cumulative calls this sync run
+  eventsReceived: number; // cumulative raw events yielded so far
+  rateLimitRemaining: number | null; // from last RateLimit-Remaining header
+};
+
 export interface SyncAdapter {
   run(args: {
     instanceUrl: string;
@@ -88,6 +95,7 @@ export interface SyncAdapter {
     cursor: SyncCursor | null;
     signal: AbortSignal;
     onTokensRefreshed?: (next: TokenSet) => Promise<void>;
+    onProgress?: (progress: SyncPageProgress) => void;
   }): AsyncIterable<RawEvent>;
   normalize(args: {
     event: RawEvent;
@@ -127,5 +135,12 @@ export class ProviderTransientError extends Error {
   constructor(message: string, readonly status?: number) {
     super(message);
     this.name = 'ProviderTransientError';
+  }
+}
+
+export class ProviderRateLimitError extends ProviderTransientError {
+  constructor(message: string, readonly retryAfterSeconds: number) {
+    super(message, 429);
+    this.name = 'ProviderRateLimitError';
   }
 }
