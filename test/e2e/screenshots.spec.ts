@@ -92,6 +92,95 @@ const FIXTURE_EVENTS = [
 
 const SCREENSHOT_DIR = path.join(process.cwd(), 'screenshots');
 
+const WRAP_API_BASE = 'http://localhost:7071/api';
+
+const SAMPLE_SLICES = [
+  {
+    sliceKey: 'identity',
+    headline: 'A builder with a bias for shipping.',
+    body: 'You moved between systems work and code review with measured pace.',
+    stat: '134 contributions',
+    supporting: null,
+  },
+];
+
+async function mockWrapBackend(
+  page: Page,
+  opts: { pollResponse: 'running' | 'complete' },
+) {
+  await page.route(`${WRAP_API_BASE}/auth/register`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        token: 'screenshot-fixture-token',
+        expiresAt: Math.floor(Date.now() / 1000) + 60 * 60 * 24,
+      }),
+    });
+  });
+
+  await page.route(`${WRAP_API_BASE}/wrap`, async (route) => {
+    if (route.request().method() !== 'POST') {
+      await route.continue();
+      return;
+    }
+    const body = JSON.parse(route.request().postData() ?? '{}') as { jobId: string };
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ jobId: body.jobId, status: 'queued', busy: false }),
+    });
+  });
+
+  await page.route(/\/api\/wrap\/[^/]+$/, async (route) => {
+    if (route.request().method() !== 'GET') {
+      await route.continue();
+      return;
+    }
+    if (opts.pollResponse === 'running') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ status: 'running', busy: false }),
+      });
+      return;
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ status: 'complete', sliceContent: SAMPLE_SLICES }),
+    });
+  });
+}
+
+async function reUnlock(page: Page) {
+  await page.goto('/dashboard');
+  await expect(
+    page.getByRole('heading', { name: /welcome back|create your passphrase/i }),
+  ).toBeVisible();
+  const isReturning = await page
+    .getByRole('heading', { name: /welcome back/i })
+    .isVisible();
+  if (isReturning) {
+    await page.getByPlaceholder(/passphrase/i).fill(PASSPHRASE);
+    await page.getByRole('button', { name: /^unlock$/i }).click();
+  } else {
+    const fields = page.getByPlaceholder(/passphrase/i);
+    await fields.nth(0).fill(PASSPHRASE);
+    await fields.nth(1).fill(PASSPHRASE);
+    await page.getByRole('button', { name: /set passphrase/i }).click();
+  }
+  await expect(page.getByText(/contributions caught/i)).toBeVisible();
+}
+
+async function triggerGenerate(page: Page) {
+  await page.getByRole('button', { name: /WRAP IT/i }).first().click();
+  await expect(page.getByRole('heading', { name: /pick the lens for this story/i })).toBeVisible();
+  await page.getByRole('button', { name: /^generate$/i }).click();
+  await expect(page.getByRole('link', { name: /view status/i })).toBeVisible({ timeout: 15_000 });
+  await page.getByRole('link', { name: /view status/i }).click();
+}
+
 async function shot(page: Page, name: string, fullPage = true): Promise<string> {
   await mkdir(SCREENSHOT_DIR, { recursive: true });
   const file = path.join(SCREENSHOT_DIR, `${name}.png`);
@@ -246,5 +335,37 @@ test.describe('UI screenshots', () => {
     await page.getByRole('button', { name: /^timeline$/i }).click();
     await expect(page.getByText(/Migrate auth to OAuth2/i).first()).toBeVisible({ timeout: 15_000 });
     await shot(page, '09-dashboard-with-gitlab-data');
+  });
+
+  test('10 — wrap status viewer, pending state', async ({ page }) => {
+    await mockWrapBackend(page, { pollResponse: 'running' });
+    await unlock(page);
+    await page.getByRole('button', { name: /try with demo data/i }).click();
+    await expect(page.getByRole('button', { name: /try with demo data/i })).toHaveCount(0, {
+      timeout: 30_000,
+    });
+    await triggerGenerate(page);
+    await expect(page.getByRole('heading', { name: /generating your wrap/i })).toBeVisible({
+      timeout: 15_000,
+    });
+    await shot(page, '10-wrap-status-pending');
+  });
+
+  test('11 — wrapped tab, populated', async ({ page }) => {
+    await mockWrapBackend(page, { pollResponse: 'complete' });
+    await unlock(page);
+    await page.getByRole('button', { name: /try with demo data/i }).click();
+    await expect(page.getByRole('button', { name: /try with demo data/i })).toHaveCount(0, {
+      timeout: 30_000,
+    });
+    await triggerGenerate(page);
+    // Poll completes, saves the wrap, WrapPageInner renders WrapExperience.
+    // Don't need to assert on slice content — just wait long enough for save.
+    await page.waitForTimeout(2_000);
+    await reUnlock(page);
+    await page.getByRole('button', { name: /^wrapped$/i }).click();
+    await expect(page.getByRole('heading', { name: /^wrapped\.$/i })).toBeVisible();
+    await expect(page.getByText(/year-end|snapshot/i).first()).toBeVisible({ timeout: 10_000 });
+    await shot(page, '11-wrapped-tab-populated');
   });
 });
