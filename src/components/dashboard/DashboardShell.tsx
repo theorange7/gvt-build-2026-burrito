@@ -494,10 +494,12 @@ function SettingsTab({
   p,
   profileName,
   onSaveName,
+  onResetSuccess,
 }: {
   p: MxPalette;
   profileName: string;
   onSaveName: (name: string) => void;
+  onResetSuccess?: () => void;
 }) {
   const [draft, setDraft] = useState(profileName);
   const [saved, setSaved] = useState(false);
@@ -728,7 +730,13 @@ function SettingsTab({
         </button>
       </div>
 
-      {showReset && <ResetModal open={showReset} onClose={() => setShowReset(false)} />}
+      {showReset && (
+        <ResetModal
+          open={showReset}
+          onClose={() => setShowReset(false)}
+          onSuccess={onResetSuccess}
+        />
+      )}
 
       {/* Connect modal */}
       {connectingProviderId && (
@@ -908,7 +916,12 @@ export function DashboardShell() {
 
       {/* Settings tab */}
       {activeTab === 'settings' && (
-        <SettingsTab p={p} profileName={profileName} onSaveName={saveProfileName} />
+        <SettingsTab
+          p={p}
+          profileName={profileName}
+          onSaveName={saveProfileName}
+          onResetSuccess={() => setActiveTab('timeline')}
+        />
       )}
 
       {/* Main content (timeline tab) */}

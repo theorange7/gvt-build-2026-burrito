@@ -11,9 +11,13 @@ interface ResetModalProps {
   open: boolean;
   onClose: () => void;
   initialMode?: ResetMode;
+  /** When true, hides the mode radio selector and locks the modal to initialMode. */
+  lockMode?: boolean;
+  /** Called after a successful reset (before onClose). */
+  onSuccess?: () => void;
 }
 
-export function ResetModal({ open, onClose, initialMode = 'clear-data' }: ResetModalProps) {
+export function ResetModal({ open, onClose, initialMode = 'clear-data', lockMode, onSuccess }: ResetModalProps) {
   const queryClient = useQueryClient();
   const [mode, setMode] = useState<ResetMode>(initialMode);
   const [confirmText, setConfirmText] = useState('');
@@ -80,6 +84,7 @@ export function ResetModal({ open, onClose, initialMode = 'clear-data' }: ResetM
         queryClient.invalidateQueries({ queryKey: ['wraps'] });
         queryClient.invalidateQueries({ queryKey: ['identities'] });
         queryClient.invalidateQueries({ queryKey: ['pendingWraps'] });
+        onSuccess?.();
         onClose();
       } catch {
         setError('An unexpected error occurred. Please try again.');
@@ -128,8 +133,8 @@ export function ResetModal({ open, onClose, initialMode = 'clear-data' }: ResetM
           Reset this device
         </h2>
 
-        {/* Mode selector */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 20 }}>
+        {/* Mode selector — hidden when the caller has locked the mode */}
+        <div style={{ display: lockMode ? 'none' : 'flex', flexDirection: 'column', gap: 12, marginBottom: 20 }}>
           <label
             style={{
               display: 'flex',

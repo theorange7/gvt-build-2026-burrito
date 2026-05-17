@@ -56,6 +56,7 @@ export async function resetLocalState(
       await db().syncState.clear();
       await db().importedRanges.clear();
       await db().pendingWrapRequests.clear();
+      await db().meta.delete(META_KEYS.seeded);
       if (mode === 'forget-device') {
         await db().meta.delete(META_KEYS.kdfSalt);
         await db().meta.delete(META_KEYS.wrapInstallToken);

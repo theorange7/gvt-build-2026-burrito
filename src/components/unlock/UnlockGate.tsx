@@ -412,6 +412,7 @@ export function UnlockGate({ children }: { children: React.ReactNode }) {
             open={showForgetDevice}
             onClose={() => setShowForgetDevice(false)}
             initialMode="forget-device"
+            lockMode={true}
           />
         )}
       </section>
