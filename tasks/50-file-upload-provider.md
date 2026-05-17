@@ -1,6 +1,6 @@
 # Spec 50 — File-upload contribution provider
 
-**Status**: Shaped — ready to pick up
+**Status**: Done
 **Branch**: both (client + server)
 **Appetite**: medium (≤ 3 days)
 **Last shaped**: 2026-05-14
@@ -418,3 +418,29 @@ Result panel after success:
   users who want to keep the strict no-egress posture. Deferred
   because the demo pressure points at the magical path, and we want
   one well-tested mechanism rather than two half-tested ones.
+
+## Done
+
+**Completed**: 2026-05-17
+**PR**: claude/implement-spec-50-ky0SM
+**Summary**: Shipped the three pieces in the Solution shape. Server gains
+`POST /import` (`server/src/functions/import.ts`) with the PRIVACY banner
+and the mandated 256 KB / 413 / 415 / 502 error envelope; extraction prompt
+lives in `server/src/ai/prompts/importExtract.ts` and reuses the existing
+`callModel` dispatcher. Client gains an `ImportAdapter` capability +
+`NoCredentialsAdapter`, a new `file-upload` provider under
+`src/lib/providers/file-upload/`, a thin HTTP wrapper at
+`src/lib/ai/import.ts`, and orchestrator helpers
+`connectFileUploadIdentity` / `importIntoIdentity` that persist through the
+existing encrypted bulk-add path. UI is a two-step modal
+(`ImportFromFileModal`) wired from a new file-upload tile in the dashboard
+settings panel, with a non-collapsible egress disclosure whose provider
+name updates with the model selection. Privacy invariants extended on both
+sides: the server test forbids `import.ts` from importing `../queue/*`,
+`@azure/storage-blob`, `node:fs`, or logging file content; the client
+registry test enforces "exactly one of sync/import" per provider. README
+updated with the explicit file-upload carve-out; the contribution-provider
+decision doc records the backwards-compatible contract extension. No
+deviation from the Solution shape. Follow-ups (parked under Notes): a
+templates docs page for common exports, and a fully client-side JSON-only
+import variant for users who want zero egress.

@@ -37,6 +37,7 @@ import {
   ProviderAuthError,
   type ContributionProvider,
   type ExternalIdentity,
+  type NormalizedContribution,
   type RawEvent,
   type SyncCursor,
   type TokenSet,
@@ -81,6 +82,30 @@ async function loadProviderContext(identityId: string): Promise<{
     raw: stored.raw,
   };
   return { provider, identity, tokens };
+}
+
+async function loadImportContext(identityId: string): Promise<{
+  provider: ContributionProvider;
+  identity: ExternalIdentity;
+}> {
+  const stored = await getIdentity(identityId);
+  if (!stored) throw new Error(`Unknown identity: ${identityId}`);
+  const provider = getProvider(stored.providerId);
+  if (!provider.import) {
+    throw new Error(
+      `Provider ${stored.providerId} does not support file import.`,
+    );
+  }
+  const identity: ExternalIdentity = {
+    providerId: stored.providerId,
+    instanceUrl: stored.instanceUrl,
+    externalUserId: stored.externalUserId,
+    username: stored.username,
+    email: stored.email,
+    displayName: stored.displayName,
+    raw: stored.raw,
+  };
+  return { provider, identity };
 }
 
 export async function connectIdentityWithApiToken(args: {
@@ -131,6 +156,9 @@ async function persistEvents(
   filter?: (occurredAt: Date) => boolean,
 ): Promise<{ added: number; skippedExisting: number }> {
   if (events.length === 0) return { added: 0, skippedExisting: 0 };
+  if (!provider.sync) {
+    throw new Error(`Provider ${provider.id} does not support sync.`);
+  }
 
   const inputs: AddContributionInput[] = [];
   for (const event of events) {
@@ -167,6 +195,10 @@ export async function syncIdentity(
   options: { signal?: AbortSignal } = {},
 ): Promise<SyncResult> {
   const { provider, identity, tokens } = await loadProviderContext(identityId);
+  if (!provider.sync) {
+    throw new Error(`Provider ${provider.id} does not support sync.`);
+  }
+  const sync = provider.sync;
   const state = await getSyncState(identityId);
 
   const ctrl = new AbortController();
@@ -183,7 +215,7 @@ export async function syncIdentity(
     : null;
 
   try {
-    for await (const event of provider.sync.run({
+    for await (const event of sync.run({
       instanceUrl: identity.instanceUrl,
       identity,
       tokens,
@@ -235,6 +267,10 @@ export async function backfillIdentity(
   options: { signal?: AbortSignal } = {},
 ): Promise<BackfillResult> {
   const { provider, identity, tokens } = await loadProviderContext(identityId);
+  if (!provider.sync) {
+    throw new Error(`Provider ${provider.id} does not support sync.`);
+  }
+  const sync = provider.sync;
   const stored = await listImportedRanges(identityId);
   const existing: DateRange[] = stored.map((r) => [r.start, r.end]);
   const { covered, gaps } = computeBackfillGaps(existing, range.start, range.end);
@@ -258,7 +294,7 @@ export async function backfillIdentity(
       cursorVersion: 1,
       eventsAfter: gapStart.toISOString().slice(0, 10),
     };
-    for await (const event of provider.sync.run({
+    for await (const event of sync.run({
       instanceUrl: identity.instanceUrl,
       identity,
       tokens,
@@ -286,6 +322,115 @@ export async function backfillIdentity(
 
   await addImportedRange(identityId, range.start, range.end);
   return { added, skippedExisting, skippedFullyCovered: false };
+}
+
+/**
+ * Spec 50 — file-upload provider. Creates (or returns) an identity row for
+ * the file-upload provider keyed by a user-supplied `label`. There are no
+ * remote tokens to store, no remote API to validate against — the label
+ * doubles as `externalUserId` (slugified) and `displayName`. Re-uploading
+ * under the same label appends to the same identity and dedupes by
+ * `externalId` like every other provider.
+ */
+export async function connectFileUploadIdentity(args: {
+  providerId?: string;
+  label: string;
+}): Promise<ConnectResult> {
+  const providerId = args.providerId ?? 'file-upload';
+  const provider = getProvider(providerId);
+  if (provider.auth.kind !== 'none' || !provider.import) {
+    throw new Error(
+      `Provider ${providerId} is not a file-upload provider.`,
+    );
+  }
+  // The file-upload IdentityAdapter reads the label out of `tokens.accessToken`
+  // — see src/lib/providers/file-upload/identity.ts. Keeps the adapter
+  // shape consistent without bolting a label field onto every other
+  // provider's resolve() signature.
+  const identity = await provider.identity.resolve({
+    instanceUrl: 'local',
+    tokens: { accessToken: args.label, scopes: [], obtainedAt: Date.now() },
+  });
+  const existing = await findIdentity(
+    identity.providerId,
+    identity.instanceUrl,
+    identity.externalUserId,
+  );
+  const upserted = await upsertIdentity({
+    providerId: identity.providerId,
+    instanceUrl: identity.instanceUrl,
+    externalUserId: identity.externalUserId,
+    username: identity.username,
+    email: identity.email,
+    displayName: identity.displayName ?? args.label,
+    raw: identity.raw,
+  });
+  return { identityId: upserted.id, isNew: existing === null };
+}
+
+/**
+ * Spec 50 — runs the provider's one-shot import, then persists the returned
+ * rows through the same encrypted bulk-add path that `syncIdentity` uses.
+ * Does NOT touch `importedRanges` or `syncState` — those are for cursored
+ * backfills, not one-shot imports.
+ */
+export async function importIntoIdentity(
+  identityId: string,
+  file: File,
+  options: { modelId: string; label?: string; signal?: AbortSignal },
+): Promise<{ added: number; skippedExisting: number; rejectedRows: number }> {
+  const { provider, identity } = await loadImportContext(identityId);
+  const importer = provider.import!;
+  const ctrl = new AbortController();
+  if (options.signal) {
+    if (options.signal.aborted) ctrl.abort();
+    else options.signal.addEventListener('abort', () => ctrl.abort(), { once: true });
+  }
+
+  const label = options.label ?? identity.displayName ?? identity.externalUserId;
+  const result = await importer.run({
+    file,
+    modelId: options.modelId,
+    label,
+    identity,
+    signal: ctrl.signal,
+  });
+
+  const { added, skippedExisting } = await persistImported(
+    identityId,
+    importer.externalIdFor.bind(importer),
+    result.contributions,
+  );
+  return { added, skippedExisting, rejectedRows: result.rejectedRows };
+}
+
+async function persistImported(
+  identityId: string,
+  externalIdFor: (c: NormalizedContribution) => string,
+  rows: NormalizedContribution[],
+): Promise<{ added: number; skippedExisting: number }> {
+  if (rows.length === 0) return { added: 0, skippedExisting: 0 };
+
+  const inputs: AddContributionInput[] = rows.map((c) => ({
+    signal: c.signal,
+    rawData: c.rawData,
+    source: c.source,
+    category: c.category,
+    weight: c.weight,
+    occurredAt: c.occurredAt,
+    externalId: c.externalId ?? externalIdFor(c),
+    externalUrl: c.externalUrl,
+    identityId,
+  }));
+
+  const externalIds = inputs.map((i) => i.externalId).filter((x): x is string => Boolean(x));
+  const existing = await findExistingExternalIds(identityId, externalIds);
+  const fresh = inputs.filter((i) => !i.externalId || !existing.has(i.externalId));
+  await bulkAddContributions(fresh);
+  return {
+    added: fresh.length,
+    skippedExisting: inputs.length - fresh.length,
+  };
 }
 
 export async function disconnectIdentity(

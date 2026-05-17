@@ -100,7 +100,7 @@ Future / new features:
 | 30 | Composer — music-synced video render service | Shaped — ready | composer + server + client | large |
 | 31 | Shareable highlight wheels (public bundle + revoke) | Shaped — ready | both | large |
 | 40 | Tauri 2 macOS shell bootstrap | Shaped — ready | client | medium |
-| 50 | File-upload contribution provider | Shaped — ready | both | medium |
+| 50 | File-upload contribution provider | Done — 2026-05-17 (claude/implement-spec-50-ky0SM) | both | medium |
 | 51 | Reset (clear data) and de-register (forget passphrase) | Shaped — ready | both | medium |
 | 60 | Ollama local provider | Shaped — ready | server | small |
 | 61 | Client-side Ollama wrap generation (skip the queue) + settings UI + status badge | Shaped — ready | both | medium-large |

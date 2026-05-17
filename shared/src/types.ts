@@ -101,3 +101,34 @@ export type RegisterResponse = {
   token: string;
   expiresAt: number;
 };
+
+/**
+ * What the server's POST /import endpoint returns per row. The shape mirrors
+ * the client-side `NormalizedContribution` minus the orchestrator-stamped
+ * fields (`id`, `userId`, `identityId`, `createdAt`). The orchestrator stamps
+ * those on persist.
+ */
+export type ImportedContribution = {
+  source: ContributionSource;
+  category: ContributionCategory;
+  signal: string;
+  rawData: Record<string, unknown>;
+  occurredAt: string;
+  weight: number;
+  externalId?: string;
+  externalUrl?: string;
+};
+
+export type ImportResponse = {
+  contributions: ImportedContribution[];
+  rejectedRows: number;
+};
+
+/**
+ * The JSON blob attached as the `meta` field of the multipart import request.
+ * The file itself is the `file` field.
+ */
+export type ImportMeta = {
+  modelId: string;
+  label: string;
+};

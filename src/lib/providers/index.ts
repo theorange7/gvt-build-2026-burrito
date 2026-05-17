@@ -4,6 +4,7 @@
  * and a new folder under src/lib/providers/<id>/.
  */
 import './gitlab-dedicated';
+import './file-upload';
 
 export * from './types';
 export * from './registry';
