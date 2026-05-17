@@ -57,6 +57,10 @@ export class FakeTableClient {
     return new FakeTableClient(_cs, tableName);
   }
 
+  async createTable(): Promise<void> {
+    tableFor(this.name);
+  }
+
   async upsertEntity(entity: Entity, _mode?: 'Replace' | 'Merge'): Promise<void> {
     const stored = { ...entity, etag: newEtag() };
     tableFor(this.name).set(entityKey(entity.partitionKey, entity.rowKey), stored);
