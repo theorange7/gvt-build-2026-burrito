@@ -6,6 +6,7 @@ import {
   generateSalt,
   hasActiveKey,
   lock,
+  pauseIdleLock,
   setActiveKey,
 } from '@/lib/local-store/crypto';
 
@@ -59,6 +60,29 @@ describe('crypto', () => {
   it('throws when no key is active', async () => {
     lock();
     await expect(encryptJSON({ x: 1 })).rejects.toThrow(/locked/i);
+  });
+
+  it('pauseIdleLock does not block an explicit user-initiated lock', async () => {
+    const key = await deriveKey('p', generateSalt());
+    setActiveKey(key);
+    const release = pauseIdleLock();
+    try {
+      expect(hasActiveKey()).toBe(true);
+      lock();
+      expect(hasActiveKey()).toBe(false);
+      await expect(encryptJSON({ x: 1 })).rejects.toThrow(/locked/i);
+    } finally {
+      release();
+    }
+  });
+
+  it('pauseIdleLock returns a release fn that is safe to call twice', async () => {
+    const key = await deriveKey('p', generateSalt());
+    setActiveKey(key);
+    const release = pauseIdleLock();
+    release();
+    expect(() => release()).not.toThrow();
+    lock();
   });
 
   it('reflects active state via hasActiveKey/lock', async () => {

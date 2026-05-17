@@ -23,6 +23,7 @@ import {
   useRef,
   type ReactNode,
 } from 'react';
+import { pauseIdleLock } from '@/lib/local-store/crypto';
 import {
   connectFileUploadIdentity,
   importIntoIdentity,
@@ -124,6 +125,11 @@ export function ImportQueueProvider({ children }: { children: ReactNode }) {
     }
 
     async function run(item: InternalImport) {
+      // Keep the encryption key alive across the network call so the
+      // encrypt-on-write at the end doesn't fail with "locked" if the
+      // user wanders away from the tab mid-extraction. Hard-capped in
+      // crypto.ts so a hung upload can't keep the store unlocked.
+      const release = pauseIdleLock();
       try {
         const { identityId } = await connectFileUploadIdentity({ label: item.label });
         const result = await importIntoIdentity(identityId, item.file, {
@@ -139,10 +145,29 @@ export function ImportQueueProvider({ children }: { children: ReactNode }) {
           id: item.id,
           error: err instanceof Error ? err.message : 'import-failed',
         });
+      } finally {
+        release();
       }
       setTimeout(() => dispatch({ type: 'remove', id: item.id }), AUTO_POP_DELAY_MS);
     }
   }, [state.items, queryClient]);
+
+  // Warn before navigation/close if any upload is still in flight — the
+  // queue is in-memory only, so a refresh or tab close drops it. The
+  // browser shows its own generic copy; the empty-string return is
+  // enough to trigger the prompt.
+  useEffect(() => {
+    const inFlight = state.items.some(
+      (i) => i.status === 'queued' || i.status === 'running',
+    );
+    if (!inFlight) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [state.items]);
 
   const enqueue = useCallback<ImportQueue['enqueue']>((args) => {
     dispatch({

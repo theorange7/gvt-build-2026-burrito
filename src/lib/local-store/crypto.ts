@@ -12,10 +12,16 @@ const KEY_LENGTH_BITS = 256;
 const SALT_BYTES = 16;
 const IV_BYTES = 12;
 const IDLE_LOCK_MS = 15 * 60 * 1000;
+// Hard ceiling for any single pauseIdleLock() hold. A long-running or
+// hung upload cannot keep the dashboard unlocked beyond this — at worst
+// the user gets idle-lock + the stuck import (3 min, not 15+).
+const LOCK_HOLD_MAX_MS = 3 * 60 * 1000;
 
 let cachedKey: CryptoKey | null = null;
 let lastTouch = 0;
 let idleTimer: ReturnType<typeof setTimeout> | null = null;
+const activeHolds = new Set<number>();
+let nextHoldId = 0;
 
 export type EncryptedEnvelope = {
   iv: Uint8Array;
@@ -72,8 +78,39 @@ function scheduleIdleLock() {
   if (typeof window === 'undefined') return;
   if (idleTimer) clearTimeout(idleTimer);
   idleTimer = setTimeout(() => {
+    // While at least one hold is active (e.g. an in-flight file import
+    // that still needs the key to encrypt-on-write), defer the lock.
+    // Holds self-expire via LOCK_HOLD_MAX_MS, so this can't loop forever.
+    if (activeHolds.size > 0) {
+      scheduleIdleLock();
+      return;
+    }
     if (Date.now() - lastTouch >= IDLE_LOCK_MS) lock();
   }, IDLE_LOCK_MS);
+}
+
+/**
+ * Pause the idle-lock timer while a known-bounded async operation runs
+ * (e.g. a file-upload import that will need the key to encrypt the
+ * resulting rows on the way back). Returns a release function — call
+ * it in a finally block. Each hold is capped at LOCK_HOLD_MAX_MS, so a
+ * forgotten or hung release cannot keep the store unlocked indefinitely.
+ *
+ * Note: explicit lock() (user-initiated) still wins. This only suppresses
+ * the *idle* timer.
+ */
+export function pauseIdleLock(): () => void {
+  const id = ++nextHoldId;
+  activeHolds.add(id);
+  lastTouch = Date.now();
+  const expire = setTimeout(() => activeHolds.delete(id), LOCK_HOLD_MAX_MS);
+  return () => {
+    if (!activeHolds.has(id)) return;
+    clearTimeout(expire);
+    activeHolds.delete(id);
+    lastTouch = Date.now();
+    scheduleIdleLock();
+  };
 }
 
 function requireKey(): CryptoKey {

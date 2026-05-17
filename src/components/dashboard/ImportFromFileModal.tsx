@@ -234,6 +234,10 @@ export function ImportFromFileModal({ open, onClose }: { open: boolean; onClose:
                 It is processed in memory and discarded immediately. The extracted
                 contributions are encrypted and stored only on this device.
               </p>
+              <p style={{ margin: '0 0 6px' }}>
+                <strong>The upload lives only in this tab.</strong> Don&apos;t close it or
+                let your laptop sleep until the row clears — the queue isn&apos;t saved.
+              </p>
               <p style={{ margin: 0, fontFamily: 'JetBrains Mono, monospace', fontSize: 11, opacity: 0.7 }}>
                 Max file size: 256 KB. Text-based files only. Up to 3 imports run in parallel.
               </p>
