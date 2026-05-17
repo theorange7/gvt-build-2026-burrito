@@ -195,6 +195,44 @@ export class FakeServiceBusClient {
   async close(): Promise<void> {}
 }
 
+// ── Share blob fake (spec 31) ────────────────────────────────────────────────
+
+type FakeBundleUpload = {
+  slug: string;
+  indexHtml: string;
+  viewerJs: Buffer;
+  viewerCss: Buffer;
+};
+
+const shareBundles = new Map<string, FakeBundleUpload>();
+
+export const fakeShareBlobClient = {
+  async uploadBundle(upload: FakeBundleUpload): Promise<void> {
+    shareBundles.set(upload.slug, {
+      slug: upload.slug,
+      indexHtml: upload.indexHtml,
+      viewerJs: Buffer.from(upload.viewerJs),
+      viewerCss: Buffer.from(upload.viewerCss),
+    });
+  },
+  async deleteBundle(slug: string): Promise<void> {
+    shareBundles.delete(slug);
+  },
+};
+
+export function getShareBundle(slug: string): FakeBundleUpload | undefined {
+  const b = shareBundles.get(slug);
+  return b ? { ...b, viewerJs: Buffer.from(b.viewerJs), viewerCss: Buffer.from(b.viewerCss) } : undefined;
+}
+
+export function listShareBundles(): readonly FakeBundleUpload[] {
+  return [...shareBundles.values()];
+}
+
+export function resetShareBundleFakes(): void {
+  shareBundles.clear();
+}
+
 // ── Test inspection / control helpers ────────────────────────────────────────
 
 export function getSentServiceBusMessages(): readonly SentServiceBusMessage[] {
@@ -212,6 +250,7 @@ export function getTableEntities(tableName: string): Entity[] {
 export function resetAzureFakes(): void {
   tables.clear();
   sentMessages.length = 0;
+  shareBundles.clear();
 }
 
 /**

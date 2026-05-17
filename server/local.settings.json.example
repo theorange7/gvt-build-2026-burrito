@@ -29,6 +29,11 @@
     "AZURE_TABLES_RESULTS": "wrapResults",
     "_comment_AZURE_TABLES_INVITE_CODES": "Optional. Set to the table name (e.g. 'inviteCodes') to enable dynamic invite-code management via Azure Table Storage. When set, the INVITE_CODES env-var is ignored. Leave empty to fall back to INVITE_CODES list. For private preview deployments, set INVITE_CODES to a comma-separated list of valid codes; set INVITE_CODES=* only for local dev (skips gate entirely).",
     "AZURE_TABLES_INVITE_CODES": ""
+    "AZURE_TABLES_SHARE_LINKS": "shareLinks",
+    "_comment_AZURE_BLOB_STORAGE_ACCOUNT": "Spec 31 — Azure Storage account hosting the `wraps` blob container. Leave empty locally; share publishing silently no-ops without it.",
+    "AZURE_BLOB_STORAGE_ACCOUNT": "",
+    "_comment_WRAP_SHARE_BASE_URL": "Optional CDN / custom-domain override for share URLs. Blob path is identical either way.",
+    "WRAP_SHARE_BASE_URL": ""
   },
   "Host": {
     "CORS": "http://localhost:3000,tauri://localhost",

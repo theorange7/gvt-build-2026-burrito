@@ -127,7 +127,9 @@ describe('wrapWorker', () => {
     expect(finalRow?.status).toBe('complete');
 
     const result = await getAndDeleteResult(installId, message.jobId);
-    expect(result).toEqual(SLICE_FIXTURE);
+    expect(result?.sliceContent).toEqual(SLICE_FIXTURE);
+    expect(result?.shareSlug).toBeUndefined();
+    expect(result?.shareUrl).toBeUndefined();
   });
 
   it('returns early without throwing when applicationProperties.jobLookupToken is missing', async () => {

@@ -5,7 +5,7 @@
  * never contributions, never any prompt text.
  */
 import { app, type InvocationContext } from '@azure/functions';
-import type { Contribution, EnqueueWrapRequest } from '@wrapped/shared';
+import type { Contribution, EnqueueWrapRequest, SliceContent, WrapMode } from '@wrapped/shared';
 import { generateWrap } from '../ai/generate';
 import {
   getJobRowWithEtag,
@@ -16,6 +16,10 @@ import {
 import { putResult } from '../queue/results';
 import { maxDeliveries } from '../queue/concurrency';
 import { safeError } from '../privacy';
+import { generateShareSlug } from '../share/slug';
+import { renderShareBundle } from '../share/bundle';
+import { blobClient, buildShareUrl } from '../share/blob';
+import { createShareLink } from '../share/links';
 
 function hydrateContributions(message: EnqueueWrapRequest): Contribution[] {
   return message.contributions.map((c, idx) => ({
@@ -116,7 +120,21 @@ export async function wrapWorker(message: unknown, context: InvocationContext): 
       modelId: payload.modelId,
     });
 
-    await putResult(installId, jobId, sliceContent);
+    // Publish step (spec 31). Only runs when the caller opted in — share=true.
+    // Failure here MUST NOT fail the wrap: the user still gets their result;
+    // they just don't get a share link. We log the safe code and continue.
+    const share = payload.share
+      ? await publishShareBundle({
+          installId,
+          jobId,
+          sliceContent,
+          mode: payload.mode,
+          displayName: payload.shareName,
+          context,
+        })
+      : undefined;
+
+    await putResult(installId, jobId, sliceContent, share);
 
     // Conditional flip to complete using the ETag from the running write —
     // not a fresh read. If something else mutated the row during generation
@@ -156,6 +174,43 @@ export async function wrapWorker(message: unknown, context: InvocationContext): 
     } catch (markErr) {
       context.error('wrapWorker failed to mark job failed', { jobId, ...safeError(markErr) });
     }
+  }
+}
+
+async function publishShareBundle(args: {
+  installId: string;
+  jobId: string;
+  sliceContent: SliceContent[];
+  mode: WrapMode;
+  displayName?: string;
+  context: InvocationContext;
+}): Promise<{ shareSlug: string; shareUrl: string } | undefined> {
+  try {
+    const slug = generateShareSlug();
+    const bundle = renderShareBundle({
+      sliceContent: args.sliceContent,
+      mode: args.mode,
+      displayName: args.displayName,
+    });
+    await blobClient().uploadBundle({
+      slug,
+      indexHtml: bundle.indexHtml,
+      viewerJs: bundle.assets['viewer.js'],
+      viewerCss: bundle.assets['viewer.css'],
+    });
+    await createShareLink({
+      slug,
+      installId: args.installId,
+      jobId: args.jobId,
+      createdAt: new Date().toISOString(),
+      displayName: args.displayName,
+    });
+    const shareUrl = buildShareUrl(slug);
+    return { shareSlug: slug, shareUrl };
+  } catch (err) {
+    const safe = safeError(err);
+    args.context.warn('wrapWorker share publish failed', { jobId: args.jobId, ...safe });
+    return undefined;
   }
 }
 

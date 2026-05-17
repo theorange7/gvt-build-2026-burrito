@@ -1,0 +1,12 @@
+{
+  "name": "@wrapped/share-viewer",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Standalone static bundle that renders a shared Wrapped-for-Work wrap. Built once at deploy time and stamped per share by the server.",
+  "scripts": {
+    "build": "node esbuild.config.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "^0.21.5"
+  }
+}

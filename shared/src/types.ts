@@ -73,6 +73,8 @@ export type EnqueueWrapRequest = {
   windowStart: string;
   windowEnd: string;
   modelId?: string;
+  share?: boolean;
+  shareName?: string;
 };
 
 export type EnqueueWrapResponse = {
@@ -83,7 +85,12 @@ export type EnqueueWrapResponse = {
 
 export type GetWrapResponse =
   | { status: 'queued' | 'running'; busy?: boolean }
-  | { status: 'complete'; sliceContent: SliceContent[] }
+  | {
+      status: 'complete';
+      sliceContent: SliceContent[];
+      shareUrl?: string;
+      shareSlug?: string;
+    }
   | { status: 'failed'; error: string };
 
 export type ClassifyRequest = {

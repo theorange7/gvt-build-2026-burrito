@@ -3,7 +3,18 @@ import { DefaultAzureCredential } from '@azure/identity';
 import type { SliceContent } from '@wrapped/shared';
 import { getEnvMode } from '../env';
 
-type ResultEntity = TableEntity<{ payload: string; createdAt: string }>;
+type ResultEntity = TableEntity<{
+  payload: string;
+  createdAt: string;
+  shareSlug?: string;
+  shareUrl?: string;
+}>;
+
+export type StoredResult = {
+  sliceContent: SliceContent[];
+  shareSlug?: string;
+  shareUrl?: string;
+};
 
 let cachedClient: Promise<TableClient> | null = null;
 
@@ -39,6 +50,7 @@ export async function putResult(
   partitionKey: string,
   jobId: string,
   sliceContent: SliceContent[],
+  share?: { shareSlug: string; shareUrl: string },
 ): Promise<void> {
   const client = await getClient();
   const entity: ResultEntity = {
@@ -46,6 +58,8 @@ export async function putResult(
     rowKey: jobId,
     payload: JSON.stringify(sliceContent),
     createdAt: new Date().toISOString(),
+    shareSlug: share?.shareSlug,
+    shareUrl: share?.shareUrl,
   };
   await client.upsertEntity(entity, 'Replace');
 }
@@ -68,7 +82,7 @@ export async function deleteAllResultsForInstall(partitionKey: string): Promise<
 export async function getAndDeleteResult(
   partitionKey: string,
   jobId: string,
-): Promise<SliceContent[] | null> {
+): Promise<StoredResult | null> {
   const client = await getClient();
   let entity: ResultEntity | null = null;
   try {
@@ -84,5 +98,9 @@ export async function getAndDeleteResult(
     // Best-effort delete; the row will TTL anyway. Swallow to avoid leaking
     // result content twice.
   }
-  return JSON.parse(entity.payload) as SliceContent[];
+  return {
+    sliceContent: JSON.parse(entity.payload) as SliceContent[],
+    shareSlug: entity.shareSlug,
+    shareUrl: entity.shareUrl,
+  };
 }

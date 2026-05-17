@@ -98,6 +98,8 @@ export function usePendingWrap(id: string): PendingPollState {
               windowEnd: pending.windowEnd,
               title,
               sliceContent: result.sliceContent,
+              shareSlug: result.shareSlug,
+              shareUrl: result.shareUrl,
             },
           );
           await removePendingWrap(id);

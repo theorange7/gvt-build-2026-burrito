@@ -10,6 +10,8 @@ import { HttpAuthError, requireInstallToken } from '../auth/middleware';
 import { checkIpRateLimit } from '../auth/rateLimit';
 import { deleteAllJobRowsForInstall, deleteLookupRowsForInstall } from '../queue/jobs';
 import { deleteAllResultsForInstall } from '../queue/results';
+import { blobClient } from '../share/blob';
+import { deleteShareLink, listShareLinksForInstall } from '../share/links';
 import { safeError } from '../privacy';
 
 const RESET_RATE_LIMIT_PER_HOUR = 10;
@@ -69,14 +71,12 @@ export async function meReset(
     failed.push('lookups');
   }
 
-  // Share bundles — gated on spec 31. When the shareLinks table doesn't exist
-  // this is a silent no-op. When spec 31 lands and the table exists, this
-  // deletion path activates without further wiring.
   try {
-    counts.shares = await deleteShareBundlesForInstall();
+    counts.shares = await deleteShareBundlesForInstall(installId);
   } catch (err) {
     const code = (err as { statusCode?: number }).statusCode;
-    // 404 = table not yet provisioned (spec 31 not landed) — treat as no-op.
+    // 404 = shareLinks table doesn't exist yet on a brand-new deploy. Treat
+    // as a no-op rather than a hard failure.
     if (code !== 404) {
       context.error('meReset shares cleanup failed', safeError(err));
       failed.push('shares');
@@ -92,10 +92,24 @@ export async function meReset(
   return { status: 207, jsonBody: { failed } };
 }
 
-async function deleteShareBundlesForInstall(): Promise<number> {
-  // Spec 31 (shareable highlight wheels) not yet landed — no shareLinks table
-  // exists. Returns 0 as a no-op until the spec lands and this is replaced.
-  return 0;
+async function deleteShareBundlesForInstall(installId: string): Promise<number> {
+  // List + delete each share owned by the install. Best-effort per share:
+  // a single failed blob delete should not block the others, but the row
+  // tombstone is what stops a future revoke from working, so we keep going
+  // on errors and tally only the rows we managed to remove.
+  const links = await listShareLinksForInstall(installId);
+  let removed = 0;
+  const client = blobClient();
+  for (const link of links) {
+    try {
+      await client.deleteBundle(link.slug);
+      await deleteShareLink(link.slug);
+      removed += 1;
+    } catch {
+      /* best-effort: keep going */
+    }
+  }
+  return removed;
 }
 
 app.http('meReset', {

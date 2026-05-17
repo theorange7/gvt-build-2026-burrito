@@ -14,4 +14,5 @@ import './functions/import';
 import './functions/meReset';
 import './functions/wrapEnqueue';
 import './functions/wrapGet';
+import './functions/wrapShareDelete';
 import './functions/wrapWorker';

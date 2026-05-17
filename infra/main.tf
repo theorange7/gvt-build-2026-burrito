@@ -140,6 +140,8 @@ module "functions" {
   wrap_max_deliveries                = var.wrap_max_deliveries
   wrap_tables_jobs                   = var.wrap_tables_jobs
   wrap_tables_results                = var.wrap_tables_results
+  wrap_tables_share_links            = var.wrap_tables_share_links
+  wrap_share_base_url                = var.wrap_share_base_url
   allowed_origins                    = var.wrap_allowed_origins
   env_mode                           = local.env_mode
   tags                               = local.common_tags
@@ -164,6 +166,14 @@ resource "azurerm_role_assignment" "func_sb_receiver" {
 resource "azurerm_role_assignment" "func_table_contributor" {
   scope                = module.storage.account_id
   role_definition_name = "Storage Table Data Contributor"
+  principal_id         = module.functions.principal_id
+}
+
+# ── RBAC: Functions managed identity → Storage Blobs (spec 31 share bundles)
+
+resource "azurerm_role_assignment" "func_blob_contributor" {
+  scope                = module.storage.account_id
+  role_definition_name = "Storage Blob Data Contributor"
   principal_id         = module.functions.principal_id
 }
 

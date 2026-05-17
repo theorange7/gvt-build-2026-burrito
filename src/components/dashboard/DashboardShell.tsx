@@ -26,7 +26,8 @@ import { hasActiveKey } from '@/lib/local-store/crypto';
 import { clearSessionId, db, META_KEYS } from '@/lib/local-store/db';
 import { listIdentities, type StoredIdentity } from '@/lib/local-store/identities';
 import { isSeeded, markSeeded, seedFromBundledDemo } from '@/lib/local-store/seed';
-import { listWraps } from '@/lib/local-store/wraps';
+import { listWraps, listWrapShares, updateWrapShare } from '@/lib/local-store/wraps';
+import { revokeShare } from '@/lib/ai/share';
 import { PROVIDERS_CONFIG } from '@/lib/providers/config';
 import type { Contribution, ContributionCategory } from '@/lib/types';
 import type { StoredWrap } from '@/lib/local-store/wraps';
@@ -339,16 +340,50 @@ function FirstRunPanel({
 // ---------------------------------------------------------------------------
 
 type WrapSummary = Pick<StoredWrap, 'id' | 'mode' | 'windowStart' | 'windowEnd' | 'createdAt'>;
+type ShareMap = Record<string, { shareSlug: string; shareUrl: string }>;
 
 function WrappedTab({ p, onGenerate }: { p: MxPalette; onGenerate: () => void }) {
   const [wraps, setWraps] = useState<WrapSummary[] | null>(null);
+  const [shares, setShares] = useState<ShareMap>({});
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [revokingId, setRevokingId] = useState<string | null>(null);
 
   useEffect(() => {
     listWraps().then(setWraps);
+    listWrapShares().then(setShares).catch(() => setShares({}));
   }, []);
 
   const fmt = (d: Date) =>
     d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+
+  async function handleCopy(wrapId: string, url: string) {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopiedId(wrapId);
+      window.setTimeout(() => setCopiedId((id) => (id === wrapId ? null : id)), 1800);
+    } catch {
+      /* clipboard blocked; ignore */
+    }
+  }
+
+  async function handleStopSharing(wrapId: string, slug: string) {
+    setRevokingId(wrapId);
+    try {
+      const result = await revokeShare(slug);
+      if (result === 'ok' || result === 'not-found') {
+        await updateWrapShare(wrapId, {});
+        setShares((prev) => {
+          const next = { ...prev };
+          delete next[wrapId];
+          return next;
+        });
+      }
+    } catch {
+      /* surface nothing — user can retry from the card */
+    } finally {
+      setRevokingId(null);
+    }
+  }
 
   return (
     <div style={{ maxWidth: 1280, margin: '0 auto', padding: '32px 24px' }}>
@@ -405,43 +440,83 @@ function WrappedTab({ p, onGenerate }: { p: MxPalette; onGenerate: () => void })
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 18 }}>
-          {wraps.map((wrap) => (
-            <Link
-              key={wrap.id}
-              href={`/wrap?id=${wrap.id}`}
-              style={{ textDecoration: 'none', display: 'block' }}
-            >
-              <div style={{
-                background: p.cream, border: '2px solid ' + p.ink, borderRadius: 14,
-                boxShadow: '4px 4px 0 ' + p.ink, padding: '20px 22px', cursor: 'pointer',
-                transition: 'transform 0.1s ease, box-shadow 0.1s ease',
-              }}
-                onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.transform = 'translate(-2px,-2px)'; (e.currentTarget as HTMLDivElement).style.boxShadow = '6px 6px 0 ' + p.ink; }}
-                onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.transform = ''; (e.currentTarget as HTMLDivElement).style.boxShadow = '4px 4px 0 ' + p.ink; }}
+          {wraps.map((wrap) => {
+            const shareInfo = shares[wrap.id];
+            return (
+              <div
+                key={wrap.id}
+                style={{
+                  background: p.cream, border: '2px solid ' + p.ink, borderRadius: 14,
+                  boxShadow: '4px 4px 0 ' + p.ink, padding: '20px 22px',
+                }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                  <span style={{
-                    fontFamily: 'JetBrains Mono, monospace', fontSize: 10, fontWeight: 700,
-                    color: wrap.mode === 'year-end' ? p.cream : p.ink,
-                    background: wrap.mode === 'year-end' ? p.hot : p.lime,
-                    border: '1.5px solid ' + p.ink, borderRadius: 4,
-                    padding: '2px 8px', letterSpacing: '0.1em',
-                  }}>
-                    {wrap.mode === 'year-end' ? 'YEAR-END' : 'SNAPSHOT'}
+                <Link
+                  href={`/wrap?id=${wrap.id}`}
+                  style={{ textDecoration: 'none', display: 'block', color: 'inherit' }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                    <span style={{
+                      fontFamily: 'JetBrains Mono, monospace', fontSize: 10, fontWeight: 700,
+                      color: wrap.mode === 'year-end' ? p.cream : p.ink,
+                      background: wrap.mode === 'year-end' ? p.hot : p.lime,
+                      border: '1.5px solid ' + p.ink, borderRadius: 4,
+                      padding: '2px 8px', letterSpacing: '0.1em',
+                    }}>
+                      {wrap.mode === 'year-end' ? 'YEAR-END' : 'SNAPSHOT'}
+                    </span>
+                    <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, color: p.ink, opacity: 0.45 }}>
+                      {fmt(wrap.createdAt)}
+                    </span>
+                  </div>
+                  <p style={{ fontFamily: 'Space Grotesk, sans-serif', fontSize: 15, fontWeight: 600, color: p.ink, margin: '0 0 6px' }}>
+                    {fmt(wrap.windowStart)} → {fmt(wrap.windowEnd)}
+                  </p>
+                  <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, color: p.ink, opacity: 0.5 }}>
+                    view wrap &#8594;
                   </span>
-                  <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, color: p.ink, opacity: 0.45 }}>
-                    {fmt(wrap.createdAt)}
-                  </span>
-                </div>
-                <p style={{ fontFamily: 'Space Grotesk, sans-serif', fontSize: 15, fontWeight: 600, color: p.ink, margin: '0 0 6px' }}>
-                  {fmt(wrap.windowStart)} → {fmt(wrap.windowEnd)}
-                </p>
-                <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, color: p.ink, opacity: 0.5 }}>
-                  view wrap &#8594;
-                </span>
+                </Link>
+                {shareInfo ? (
+                  <div
+                    role="group"
+                    aria-label="Share controls"
+                    style={{
+                      marginTop: 14, paddingTop: 12, borderTop: '1.5px dashed ' + p.ink + '40',
+                      display: 'flex', gap: 8, flexWrap: 'wrap',
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => handleCopy(wrap.id, shareInfo.shareUrl)}
+                      style={{
+                        background: p.lime, border: '2px solid ' + p.ink, borderRadius: 8,
+                        boxShadow: '2px 2px 0 ' + p.ink, padding: '6px 12px',
+                        fontFamily: 'JetBrains Mono, monospace', fontSize: 10, fontWeight: 700,
+                        color: p.ink, cursor: 'pointer', letterSpacing: '0.1em',
+                        textTransform: 'uppercase',
+                      }}
+                    >
+                      {copiedId === wrap.id ? 'Copied' : 'Copy link'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleStopSharing(wrap.id, shareInfo.shareSlug)}
+                      disabled={revokingId === wrap.id}
+                      style={{
+                        background: p.paper, border: '2px solid ' + p.ink, borderRadius: 8,
+                        boxShadow: '2px 2px 0 ' + p.ink, padding: '6px 12px',
+                        fontFamily: 'JetBrains Mono, monospace', fontSize: 10, fontWeight: 700,
+                        color: p.ink, cursor: revokingId === wrap.id ? 'not-allowed' : 'pointer',
+                        letterSpacing: '0.1em', textTransform: 'uppercase',
+                        opacity: revokingId === wrap.id ? 0.5 : 1,
+                      }}
+                    >
+                      {revokingId === wrap.id ? 'Revoking…' : 'Stop sharing'}
+                    </button>
+                  </div>
+                ) : null}
               </div>
-            </Link>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
