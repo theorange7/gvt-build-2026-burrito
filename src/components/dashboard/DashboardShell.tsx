@@ -18,7 +18,6 @@ import { EventDetailDrawer } from '@/components/dashboard/EventDetailDrawer';
 import type { DrawerEvent } from '@/components/dashboard/EventDetailDrawer';
 import { GenerateWrapModal } from '@/components/dashboard/GenerateWrapModal';
 import { ImportFromFileModal } from '@/components/dashboard/ImportFromFileModal';
-import { ImportQueueProvider } from '@/components/dashboard/ImportQueueContext';
 import { ManualInputForm } from '@/components/dashboard/ManualInputForm';
 import { PendingImportsList } from '@/components/dashboard/PendingImportsList';
 import { ResetModal } from '@/components/dashboard/ResetModal';
@@ -789,7 +788,7 @@ const DEFAULT_MX_PALETTE = {
   accent: '#6B3DFF', accent2: '#7BE3FF', accent3: '#FFB3C7',
 };
 
-function DashboardShellInner() {
+export function DashboardShell() {
   const isMobile = useIsMobile();
   const { data: contributions } = useContributions();
   const [paletteId, setPaletteId] = useState<string>('tomato');
@@ -1017,10 +1016,3 @@ function DashboardShellInner() {
   );
 }
 
-export function DashboardShell() {
-  return (
-    <ImportQueueProvider>
-      <DashboardShellInner />
-    </ImportQueueProvider>
-  );
-}

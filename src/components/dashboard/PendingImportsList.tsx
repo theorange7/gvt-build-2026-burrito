@@ -6,6 +6,7 @@
  * short delay so the user sees the "✓ done" state). Failed rows show
  * the error and auto-pop on the same delay.
  */
+import { friendlyImportError } from './importErrorMessages';
 import { useImportQueue, type PendingImport } from './ImportQueueContext';
 
 type Palette = {
@@ -79,7 +80,7 @@ export function PendingImportsList({ p }: { p: Palette }) {
               color: tone, letterSpacing: '0.08em', flexShrink: 0,
             }}>
               {item.status === 'failed' && item.error
-                ? `failed · ${item.error}`
+                ? `failed · ${friendlyImportError(item.error)}`
                 : STATUS_LABEL[item.status]}
               {item.status === 'complete' && typeof item.added === 'number'
                 ? ` · +${item.added}`

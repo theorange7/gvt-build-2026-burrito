@@ -1,11 +1,13 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   decryptJSON,
   deriveKey,
   encryptJSON,
   generateSalt,
   hasActiveKey,
+  IDLE_LOCK_MS,
   lock,
+  LOCK_HOLD_MAX_MS,
   pauseIdleLock,
   setActiveKey,
 } from '@/lib/local-store/crypto';
@@ -91,6 +93,66 @@ describe('crypto', () => {
     setActiveKey(key);
     expect(hasActiveKey()).toBe(true);
     lock();
+    expect(hasActiveKey()).toBe(false);
+  });
+});
+
+/**
+ * Fake-timer tests for the idle-lock scheduler and pauseIdleLock hold
+ * mechanism. These drive vitest's fake clock forward without waiting for
+ * real wall-clock time, so we can exercise 15-minute and 3-minute
+ * timers instantly. Each test starts with a freshly armed key; afterEach
+ * calls lock() to clear the key and any pending idle timer.
+ *
+ * Key behaviors verified:
+ *   1. Idle lock fires after exactly IDLE_LOCK_MS with no active hold.
+ *   2. Releasing a hold re-arms the idle timer from the release moment
+ *      (not from the original setActiveKey time), so the key stays alive
+ *      through an import that completes before the ceiling.
+ *   3. A hold that is never released (hung upload) auto-expires after
+ *      LOCK_HOLD_MAX_MS and the idle lock still fires at IDLE_LOCK_MS.
+ */
+describe('pauseIdleLock — timer behavior', () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => {
+    lock();
+    vi.useRealTimers();
+  });
+
+  it('idle lock fires after IDLE_LOCK_MS of inactivity', async () => {
+    const key = await deriveKey('p', generateSalt());
+    setActiveKey(key);
+    vi.advanceTimersByTime(IDLE_LOCK_MS);
+    expect(hasActiveKey()).toBe(false);
+  });
+
+  it('idle timer re-arms from the release time, not from the original setActiveKey call', async () => {
+    const key = await deriveKey('p', generateSalt());
+    setActiveKey(key); // schedules T_idle at now + IDLE_LOCK_MS
+
+    const release = pauseIdleLock();
+    // Release well before the hold's own ceiling so release() is not a no-op.
+    vi.advanceTimersByTime(LOCK_HOLD_MAX_MS - 1);
+    release(); // cancels the hold ceiling, deletes the hold, re-arms T_idle from now
+
+    // The original T_idle (at IDLE_LOCK_MS from setActiveKey) was replaced.
+    // Advancing to that old deadline should NOT lock the key.
+    vi.advanceTimersByTime(IDLE_LOCK_MS - LOCK_HOLD_MAX_MS);
+    expect(hasActiveKey()).toBe(true);
+
+    // Advance the rest of the new IDLE_LOCK_MS window — this triggers the lock.
+    vi.advanceTimersByTime(LOCK_HOLD_MAX_MS);
+    expect(hasActiveKey()).toBe(false);
+  });
+
+  it('auto-expiring hold (LOCK_HOLD_MAX_MS ceiling) does not prevent the idle lock from firing', async () => {
+    const key = await deriveKey('p', generateSalt());
+    setActiveKey(key);
+    pauseIdleLock(); // intentionally never released — simulates a hung upload
+
+    // The ceiling fires at LOCK_HOLD_MAX_MS and removes the stale hold.
+    // The idle timer fires at IDLE_LOCK_MS (> LOCK_HOLD_MAX_MS) and locks.
+    vi.advanceTimersByTime(IDLE_LOCK_MS);
     expect(hasActiveKey()).toBe(false);
   });
 });

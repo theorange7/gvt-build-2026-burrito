@@ -11,11 +11,13 @@ const PBKDF2_ITERATIONS = 600_000;
 const KEY_LENGTH_BITS = 256;
 const SALT_BYTES = 16;
 const IV_BYTES = 12;
-const IDLE_LOCK_MS = 15 * 60 * 1000;
+// Exported so tests can advance fake timers deterministically without
+// hard-coding magic numbers that silently drift if values change.
+export const IDLE_LOCK_MS = 15 * 60 * 1000;
 // Hard ceiling for any single pauseIdleLock() hold. A long-running or
 // hung upload cannot keep the dashboard unlocked beyond this — at worst
 // the user gets idle-lock + the stuck import (3 min, not 15+).
-const LOCK_HOLD_MAX_MS = 3 * 60 * 1000;
+export const LOCK_HOLD_MAX_MS = 3 * 60 * 1000;
 
 let cachedKey: CryptoKey | null = null;
 let lastTouch = 0;
