@@ -369,15 +369,70 @@ export async function connectFileUploadIdentity(args: {
 }
 
 /**
+ * Spec 50 — file-upload review flow. After extraction the orchestrator
+ * tags each row with `autoDated`: true means the LLM did not return a
+ * usable `occurredAt` and we defaulted to the upload day. The review UI
+ * uses this to highlight rows the user almost certainly wants to date
+ * themselves.
+ */
+export type ReviewableContribution = NormalizedContribution & {
+  autoDated: boolean;
+};
+
+/**
+ * Optional review hook for `importIntoIdentity`. Called with the
+ * extracted rows after the server responds but BEFORE anything hits
+ * the encrypted store. The callback returns the (possibly edited)
+ * rows to persist, or `null` to abort the import. When omitted the
+ * orchestrator persists the extracted rows verbatim — preserving the
+ * pre-spec-50-review-step behavior used by the existing tests and any
+ * non-interactive caller.
+ */
+export type ImportReviewHook = (
+  rows: ReviewableContribution[],
+) => Promise<NormalizedContribution[] | null>;
+
+export class ImportCancelledError extends Error {
+  constructor() {
+    super('cancelled');
+    this.name = 'ImportCancelledError';
+  }
+}
+
+function isValidDate(d: Date | undefined | null): d is Date {
+  return d instanceof Date && !Number.isNaN(d.getTime());
+}
+
+function tagAutoDated(
+  rows: NormalizedContribution[],
+  fallback: Date,
+): ReviewableContribution[] {
+  return rows.map((c) => {
+    if (isValidDate(c.occurredAt)) return { ...c, autoDated: false };
+    return { ...c, occurredAt: fallback, autoDated: true };
+  });
+}
+
+/**
  * Spec 50 — runs the provider's one-shot import, then persists the returned
  * rows through the same encrypted bulk-add path that `syncIdentity` uses.
  * Does NOT touch `importedRanges` or `syncState` — those are for cursored
  * backfills, not one-shot imports.
+ *
+ * If `options.review` is provided, the extracted rows are passed through
+ * the callback first; the (possibly edited) result is what gets persisted.
+ * A `null` return from the callback aborts the import with
+ * `ImportCancelledError`.
  */
 export async function importIntoIdentity(
   identityId: string,
   file: File,
-  options: { modelId: string; label?: string; signal?: AbortSignal },
+  options: {
+    modelId: string;
+    label?: string;
+    signal?: AbortSignal;
+    review?: ImportReviewHook;
+  },
 ): Promise<{ added: number; skippedExisting: number; rejectedRows: number }> {
   const { provider, identity } = await loadImportContext(identityId);
   const importer = provider.import!;
@@ -396,10 +451,18 @@ export async function importIntoIdentity(
     signal: ctrl.signal,
   });
 
+  let toPersist: NormalizedContribution[] = result.contributions;
+  if (options.review) {
+    const reviewable = tagAutoDated(result.contributions, new Date());
+    const reviewed = await options.review(reviewable);
+    if (reviewed === null) throw new ImportCancelledError();
+    toPersist = reviewed;
+  }
+
   const { added, skippedExisting } = await persistImported(
     identityId,
     importer.externalIdFor.bind(importer),
-    result.contributions,
+    toPersist,
   );
   return { added, skippedExisting, rejectedRows: result.rejectedRows };
 }

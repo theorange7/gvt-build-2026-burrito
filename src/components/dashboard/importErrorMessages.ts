@@ -15,6 +15,7 @@ const ERROR_MESSAGES: Readonly<Record<string, string>> = {
   'extracted-text-too-large': 'File is too large',
   'extract-failed': 'Extraction failed',
   'import-failed': 'Import failed',
+  'cancelled': 'Cancelled',
   'upstream-error': 'Service temporarily unavailable',
   'upstream-timeout': 'Request timed out',
   'model-not-found': 'Selected model unavailable',

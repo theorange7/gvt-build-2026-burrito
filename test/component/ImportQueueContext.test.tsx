@@ -31,9 +31,11 @@ import {
   MAX_CONCURRENT_IMPORTS,
   type ImportQueue,
   type ImportResult,
+  type ReviewableContribution,
   type RunImport,
   useImportQueue,
 } from '@/components/dashboard/ImportQueueContext';
+import type { NormalizedContribution } from '@/lib/providers/types';
 
 /**
  * Tiny test seam: exposes the live queue value to the test body so we
@@ -391,5 +393,210 @@ describe('<ImportQueueProvider>', () => {
 
       h.unmount();
     });
+  });
+});
+
+/**
+ * Review-flow tests. The runner here invokes the `onReview` callback the
+ * queue hands it, so we can observe how the queue parks the item in the
+ * `awaiting-review` status and surfaces it via `pendingReview`. Confirm
+ * resolves the review promise so the runner can return its final
+ * ImportResult; cancel resolves null, which production code (the real
+ * orchestrator) turns into a thrown cancellation.
+ */
+type ReviewHarness = {
+  readonly queue: ImportQueue;
+  reviews: {
+    rows: ReviewableContribution[];
+    resolve: (rows: NormalizedContribution[] | null) => void;
+  }[];
+  runs: Deferred<ImportResult>[];
+  unmount: () => void;
+};
+
+function mountReviewHarness(options: { cancelMode?: boolean } = {}): ReviewHarness {
+  const reviews: ReviewHarness['reviews'] = [];
+  const runs: Deferred<ImportResult>[] = [];
+  const runImport: RunImport = async ({ onReview }) => {
+    const result = defer<ImportResult>();
+    runs.push(result);
+    const reviewPromise = new Promise<NormalizedContribution[] | null>((resolve) => {
+      reviews.push({ rows: [], resolve });
+      // We invoke onReview with a single sample row that lacks a real
+      // date — the tag from the orchestrator would normally set
+      // autoDated:true; here we hand it directly.
+      void onReview([
+        {
+          source: 'manual',
+          category: 'other',
+          signal: 'Shipped X',
+          rawData: {},
+          weight: 3,
+          occurredAt: new Date('2026-01-15T00:00:00Z'),
+          autoDated: true,
+        },
+      ]).then((r) => reviews[reviews.length - 1].resolve(r));
+    });
+    const reviewed = await reviewPromise;
+    if (reviewed === null) throw new Error('cancelled');
+    return result.promise;
+  };
+
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+
+  let queue: ImportQueue | null = null;
+  function Capture() {
+    queue = useImportQueue();
+    return null;
+  }
+  function Wrapper({ children }: { children: ReactNode }) {
+    return (
+      <QueryClientProvider client={queryClient}>
+        <ImportQueueProvider runImport={runImport}>
+          {children}
+          <Capture />
+        </ImportQueueProvider>
+      </QueryClientProvider>
+    );
+  }
+  const { unmount } = render(<Wrapper>{null}</Wrapper>);
+  if (!queue) throw new Error('queue capture failed');
+  void options.cancelMode; // currently unused; reserved for future test variants
+  return {
+    get queue() {
+      return queue as ImportQueue;
+    },
+    reviews,
+    runs,
+    unmount,
+  };
+}
+
+describe('<ImportQueueProvider> — review flow', () => {
+  it('parks the row in awaiting-review and exposes pendingReview when the runner calls onReview', async () => {
+    const h = mountReviewHarness();
+    await act(async () => {
+      h.queue.enqueue({
+        label: 'q1',
+        modelId: 'anthropic:claude-sonnet-4',
+        file: new File(['hi'], 'q1.txt', { type: 'text/plain' }),
+      });
+    });
+
+    expect(h.queue.pendingReview).not.toBeNull();
+    expect(h.queue.pendingReview?.label).toBe('q1');
+    expect(h.queue.pending[0].status).toBe('awaiting-review');
+    expect(h.queue.pending).toHaveLength(1);
+
+    h.unmount();
+  });
+
+  it('confirmReview resumes the runner and completes the import', async () => {
+    const h = mountReviewHarness();
+    await act(async () => {
+      h.queue.enqueue({
+        label: 'q1',
+        modelId: 'anthropic:claude-sonnet-4',
+        file: new File(['hi'], 'q1.txt', { type: 'text/plain' }),
+      });
+    });
+
+    expect(h.queue.pendingReview).not.toBeNull();
+    const id = h.queue.pendingReview!.id;
+    await act(async () => {
+      h.queue.confirmReview(id, [
+        {
+          source: 'manual',
+          category: 'other',
+          signal: 'Shipped X',
+          rawData: {},
+          weight: 3,
+          occurredAt: new Date('2026-01-15T00:00:00Z'),
+        },
+      ]);
+    });
+    expect(h.queue.pending[0].status).toBe('running');
+    expect(h.queue.pendingReview).toBeNull();
+
+    await act(async () => {
+      h.runs[0].resolve({ added: 1, skippedExisting: 0, rejectedRows: 0 });
+    });
+    expect(h.queue.pending[0].status).toBe('complete');
+    expect(h.queue.pending[0].added).toBe(1);
+
+    h.unmount();
+  });
+
+  it('cancelReview fails the row and clears pendingReview', async () => {
+    const h = mountReviewHarness();
+    await act(async () => {
+      h.queue.enqueue({
+        label: 'q1',
+        modelId: 'anthropic:claude-sonnet-4',
+        file: new File(['hi'], 'q1.txt', { type: 'text/plain' }),
+      });
+    });
+
+    const id = h.queue.pendingReview!.id;
+    await act(async () => {
+      h.queue.cancelReview(id);
+    });
+    expect(h.queue.pending[0]).toMatchObject({ status: 'failed', error: 'cancelled' });
+    expect(h.queue.pendingReview).toBeNull();
+
+    h.unmount();
+  });
+
+  it('an awaiting-review item still counts toward the concurrency cap', async () => {
+    const h = mountReviewHarness();
+    await act(async () => {
+      for (let i = 0; i < MAX_CONCURRENT_IMPORTS + 1; i += 1) {
+        h.queue.enqueue({
+          label: `b${i}`,
+          modelId: 'anthropic:claude-sonnet-4',
+          file: new File(['x'], `b${i}.txt`, { type: 'text/plain' }),
+        });
+      }
+    });
+
+    // Each of the MAX_CONCURRENT_IMPORTS busy items is sitting in
+    // awaiting-review — none have been confirmed yet. The (MAX+1)th
+    // item should still be queued.
+    const awaiting = h.queue.pending.filter((p) => p.status === 'awaiting-review').length;
+    const queued = h.queue.pending.filter((p) => p.status === 'queued').length;
+    expect(awaiting).toBe(MAX_CONCURRENT_IMPORTS);
+    expect(queued).toBe(1);
+
+    h.unmount();
+  });
+
+  it('only one pendingReview is exposed at a time (FIFO) when multiple imports complete extraction', async () => {
+    const h = mountReviewHarness();
+    await act(async () => {
+      for (let i = 0; i < 2; i += 1) {
+        h.queue.enqueue({
+          label: `b${i}`,
+          modelId: 'anthropic:claude-sonnet-4',
+          file: new File(['x'], `b${i}.txt`, { type: 'text/plain' }),
+        });
+      }
+    });
+
+    // Both extracted; one review surfaced. The other waits.
+    expect(h.queue.pendingReview?.label).toBe('b0');
+
+    const first = h.queue.pendingReview!.id;
+    await act(async () => {
+      h.queue.confirmReview(first, []);
+    });
+    await act(async () => {
+      h.runs[0].resolve({ added: 0, skippedExisting: 0, rejectedRows: 0 });
+    });
+
+    expect(h.queue.pendingReview?.label).toBe('b1');
+
+    h.unmount();
   });
 });

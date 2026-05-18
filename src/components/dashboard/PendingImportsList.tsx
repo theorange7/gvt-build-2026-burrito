@@ -22,6 +22,7 @@ type Palette = {
 const STATUS_LABEL: Record<PendingImport['status'], string> = {
   queued: 'waiting…',
   running: 'extracting…',
+  'awaiting-review': 'review needed',
   complete: '✓ done',
   failed: 'failed',
 };
@@ -29,6 +30,7 @@ const STATUS_LABEL: Record<PendingImport['status'], string> = {
 function statusColor(status: PendingImport['status'], p: Palette): string {
   if (status === 'complete') return p.lime;
   if (status === 'failed') return p.hot;
+  if (status === 'awaiting-review') return p.accent;
   return p.accent;
 }
 
@@ -64,9 +66,12 @@ export function PendingImportsList({ p }: { p: Palette }) {
               style={{
                 width: 8, height: 8, borderRadius: 999,
                 background: tone, flexShrink: 0,
-                animation: item.status === 'running' || item.status === 'queued'
-                  ? 'pulse 1.4s ease-in-out infinite'
-                  : 'none',
+                animation:
+                  item.status === 'running' ||
+                  item.status === 'queued' ||
+                  item.status === 'awaiting-review'
+                    ? 'pulse 1.4s ease-in-out infinite'
+                    : 'none',
               }}
             />
             <span style={{

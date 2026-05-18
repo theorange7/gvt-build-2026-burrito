@@ -7,7 +7,9 @@ import { fileUploadProvider } from '@/lib/providers/file-upload';
 import {
   connectFileUploadIdentity,
   disconnectIdentity,
+  ImportCancelledError,
   importIntoIdentity,
+  type ReviewableContribution,
 } from '@/lib/providers/orchestrator';
 import { listContributions } from '@/lib/local-store/contributions';
 import { listIdentities } from '@/lib/local-store/identities';
@@ -167,6 +169,82 @@ describe('file-upload provider — connect + import round-trip', () => {
 
     expect(await listIdentities()).toHaveLength(0);
     expect(await listContributions()).toHaveLength(0);
+  });
+
+  it('with a review hook: passes extracted rows through and persists what the hook returns', async () => {
+    mockImport({ rows: SAMPLE_ROWS });
+    const { identityId } = await connectFileUploadIdentity({ label: 'reviewed' });
+    let received: ReviewableContribution[] | null = null;
+    const result = await importIntoIdentity(identityId, makeFile('hi'), {
+      modelId: 'anthropic:claude-sonnet-4',
+      review: async (rows) => {
+        received = rows;
+        // Drop the third row entirely and rewrite the first row's signal —
+        // proving the hook can shape what lands in the store.
+        return [
+          { ...rows[0], signal: 'edited shipped login redesign' },
+          rows[1],
+        ];
+      },
+    });
+    expect(result.added).toBe(2);
+    expect(received).not.toBeNull();
+    const persisted = await listContributions();
+    expect(persisted).toHaveLength(2);
+    const signals = persisted.map((c) => c.signal).sort();
+    expect(signals).toContain('edited shipped login redesign');
+    expect(signals).toContain('Reviewed payments PR');
+  });
+
+  it('with a review hook returning null: throws ImportCancelledError and persists nothing', async () => {
+    mockImport({ rows: SAMPLE_ROWS });
+    const { identityId } = await connectFileUploadIdentity({ label: 'aborted' });
+    await expect(
+      importIntoIdentity(identityId, makeFile('hi'), {
+        modelId: 'anthropic:claude-sonnet-4',
+        review: async () => null,
+      }),
+    ).rejects.toBeInstanceOf(ImportCancelledError);
+    expect(await listContributions()).toHaveLength(0);
+  });
+
+  it('with a review hook: auto-dates rows with an invalid occurredAt to today and flags them', async () => {
+    mockImport({
+      rows: [
+        {
+          source: 'manual',
+          category: 'delivery',
+          signal: 'Shipped X',
+          rawData: {},
+          occurredAt: 'definitely-not-a-date',
+          weight: 4,
+        },
+        {
+          source: 'manual',
+          category: 'delivery',
+          signal: 'Shipped Y',
+          rawData: {},
+          occurredAt: '2026-02-01T00:00:00Z',
+          weight: 4,
+        },
+      ],
+    });
+    const { identityId } = await connectFileUploadIdentity({ label: 'autodate' });
+    let observed: ReviewableContribution[] = [];
+    await importIntoIdentity(identityId, makeFile('hi'), {
+      modelId: 'anthropic:claude-sonnet-4',
+      review: async (rows) => {
+        observed = rows;
+        return rows;
+      },
+    });
+    expect(observed).toHaveLength(2);
+    const bad = observed.find((r) => r.signal === 'Shipped X')!;
+    const good = observed.find((r) => r.signal === 'Shipped Y')!;
+    expect(bad.autoDated).toBe(true);
+    expect(Number.isNaN(bad.occurredAt.getTime())).toBe(false);
+    expect(good.autoDated).toBe(false);
+    expect(good.occurredAt.toISOString()).toBe('2026-02-01T00:00:00.000Z');
   });
 
   it('makes zero calls to /classify or /wrap during import', async () => {
