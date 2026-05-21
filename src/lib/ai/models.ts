@@ -14,9 +14,8 @@ export type PublicModelOption = {
 };
 
 export const MODEL_OPTIONS: PublicModelOption[] = [
-  { id: 'azure:claude-haiku-4-5', label: 'claude-haiku-4-5 (Azure Foundry)' },
-  { id: 'azure:gpt-5.5-1', label: 'gpt-5.5-1 (Azure Foundry)' },
-  { id: 'anthropic:claude-sonnet-4', label: 'Claude Sonnet 4 (Anthropic direct)' },
+  { id: 'azure-foundry-anthropic:claude-haiku-4-5', label: 'claude-haiku-4-5 (Azure Foundry)' },
+  { id: 'azure-foundry:gpt-5.5-1', label: 'gpt-5.5-1 (Azure Foundry)' }
 ];
 
 export const DEFAULT_MODEL_ID = MODEL_OPTIONS[0].id;
