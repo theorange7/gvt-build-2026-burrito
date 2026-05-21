@@ -3,9 +3,8 @@
     {
       "id": "azure:claude-haiku-4-5",
       "label": "claude-haiku-4-5 (Azure Foundry)",
-      "provider": "azure-foundry",
+      "provider": "azure-foundry-anthropic",
       "modelId": "claude-haiku-4-5",
-      "version": "2025-10-01",
       "parameters": {
         "temperature": 1.0
       }

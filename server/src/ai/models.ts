@@ -5,15 +5,28 @@ import modelsConfig from './models.config.json';
  * Model catalog and per-model request parameters.
  *
  * Edit `models.config.json` to add, remove, or retune models. Each entry's
- * `parameters` object is forwarded verbatim into the upstream chat-completions
- * request, so put provider-specific knobs (temperature, max_tokens, top_p, …)
- * there. Validation runs at import time — a malformed entry fails fast.
+ * `parameters` object is forwarded verbatim into the upstream request, so put
+ * provider-specific knobs (temperature, max_tokens, top_p, …) there.
+ * Validation runs at import time — a malformed entry fails fast.
  *
- * For provider 'azure-foundry', `modelId` is the **deployment name** in your
- * Azure AI Foundry project, not the model family. Only Azure OpenAI–compatible
- * deployments work through @azure/ai-projects' getAzureOpenAIClient. Non-OpenAI
- * Foundry models (Phi, Llama, Mistral) are served by the separate Model
- * Inference API and would need @azure-rest/ai-inference to be wired up.
+ * Azure AI Foundry is reachable through two distinct providers, because a
+ * Foundry resource fronts two incompatible API surfaces:
+ *
+ *   - 'azure-foundry'           — Azure OpenAI–compatible deployments (GPT).
+ *                                 Routed through @azure/ai-projects'
+ *                                 getAzureOpenAIClient → /chat/completions.
+ *   - 'azure-foundry-anthropic' — Claude deployments. These answer ONLY the
+ *                                 Anthropic Messages API at
+ *                                 {resource}.services.ai.azure.com/anthropic/v1/messages;
+ *                                 a /chat/completions request 404s. Routed
+ *                                 through the dedicated adapter, which the
+ *                                 AZURE_FOUNDRY_ANTHROPIC_ENDPOINT env var (or
+ *                                 a per-entry `baseUrl`) points at.
+ *
+ * For both Azure providers, `modelId` is the **deployment name** in your
+ * Foundry project, not the model family. Non-OpenAI, non-Claude Foundry
+ * models (Phi, Llama, Mistral) are served by the separate Model Inference
+ * API and would need @azure-rest/ai-inference to be wired up.
  *
  * For provider 'ollama', `modelId` is the tag passed to `ollama pull`
  * (e.g. `llama3.1:8b`). The optional `baseUrl` overrides the default
@@ -30,12 +43,13 @@ export type ModelParameters = Record<string, ModelParameterValue>;
 const ModelOptionSchema = z.object({
   id: z.string().min(1),
   label: z.string().min(1),
-  provider: z.enum(['anthropic', 'azure-foundry', 'ollama']),
+  provider: z.enum(['anthropic', 'azure-foundry', 'azure-foundry-anthropic', 'ollama']),
   modelId: z.string().min(1),
   version: z.string().optional(),
-  // Per-entry override for the upstream base URL. Used by the ollama adapter;
-  // ignored by anthropic / azure-foundry (which derive endpoints from env or
-  // the project client). Operator-controlled — never accepted on the wire.
+  // Per-entry override for the upstream base URL. Used by the ollama and
+  // azure-foundry-anthropic adapters; ignored by anthropic / azure-foundry
+  // (which derive endpoints from env or the project client).
+  // Operator-controlled — never accepted on the wire.
   baseUrl: z.string().url().optional(),
   parameters: z.record(ParameterValueSchema).optional(),
 });
