@@ -1,32 +1,22 @@
 {
   "models": [
     {
-      "id": "azure:claude-haiku-4-5",
+      "id": "azure-foundry-anthropic::claude-haiku-4-5",
       "label": "claude-haiku-4-5 (Azure Foundry)",
-      "provider": "azure-foundry",
+      "provider": "azure-foundry-anthropic",
       "modelId": "claude-haiku-4-5",
-      "version": "2025-10-01",
       "parameters": {
         "temperature": 1.0
       }
     },
     {
-      "id": "azure:gpt-5.5-1",
+      "id": "azure-foundry:gpt-5.5-1",
       "label": "gpt-5.5-1 (Azure Foundry)",
       "provider": "azure-foundry",
       "modelId": "gpt-5.5-1",
       "version": "2024-12-01-preview",
       "parameters": {
         "temperature": 1.0
-      }
-    },
-    {
-      "id": "anthropic:claude-sonnet-4",
-      "label": "Claude Sonnet 4 (Anthropic direct)",
-      "provider": "anthropic",
-      "modelId": "claude-sonnet-4-20250514",
-      "parameters": {
-        "max_tokens": 1024
       }
     }
   ]

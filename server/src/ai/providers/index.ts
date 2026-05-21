@@ -14,10 +14,12 @@ import type { ModelProvider } from '../models';
 import type { ProviderAdapter } from './types';
 import { callAnthropic } from './anthropic';
 import { callAzureFoundry } from './azureFoundry';
+import { callAzureFoundryAnthropic } from './azureFoundryAnthropic';
 import { callOllama } from './ollama';
 
 export const ADAPTERS: Record<ModelProvider, ProviderAdapter> = {
   anthropic: callAnthropic,
   'azure-foundry': callAzureFoundry,
+  'azure-foundry-anthropic': callAzureFoundryAnthropic,
   ollama: callOllama,
 };

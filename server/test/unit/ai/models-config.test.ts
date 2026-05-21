@@ -11,7 +11,7 @@ const ParameterValueSchema = z.union([z.string(), z.number(), z.boolean()]);
 const ModelOptionSchema = z.object({
   id: z.string().min(1),
   label: z.string().min(1),
-  provider: z.enum(['anthropic', 'azure-foundry', 'ollama']),
+  provider: z.enum(['anthropic', 'azure-foundry', 'azure-foundry-anthropic', 'ollama']),
   modelId: z.string().min(1),
   version: z.string().optional(),
   baseUrl: z.string().url().optional(),
@@ -58,6 +58,16 @@ describe("models.ts schema accepts 'ollama' and an optional baseUrl", () => {
       label: 'l',
       provider: 'azure-foundry',
       modelId: 'gpt-x',
+    });
+    expect(parsed.success).toBe(true);
+  });
+
+  it("accepts provider: 'azure-foundry-anthropic' for Claude-on-Foundry deployments", () => {
+    const parsed = ModelOptionSchema.safeParse({
+      id: 'azure:claude-haiku-4-5',
+      label: 'claude-haiku-4-5 (Azure Foundry)',
+      provider: 'azure-foundry-anthropic',
+      modelId: 'claude-haiku-4-5',
     });
     expect(parsed.success).toBe(true);
   });

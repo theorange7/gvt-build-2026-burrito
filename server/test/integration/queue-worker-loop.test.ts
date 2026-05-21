@@ -32,7 +32,7 @@ import {
   resetAzureFakes,
   type LogEntry,
 } from '../fakes/azure';
-import { anthropicCalls, clearAnthropicCalls } from '../mocks/handlers';
+import { anthropicCalls, clearAnthropicCalls, FOUNDRY_ANTHROPIC_ENDPOINT } from '../mocks/handlers';
 import { SAMPLE_CONTRIBUTIONS } from '../fixtures/contributions';
 import type { EnqueueWrapRequest } from '@wrapped/shared';
 
@@ -44,10 +44,14 @@ beforeAll(() => {
   process.env.AZURE_SERVICE_BUS_NAMESPACE = 'fake.servicebus.windows.net';
   process.env.WRAP_MAX_CONCURRENCY = '8';
   process.env.WRAP_PER_INSTALL_LIMIT = '1';
-  process.env.ANTHROPIC_API_KEY = 'test-anthropic-key';
 });
 
 beforeEach(() => {
+  // process.env is shared across test files in a vitest worker thread, and a
+  // sibling test below deletes this var. Re-assert it per test so the loop
+  // always reaches the (mocked) Foundry endpoint regardless of what ran before
+  // — set in beforeAll alone, a leak from another file would survive.
+  process.env.AZURE_FOUNDRY_ANTHROPIC_ENDPOINT = FOUNDRY_ANTHROPIC_ENDPOINT;
   resetAzureFakes();
   clearAnthropicCalls();
 });
@@ -100,9 +104,10 @@ function makeBody(jobId: string, overrides: Partial<EnqueueWrapRequest> = {}): E
     mode: 'year-end',
     windowStart: '2025-01-01T00:00:00Z',
     windowEnd: '2025-12-31T23:59:59Z',
-    // Pin to the Anthropic model so MSW (which only intercepts Anthropic) sees
-    // every slice call. Azure Foundry has no equivalent network mock.
-    modelId: 'anthropic:claude-sonnet-4',
+    // Pin to the Claude-on-Foundry model: its adapter calls the Anthropic
+    // Messages API over fetch, which MSW intercepts at FOUNDRY_ANTHROPIC_ENDPOINT
+    // so the slice fan-out exercises a real network round-trip.
+    modelId: 'azure-foundry-anthropic::claude-haiku-4-5',
     ...overrides,
   };
 }
@@ -188,9 +193,10 @@ describe('queue → worker → complete (full loop)', () => {
     const { token, installId } = await signInstallToken();
     const jobId = crypto.randomUUID();
 
-    // No ANTHROPIC_API_KEY set for this test — force every slice to fall back.
-    const oldKey = process.env.ANTHROPIC_API_KEY;
-    delete process.env.ANTHROPIC_API_KEY;
+    // Drop the Foundry endpoint for this test — the adapter throws
+    // config_missing, so every slice falls back.
+    const oldEndpoint = process.env.AZURE_FOUNDRY_ANTHROPIC_ENDPOINT;
+    delete process.env.AZURE_FOUNDRY_ANTHROPIC_ENDPOINT;
 
     try {
       await wrapEnqueueHandler(
@@ -212,7 +218,7 @@ describe('queue → worker → complete (full loop)', () => {
       // Fallback slices should still have a headline.
       expect(body.sliceContent.every((s) => typeof s.headline === 'string')).toBe(true);
     } finally {
-      if (oldKey !== undefined) process.env.ANTHROPIC_API_KEY = oldKey;
+      if (oldEndpoint !== undefined) process.env.AZURE_FOUNDRY_ANTHROPIC_ENDPOINT = oldEndpoint;
     }
 
     // Sanity: ownership is still scoped to the install.

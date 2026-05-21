@@ -54,8 +54,27 @@ describe('ai/client.callModel registry', () => {
     expect(spyAnthropic).not.toHaveBeenCalled();
   });
 
+  it('routes azure-foundry-anthropic models to the Claude-on-Foundry adapter', async () => {
+    const azureClaudeId = MODEL_OPTIONS.find((m) => m.provider === 'azure-foundry-anthropic')?.id;
+    if (!azureClaudeId) return; // Defensive — shipped config includes one.
+    const spy = vi
+      .spyOn(ADAPTERS, 'azure-foundry-anthropic')
+      .mockResolvedValue('routed-to-azure-foundry-anthropic');
+    const spyAnthropic = vi.spyOn(ADAPTERS, 'anthropic').mockResolvedValue('should-not-be-called');
+
+    const out = await callModel('sys', 'msg', azureClaudeId);
+    expect(out).toBe('routed-to-azure-foundry-anthropic');
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(spyAnthropic).not.toHaveBeenCalled();
+  });
+
   it('exposes exactly the providers declared by the schema', () => {
-    expect(Object.keys(ADAPTERS).sort()).toEqual(['anthropic', 'azure-foundry', 'ollama']);
+    expect(Object.keys(ADAPTERS).sort()).toEqual([
+      'anthropic',
+      'azure-foundry',
+      'azure-foundry-anthropic',
+      'ollama',
+    ]);
   });
 
   it('selecting an Ollama model never touches api.anthropic.com', async () => {

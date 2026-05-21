@@ -179,8 +179,10 @@ These are encoded as static-analysis tests in
    addresses beyond the safe error code.
 7. **Don't write secrets to logs or commit them.** `.env.local` (client) and
    `server/local.settings.json` are git-ignored. Client needs only
-   `NEXT_PUBLIC_WRAP_API_URL`. Server needs `WRAP_JWT_SECRET` plus
-   `ANTHROPIC_API_KEY` and/or `AZURE_FOUNDRY_PROJECT_ENDPOINT`.
+   `NEXT_PUBLIC_WRAP_API_URL`. Server needs `WRAP_JWT_SECRET` plus at least one
+   model credential: `ANTHROPIC_API_KEY`, `AZURE_FOUNDRY_PROJECT_ENDPOINT`
+   (Azure OpenAI deployments), and/or `AZURE_FOUNDRY_ANTHROPIC_ENDPOINT`
+   (Claude-on-Foundry deployments).
 
 ## Conventions
 
@@ -211,9 +213,16 @@ Edit `server/src/ai/models.config.json`. Schema:
 ```
 
 - `id` must be unique (enforced at import).
-- `provider` is `'anthropic'`, `'azure-foundry'`, or `'ollama'`.
-- For Azure, `modelId` is the **deployment name** in your Foundry project,
-  and `version` is the api-version forwarded to Azure OpenAI.
+- `provider` is `'anthropic'`, `'azure-foundry'`, `'azure-foundry-anthropic'`,
+  or `'ollama'`.
+- For Azure, `modelId` is the **deployment name** in your Foundry project.
+  Use `'azure-foundry'` for Azure OpenAI–compatible deployments (GPT) — there
+  `version` is the api-version forwarded to Azure OpenAI. Use
+  `'azure-foundry-anthropic'` for Claude deployments: they answer only the
+  Anthropic Messages API, so a `/chat/completions` call 404s. That adapter
+  reads the resource-level Anthropic base URL from
+  `AZURE_FOUNDRY_ANTHROPIC_ENDPOINT` (or a per-entry `baseUrl`) and ignores
+  `version`.
 - For Ollama, `modelId` is the tag passed to `ollama pull` (e.g.
   `llama3.1:8b`). Optional `baseUrl` overrides the default
   `http://localhost:11434` for a single entry; the env var
@@ -250,10 +259,14 @@ Promise<string>`. To add a new target:
    `Record<ModelProvider, ProviderAdapter>` type makes an unregistered
    provider a compile error.
 
-The Azure path uses `@azure/ai-projects`' `getAzureOpenAIClient`, which
-only handles Azure OpenAI–compatible deployments. Phi/Llama/Mistral need
-`@azure-rest/ai-inference` (not yet wired — see `Tasks.md` for the parking
-lot of small follow-ups, or `tasks/` for shaped specs that have a design).
+Azure AI Foundry is split across two providers because a Foundry resource
+fronts two incompatible API surfaces. `'azure-foundry'` uses
+`@azure/ai-projects`' `getAzureOpenAIClient`, which only handles Azure
+OpenAI–compatible deployments (GPT). `'azure-foundry-anthropic'`
+(`providers/azureFoundryAnthropic.ts`) targets Claude deployments via the
+Anthropic Messages API. Phi/Llama/Mistral need `@azure-rest/ai-inference`
+(not yet wired — see `Tasks.md` for the parking lot of small follow-ups, or
+`tasks/` for shaped specs that have a design).
 
 ## Testing patterns
 
