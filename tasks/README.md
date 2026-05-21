@@ -107,7 +107,7 @@ Future / new features:
 | 62 | GitLab sync throttling and call visibility | Shaped — ready | client | small |
 | 70 | Interactive sense-making session v0 | Shaped — UI superseded by Spec 72; data/server scope consumed | both | large |
 | 71 | Wrap from the record (v1) | Shaped — wrap entry points deferred to a Spec 71 evolution after Spec 72 | both | medium |
-| 72 | UI and functionality overhaul (Claude Design handoff) | Shaped — ready | both | large |
+| 72 | UI and functionality overhaul (Claude Design handoff; file upload as a recap entry point) | Shaped — ready | both | large |
 
 ## Design notes (pre-spec)
 

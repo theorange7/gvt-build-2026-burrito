@@ -418,6 +418,24 @@ Result panel after success:
   users who want to keep the strict no-egress posture. Deferred
   because the demo pressure points at the magical path, and we want
   one well-tested mechanism rather than two half-tested ones.
+- **Post-ship enhancement (2026-05-21, review step)**: a
+  confirm-before-persist modal was added on top of the shipped
+  provider. After the server extracts contributions, the import queue
+  parks the row in an `awaiting-review` state and `ReviewImportModal`
+  opens with every field editable (date, signal, category, weight,
+  source). Rows the LLM could not date are defaulted to the upload
+  day and flagged with an `AUTO-DATED` chip. Confirm persists the
+  (possibly edited) rows; cancel fails the import. The orchestrator's
+  `importIntoIdentity` gained an optional `review` hook for this. This
+  is the "review step" referenced by Spec 72.
+- **Forward reference (2026-05-21)**: Spec 72 makes file upload a
+  first-class recap entry point — a completed import auto-creates an
+  open, file-upload-scoped recap session in the Recap → Record → Wrap
+  workflow. The only change this provider's code needs is
+  `importIntoIdentity` returning the ids of newly-added contributions
+  (`addedIds`) so the session's panels can be built; the `/import`
+  route and the provider are otherwise untouched. See Spec 72,
+  "File upload as a recap entry point".
 
 ## Done
 
