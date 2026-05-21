@@ -25,27 +25,37 @@ function sliceResponseText(systemPrompt: string): string {
   return JSON.stringify(slice);
 }
 
-export const handlers = [
-  http.post('https://api.anthropic.com/v1/messages', async ({ request }) => {
-    const body = (await request.json()) as AnthropicRequestBody;
-    const systemPrompt = body.system ?? '';
-    const userMessage = body.messages?.[0]?.content ?? '';
-    anthropicCalls.push({
-      systemPrompt,
-      userMessage,
-      apiKey: request.headers.get('x-api-key'),
-    });
+// Claude-on-Foundry deployments answer the Anthropic Messages API at
+// {endpoint}/v1/messages. Tests that exercise the azure-foundry-anthropic
+// provider point AZURE_FOUNDRY_ANTHROPIC_ENDPOINT at this base URL.
+export const FOUNDRY_ANTHROPIC_ENDPOINT =
+  'https://test-foundry.services.ai.azure.com/anthropic';
 
-    return HttpResponse.json({
-      id: 'msg_test',
-      type: 'message',
-      role: 'assistant',
-      model: 'claude-sonnet-4-20250514',
-      content: [{ type: 'text', text: sliceResponseText(systemPrompt) }],
-      stop_reason: 'end_turn',
-      usage: { input_tokens: 100, output_tokens: 200 },
-    });
-  }),
+const messagesResolver = async ({ request }: { request: Request }) => {
+  const body = (await request.json()) as AnthropicRequestBody;
+  const systemPrompt = body.system ?? '';
+  const userMessage = body.messages?.[0]?.content ?? '';
+  anthropicCalls.push({
+    systemPrompt,
+    userMessage,
+    // Direct Anthropic uses x-api-key; Foundry uses an Entra bearer token.
+    apiKey: request.headers.get('x-api-key') ?? request.headers.get('authorization'),
+  });
+
+  return HttpResponse.json({
+    id: 'msg_test',
+    type: 'message',
+    role: 'assistant',
+    model: 'claude-sonnet-4-20250514',
+    content: [{ type: 'text', text: sliceResponseText(systemPrompt) }],
+    stop_reason: 'end_turn',
+    usage: { input_tokens: 100, output_tokens: 200 },
+  });
+};
+
+export const handlers = [
+  http.post('https://api.anthropic.com/v1/messages', messagesResolver),
+  http.post(`${FOUNDRY_ANTHROPIC_ENDPOINT}/v1/messages`, messagesResolver),
 ];
 
 export function clearAnthropicCalls(): void {

@@ -161,7 +161,13 @@ export class FakeTableClient {
 
 // ── @azure/identity ──────────────────────────────────────────────────────────
 
-export class FakeDefaultAzureCredential {}
+export class FakeDefaultAzureCredential {
+  // Entra ID access token. Used by the azure-foundry-anthropic adapter, which
+  // calls getToken to obtain a bearer token for the Foundry endpoint.
+  async getToken(_scope: string | string[]): Promise<{ token: string; expiresOnTimestamp: number }> {
+    return { token: 'fake-entra-token', expiresOnTimestamp: Date.now() + 3_600_000 };
+  }
+}
 
 // ── @azure/service-bus ───────────────────────────────────────────────────────
 
