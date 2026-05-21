@@ -1,4 +1,17 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+
+// The /import handler dispatches through callModel → the model catalog's
+// default entry, an azure-foundry-anthropic deployment whose adapter
+// authenticates with DefaultAzureCredential. Replace the credential
+// wholesale (vi.mock is hoisted above every import) so the token path is
+// deterministic and offline.
+const { getTokenMock } = vi.hoisted(() => ({ getTokenMock: vi.fn() }));
+vi.mock('@azure/identity', () => ({
+  DefaultAzureCredential: class {
+    getToken = getTokenMock;
+  },
+}));
+
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { http, HttpResponse } from 'msw';
@@ -6,15 +19,21 @@ import type { HttpRequest, InvocationContext } from '@azure/functions';
 import { signInstallToken } from '../../src/auth/jwt';
 import { importHandler } from '../../src/functions/import';
 import { server } from '../mocks/server';
-import { anthropicCalls, clearAnthropicCalls } from '../mocks/handlers';
+import { anthropicCalls, clearAnthropicCalls, FOUNDRY_ANTHROPIC_ENDPOINT } from '../mocks/handlers';
 
 beforeAll(() => {
   process.env.WRAP_JWT_SECRET = 'test-secret-please-change-me';
   process.env.ANTHROPIC_API_KEY = 'test-key';
+  process.env.AZURE_FOUNDRY_ANTHROPIC_ENDPOINT = FOUNDRY_ANTHROPIC_ENDPOINT;
 });
 
 beforeEach(() => {
   clearAnthropicCalls();
+  getTokenMock.mockReset();
+  getTokenMock.mockResolvedValue({
+    token: 'fake-entra-token',
+    expiresOnTimestamp: Date.now() + 3_600_000,
+  });
 });
 
 afterEach(() => {
@@ -69,14 +88,14 @@ function makeForm(args: {
   return fd;
 }
 
-const META = { modelId: 'anthropic:claude-sonnet-4', label: 'Q1 commits' };
+const META = { modelId: 'azure-foundry-anthropic::claude-haiku-4-5', label: 'Q1 commits' };
 
 function mockExtractor(rows: unknown[] | { text: string }): void {
   const text = 'text' in (rows as { text?: string })
     ? (rows as { text: string }).text
     : JSON.stringify({ contributions: rows });
   server.use(
-    http.post('https://api.anthropic.com/v1/messages', async ({ request }) => {
+    http.post(`${FOUNDRY_ANTHROPIC_ENDPOINT}/v1/messages`, async ({ request }) => {
       // Mirror the default handler's bookkeeping so anthropicCalls stays
       // an accurate cross-test counter.
       const body = (await request.json().catch(() => ({}))) as {
@@ -86,7 +105,8 @@ function mockExtractor(rows: unknown[] | { text: string }): void {
       anthropicCalls.push({
         systemPrompt: body.system ?? '',
         userMessage: body.messages?.[0]?.content ?? '',
-        apiKey: request.headers.get('x-api-key'),
+        // Direct Anthropic uses x-api-key; Foundry uses an Entra bearer.
+        apiKey: request.headers.get('x-api-key') ?? request.headers.get('authorization'),
       });
       return HttpResponse.json({
         id: 'msg_test',
@@ -195,7 +215,7 @@ describe('POST /import — .docx extraction', () => {
     // (not the raw zip bytes) hit the prompt.
     let receivedUserMessage = '';
     server.use(
-      http.post('https://api.anthropic.com/v1/messages', async ({ request }) => {
+      http.post(`${FOUNDRY_ANTHROPIC_ENDPOINT}/v1/messages`, async ({ request }) => {
         const body = (await request.json()) as {
           messages?: Array<{ role: string; content: string }>;
         };
@@ -299,7 +319,7 @@ describe('POST /import — extraction and validation', () => {
   it('accepts a bare-array response from the LLM (no wrapper object)', async () => {
     const { token } = await signInstallToken();
     server.use(
-      http.post('https://api.anthropic.com/v1/messages', () =>
+      http.post(`${FOUNDRY_ANTHROPIC_ENDPOINT}/v1/messages`, () =>
         HttpResponse.json({
           content: [
             {
@@ -329,7 +349,7 @@ describe('POST /import — extraction and validation', () => {
   it('returns 502 when the LLM upstream fails', async () => {
     const { token } = await signInstallToken();
     server.use(
-      http.post('https://api.anthropic.com/v1/messages', () =>
+      http.post(`${FOUNDRY_ANTHROPIC_ENDPOINT}/v1/messages`, () =>
         new HttpResponse('boom', { status: 500 }),
       ),
     );
@@ -346,7 +366,7 @@ describe('POST /import — extraction and validation', () => {
   it('returns 502 when the LLM returns unparseable output', async () => {
     const { token } = await signInstallToken();
     server.use(
-      http.post('https://api.anthropic.com/v1/messages', () =>
+      http.post(`${FOUNDRY_ANTHROPIC_ENDPOINT}/v1/messages`, () =>
         HttpResponse.json({ content: [{ type: 'text', text: 'not json at all' }] }),
       ),
     );
