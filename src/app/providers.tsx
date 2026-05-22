@@ -7,8 +7,20 @@
  */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactNode, useState } from 'react';
+import { ImportQueueProvider } from '@/components/dashboard/ImportQueueContext';
 
 export function Providers({ children }: { children: ReactNode }) {
   const [queryClient] = useState(() => new QueryClient());
-  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+  return (
+    <QueryClientProvider client={queryClient}>
+      {/*
+       * ImportQueueProvider must live inside QueryClientProvider so its
+       * useQueryClient() call resolves. It owns the in-memory upload queue
+       * for the dashboard but is lightweight to mount app-wide (empty queue
+       * until something is enqueued; beforeunload guard only attaches while
+       * items are in flight).
+       */}
+      <ImportQueueProvider>{children}</ImportQueueProvider>
+    </QueryClientProvider>
+  );
 }

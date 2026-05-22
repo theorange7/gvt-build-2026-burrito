@@ -69,6 +69,14 @@ Open [http://localhost:3000](http://localhost:3000), set a passphrase, choose
 - `/classify`: `{ freeText, source }`
 - `/wrap` (enqueue): contributions stripped of `userId`, `id`, `externalId`; the Service Bus message is consumed once by the worker and then deleted
 - `/wrap/{jobId}` (poll): only the `jobId`; result is deleted from Table Storage on first successful read
+- `/import` (file-upload provider, **the explicit carve-out**): a single
+  multipart POST with the raw file (≤ 256 KB) and a `{ modelId, label }`
+  blob. The server forwards the file to the chosen LLM, validates the
+  extracted rows, and returns them synchronously. Nothing about the file
+  or the model's response is persisted on the server — no queue, no table,
+  no blob, no disk write, no cache. The extracted contributions land
+  encrypted on the device like every other source. See spec 50 in
+  `tasks/50-file-upload-provider.md` for the bounded mechanism.
 
 **What the backend stores**:
 - A job row: `{ installId, jobId, status, busy, timestamps }` — no contributions, no IPs, no tokens

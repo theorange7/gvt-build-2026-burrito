@@ -62,4 +62,37 @@ describe('providers/registry', () => {
   it('throws when getting an unknown provider', () => {
     expect(() => getProvider('nope')).toThrow(/unknown provider/i);
   });
+
+  it('rejects a provider with both sync and import (exactly one — spec 50)', () => {
+    const base = fakeProvider('both');
+    const withBoth: ContributionProvider = {
+      ...base,
+      import: {
+        run: async () => ({ contributions: [], rejectedRows: 0 }),
+        externalIdFor: () => '',
+      },
+    };
+    expect(() => registerProvider(withBoth)).toThrow(/exactly one/i);
+  });
+
+  it('rejects a provider with neither sync nor import', () => {
+    const base = fakeProvider('neither');
+    const { sync: _omit, ...withoutSync } = base;
+    expect(() => registerProvider(withoutSync as ContributionProvider)).toThrow(/exactly one/i);
+  });
+
+  it('accepts an import-only provider', () => {
+    const base = fakeProvider('upload');
+    const { sync: _omit, ...withoutSync } = base;
+    const importOnly: ContributionProvider = {
+      ...(withoutSync as ContributionProvider),
+      auth: { kind: 'none' },
+      import: {
+        run: async () => ({ contributions: [], rejectedRows: 0 }),
+        externalIdFor: () => 'x',
+      },
+    };
+    registerProvider(importOnly);
+    expect(getProvider('upload').id).toBe('upload');
+  });
 });

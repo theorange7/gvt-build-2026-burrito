@@ -100,14 +100,14 @@ Future / new features:
 | 30 | Composer — music-synced video render service | Shaped — ready | composer + server + client | large |
 | 31 | Shareable highlight wheels (public bundle + revoke) | Shaped — ready | both | large |
 | 40 | Tauri 2 macOS shell bootstrap | Shaped — ready | client | medium |
-| 50 | File-upload contribution provider | Shaped — ready | both | medium |
+| 50 | File-upload contribution provider | Done — 2026-05-17 (claude/implement-spec-50-ky0SM) | both | medium |
 | 51 | Reset (clear data) and de-register (forget passphrase) | Shaped — ready | both | medium |
 | 60 | Ollama local provider | Shaped — ready | server | small |
 | 61 | Client-side Ollama wrap generation (skip the queue) + settings UI + status badge | Shaped — ready | both | medium-large |
 | 62 | GitLab sync throttling and call visibility | Shaped — ready | client | small |
 | 70 | Interactive sense-making session v0 | Shaped — UI superseded by Spec 72; data/server scope consumed | both | large |
 | 71 | Wrap from the record (v1) | Shaped — wrap entry points deferred to a Spec 71 evolution after Spec 72 | both | medium |
-| 72 | UI and functionality overhaul (Claude Design handoff) | Shaped — ready | both | large |
+| 72 | UI and functionality overhaul (Claude Design handoff; file upload as a recap entry point) | Shaped — ready | both | large |
 
 ## Design notes (pre-spec)
 

@@ -17,7 +17,9 @@ import { ContributionFeed } from '@/components/dashboard/ContributionFeed';
 import { EventDetailDrawer } from '@/components/dashboard/EventDetailDrawer';
 import type { DrawerEvent } from '@/components/dashboard/EventDetailDrawer';
 import { GenerateWrapModal } from '@/components/dashboard/GenerateWrapModal';
+import { ImportFromFileModal } from '@/components/dashboard/ImportFromFileModal';
 import { ManualInputForm } from '@/components/dashboard/ManualInputForm';
+import { PendingImportsList } from '@/components/dashboard/PendingImportsList';
 import { ResetModal } from '@/components/dashboard/ResetModal';
 import { useContributions } from '@/components/dashboard/useContributions';
 import { hasActiveKey } from '@/lib/local-store/crypto';
@@ -694,6 +696,7 @@ function SettingsTab({
             </div>
           );
         })}
+
       </div>
 
       {/* Privacy banner */}
@@ -793,6 +796,7 @@ export function DashboardShell() {
   const [seedChecked, setSeedChecked] = useState(false);
   const [showFirstRun, setShowFirstRun] = useState(false);
   const [showManualInput, setShowManualInput] = useState(false);
+  const [showFileImport, setShowFileImport] = useState(false);
   const [openEvent, setOpenEvent] = useState<DrawerEvent | null>(null);
   const [showWrap, setShowWrap] = useState(false);
   const [profileName, setProfileName] = useState('');
@@ -978,13 +982,26 @@ export function DashboardShell() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20, position: isMobile ? 'static' : 'sticky', top: 24, alignSelf: 'start', minWidth: 0 }}>
           <WrapCtaCard p={p} onWrap={handleWrap} />
           <CategoryBreakdownCard p={p} />
-          <button
-            type="button"
-            onClick={() => setShowManualInput(true)}
-            style={{ width: '100%', background: p.paper, border: '2px solid ' + p.ink, borderRadius: 12, padding: '10px 16px', fontFamily: 'JetBrains Mono, monospace', fontSize: 11, fontWeight: 700, color: p.ink, cursor: 'pointer', letterSpacing: '0.1em', textAlign: 'left', boxShadow: '3px 3px 0 ' + p.ink }}
-          >
-            + ADD CONTRIBUTION MANUALLY
-          </button>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                type="button"
+                onClick={() => setShowManualInput(true)}
+                style={{ flex: 1, background: p.paper, border: '2px solid ' + p.ink, borderRadius: 12, padding: '10px 14px', fontFamily: 'JetBrains Mono, monospace', fontSize: 11, fontWeight: 700, color: p.ink, cursor: 'pointer', letterSpacing: '0.1em', textAlign: 'left', boxShadow: '3px 3px 0 ' + p.ink }}
+              >
+                + ADD MANUALLY
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowFileImport(true)}
+                aria-label="Import from file"
+                style={{ flex: 1, background: p.paper, border: '2px solid ' + p.ink, borderRadius: 12, padding: '10px 14px', fontFamily: 'JetBrains Mono, monospace', fontSize: 11, fontWeight: 700, color: p.ink, cursor: 'pointer', letterSpacing: '0.1em', textAlign: 'left', boxShadow: '3px 3px 0 ' + p.ink }}
+              >
+                + IMPORT FROM FILE
+              </button>
+            </div>
+            <PendingImportsList p={p} />
+          </div>
           <p style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, color: p.ink, opacity: 0.4, lineHeight: 1.6, paddingTop: 4, margin: 0 }}>
             a mirror, not a judge. burrito drafts. you edit. you own it.
           </p>
@@ -992,8 +1009,10 @@ export function DashboardShell() {
       </div>}
 
       <ManualInputForm open={showManualInput} onClose={() => setShowManualInput(false)} />
+      <ImportFromFileModal open={showFileImport} onClose={() => setShowFileImport(false)} />
       <GenerateWrapModal open={showWrap} onOpenChange={setShowWrap} />
       <EventDetailDrawer p={p} event={openEvent} onClose={() => setOpenEvent(null)} />
     </div>
   );
 }
+

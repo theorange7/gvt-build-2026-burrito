@@ -38,6 +38,7 @@ describe('privacy invariants — every Functions handler carries the PRIVACY ban
       expect.arrayContaining([
         join('src', 'functions', 'authRegister.ts'),
         join('src', 'functions', 'classify.ts'),
+        join('src', 'functions', 'import.ts'),
         join('src', 'functions', 'meReset.ts'),
         join('src', 'functions', 'wrapEnqueue.ts'),
         join('src', 'functions', 'wrapGet.ts'),
@@ -178,6 +179,35 @@ describe('privacy invariants — Ollama adapter never logs, only hints with safe
         );
       }
     }
+  });
+});
+
+describe('privacy invariants — /import never persists, writes to disk, or logs file content (spec 50)', () => {
+  const importPath = join(functionsDir, 'import.ts');
+  const source = readFileSync(importPath, 'utf8');
+
+  it('does not import from the queue (Service Bus / Tables) — the import path is synchronous and ephemeral', () => {
+    expect(source).not.toMatch(/from ['"]\.\.\/queue\//);
+    expect(source).not.toMatch(/from ['"]@azure\/service-bus['"]/);
+    expect(source).not.toMatch(/from ['"]@azure\/data-tables['"]/);
+  });
+
+  it('does not import @azure/storage-blob or node:fs — nothing about a file upload should hit storage or disk', () => {
+    expect(source).not.toMatch(/from ['"]@azure\/storage-blob['"]/);
+    expect(source).not.toMatch(/from ['"]node:fs['"]/);
+    expect(source).not.toMatch(/from ['"]fs['"]/);
+  });
+
+  it('does not log the file body, the model raw response, the label, or per-row signals', () => {
+    expect(source).not.toMatch(/console\.[a-z]+\([^)]*\bfileText\b/);
+    expect(source).not.toMatch(/console\.[a-z]+\([^)]*\bmetaRaw\b/);
+    expect(source).not.toMatch(/console\.[a-z]+\([^)]*\blabel\b/);
+    expect(source).not.toMatch(/context\.[a-z]+\([^)]*\bfileText\b/);
+    expect(source).not.toMatch(/context\.[a-z]+\([^)]*\bmetaRaw\b/);
+    expect(source).not.toMatch(/context\.[a-z]+\([^)]*\blabel\b/);
+    // raw model output (named `raw` in the function) must never enter a log
+    expect(source).not.toMatch(/console\.[a-z]+\([^)]*\braw\b/);
+    expect(source).not.toMatch(/context\.[a-z]+\([^)]*\braw\b/);
   });
 });
 

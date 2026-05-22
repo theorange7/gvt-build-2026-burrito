@@ -6,6 +6,18 @@ export function registerProvider(provider: ContributionProvider): void {
   if (registry.has(provider.id)) {
     throw new Error(`Provider already registered: ${provider.id}`);
   }
+  // Spec 50 invariant: a provider is either pull (sync) or push (import),
+  // never both and never neither. Caught at registration so a misconfigured
+  // adapter fails at module load, not at the first call.
+  const hasSync = Boolean(provider.sync);
+  const hasImport = Boolean(provider.import);
+  if (hasSync === hasImport) {
+    throw new Error(
+      `Provider ${provider.id} must have exactly one of \`sync\` or \`import\` (found ${
+        hasSync && hasImport ? 'both' : 'neither'
+      }).`,
+    );
+  }
   registry.set(provider.id, Object.freeze(provider));
 }
 

@@ -10,6 +10,7 @@
  */
 import './functions/authRegister';
 import './functions/classify';
+import './functions/import';
 import './functions/meReset';
 import './functions/wrapEnqueue';
 import './functions/wrapGet';

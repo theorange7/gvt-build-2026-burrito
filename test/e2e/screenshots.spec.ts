@@ -21,6 +21,7 @@ import path from 'node:path';
 const PASSPHRASE = 'screenshot-passphrase';
 const PAT = 'glpat-screenshot-fixture-token';
 const INSTANCE = 'https://gitlab.test.example.com';
+const BACKEND = 'http://localhost:7071/api';
 
 const USER = {
   id: 4242,
@@ -220,6 +221,82 @@ async function mockGitLab(page: Page) {
   });
 }
 
+/**
+ * Spec 50 — stubs the backend endpoints the file-upload flow touches so
+ * the screenshot tests can run without a live Functions instance.
+ *
+ *   POST /auth/register → returns a stable test install token
+ *   POST /import        → returns three pre-cooked normalized contributions
+ *                         and one rejected row, mirroring what a real
+ *                         extraction would shape. Optional `delayMs` lets
+ *                         screenshots capture the in-flight state of the
+ *                         pending-imports list before the row pops.
+ */
+async function mockFileUploadBackend(page: Page, opts: { delayMs?: number } = {}) {
+  const delay = opts.delayMs ?? 0;
+  await page.route(`${BACKEND}/auth/register`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        token: 'screenshot-install-token',
+        expiresAt: Math.floor(Date.now() / 1000) + 3600,
+      }),
+    });
+  });
+  await page.route(`${BACKEND}/import`, async (route) => {
+    if (delay > 0) await new Promise((r) => setTimeout(r, delay));
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        contributions: [
+          {
+            source: 'github',
+            category: 'delivery',
+            signal: 'Shipped login redesign (PR #42)',
+            rawData: { pr: 42 },
+            occurredAt: recentISO(10),
+            weight: 4,
+            externalId: 'gh:42',
+          },
+          {
+            source: 'github',
+            category: 'collaboration',
+            signal: 'Reviewed payments PR (PR #43)',
+            rawData: {},
+            occurredAt: recentISO(7),
+            weight: 2,
+            externalId: 'gh:43',
+          },
+          {
+            source: 'manual',
+            category: 'delivery',
+            signal: 'Wrote runbook for incident-response',
+            rawData: {},
+            occurredAt: recentISO(3),
+            weight: 3,
+            externalId: 'rb:001',
+          },
+        ],
+        rejectedRows: 1,
+      }),
+    });
+  });
+}
+
+async function submitImport(page: Page, label: string, fileName = 'commits.txt') {
+  await page.getByRole('button', { name: /^import from file$/i }).click();
+  await page.getByPlaceholder(/work laptop/i).fill(label);
+  await page.getByRole('button', { name: 'next →' }).click();
+  await page.setInputFiles('input[type="file"]', {
+    name: fileName,
+    mimeType: 'text/plain',
+    buffer: Buffer.from(`commits dump labelled ${label}`),
+  });
+  await page.getByRole('button', { name: /upload and extract/i }).click();
+}
+
 async function unlock(page: Page) {
   await page.goto('/dashboard');
   const fields = page.getByPlaceholder(/passphrase/i);
@@ -337,7 +414,95 @@ test.describe('UI screenshots', () => {
     await shot(page, '09-dashboard-with-gitlab-data');
   });
 
-  test('10 — wrap status viewer, pending state', async ({ page }) => {
+  // ---------------------------------------------------------------------
+  // Spec 50 — file-upload provider screenshots
+  // ---------------------------------------------------------------------
+
+  test('10 — timeline sidebar showing the Import-from-file button next to Manual input', async ({ page }) => {
+    await unlock(page);
+    // The two buttons live side-by-side under the wrap CTA on the timeline.
+    await expect(page.getByRole('button', { name: /^import from file$/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /add manually/i })).toBeVisible();
+    await shot(page, '10-timeline-action-buttons');
+  });
+
+  test('11 — import modal step 1 (label the batch), opened from the timeline', async ({ page }) => {
+    await unlock(page);
+    await page.getByRole('button', { name: /^import from file$/i }).click();
+    await expect(page.getByRole('heading', { name: /import from a file/i })).toBeVisible();
+    await page.getByPlaceholder(/work laptop/i).fill('Q1 commits from work laptop');
+    await shot(page, '11-import-step1-label');
+  });
+
+  test('12 — import modal step 2 (file + model + egress disclosure)', async ({ page }) => {
+    await mockFileUploadBackend(page);
+    await unlock(page);
+    await page.getByRole('button', { name: /^import from file$/i }).click();
+    await page.getByPlaceholder(/work laptop/i).fill('Q1 commits from work laptop');
+    await page.getByRole('button', { name: 'next →' }).click();
+
+    // The disclosure copy, the 3-parallel callout, and the model picker
+    // should all be visible.
+    await expect(page.getByTestId('egress-disclosure')).toBeVisible();
+    await expect(page.getByTestId('egress-provider')).toBeVisible();
+    await expect(page.getByText(/up to 3 imports run in parallel/i)).toBeVisible();
+
+    await page.setInputFiles('input[type="file"]', {
+      name: 'q1-commits.txt',
+      mimeType: 'text/plain',
+      buffer: Buffer.from(
+        [
+          '2026-02-01  Shipped login redesign (PR #42)',
+          '2026-02-03  Reviewed payments PR (PR #43)',
+          '2026-02-05  Wrote runbook for incident-response',
+        ].join('\n'),
+      ),
+    });
+    await shot(page, '12-import-step2-disclosure');
+  });
+
+  test('13 — pending import row appears in the timeline sidebar', async ({ page }) => {
+    // Slow the /import response down so the row stays visible long enough
+    // to capture before it auto-pops on completion.
+    await mockFileUploadBackend(page, { delayMs: 3000 });
+    await unlock(page);
+    await submitImport(page, 'Q1 commits from work laptop');
+
+    const row = page.getByTestId('pending-import-row');
+    await expect(row).toBeVisible();
+    await expect(row).toHaveAttribute('data-status', /queued|running/);
+    await expect(row).toContainText('Q1 commits from work laptop');
+    await shot(page, '13-timeline-pending-import');
+  });
+
+  test('14 — concurrency cap: 3 running + 1 queued in the sidebar', async ({ page }) => {
+    // Slow uploads so all four are still in flight when we screenshot.
+    await mockFileUploadBackend(page, { delayMs: 4000 });
+    await unlock(page);
+
+    await submitImport(page, 'Batch one');
+    await submitImport(page, 'Batch two');
+    await submitImport(page, 'Batch three');
+    await submitImport(page, 'Batch four');
+
+    const rows = page.getByTestId('pending-import-row');
+    await expect(rows).toHaveCount(4);
+
+    // Exactly 3 should be running; the fourth waits in the queue.
+    await expect(rows.filter({ has: page.locator('[data-status="running"]') })).toHaveCount(0);
+    // Use the attribute selector directly — Playwright doesn't drill into
+    // attributes via `filter`, so re-query.
+    await expect(page.locator('[data-testid="pending-import-row"][data-status="running"]')).toHaveCount(3);
+    await expect(page.locator('[data-testid="pending-import-row"][data-status="queued"]')).toHaveCount(1);
+
+    await shot(page, '14-timeline-concurrency-cap');
+  });
+
+  // ---------------------------------------------------------------------
+  // Wrap status + wrapped tab screenshots
+  // ---------------------------------------------------------------------
+
+  test('15 — wrap status viewer, pending state', async ({ page }) => {
     await mockWrapBackend(page, { pollResponse: 'running' });
     await unlock(page);
     await page.getByRole('button', { name: /try with demo data/i }).click();
@@ -348,10 +513,10 @@ test.describe('UI screenshots', () => {
     await expect(page.getByRole('heading', { name: /generating your wrap/i })).toBeVisible({
       timeout: 15_000,
     });
-    await shot(page, '10-wrap-status-pending');
+    await shot(page, '15-wrap-status-pending');
   });
 
-  test('11 — wrapped tab, populated', async ({ page }) => {
+  test('16 — wrapped tab, populated', async ({ page }) => {
     await mockWrapBackend(page, { pollResponse: 'complete' });
     await unlock(page);
     await page.getByRole('button', { name: /try with demo data/i }).click();
@@ -366,6 +531,6 @@ test.describe('UI screenshots', () => {
     await page.getByRole('button', { name: /^wrapped$/i }).click();
     await expect(page.getByRole('heading', { name: /^wrapped\.$/i })).toBeVisible();
     await expect(page.getByText(/year-end|snapshot/i).first()).toBeVisible({ timeout: 10_000 });
-    await shot(page, '11-wrapped-tab-populated');
+    await shot(page, '16-wrapped-tab-populated');
   });
 });

@@ -58,6 +58,7 @@ describe('privacy invariants — client AI wrappers stay thin', () => {
         join('src', 'lib', 'ai', 'classify.ts'),
         join('src', 'lib', 'ai', 'generate.ts'),
         join('src', 'lib', 'ai', 'endpoint.ts'),
+        join('src', 'lib', 'ai', 'import.ts'),
         join('src', 'lib', 'ai', 'models.ts'),
         join('src', 'lib', 'ai', 'reset.ts'),
       ]),

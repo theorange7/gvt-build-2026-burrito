@@ -16,7 +16,18 @@ export interface ContributionProvider {
   readonly capabilities: ProviderCapabilities;
   readonly auth: AuthAdapter;
   readonly identity: IdentityAdapter;
-  readonly sync: SyncAdapter;
+  /**
+   * Cursor-based remote sync. Mutually exclusive with `import` at the
+   * registry level: a provider is either pull (sync) or push (import), never
+   * both. See registry.ts for the runtime check.
+   */
+  readonly sync?: SyncAdapter;
+  /**
+   * One-shot file import. Used by the file-upload provider (spec 50): the
+   * extraction happens server-side via the LLM, so there is no client-side
+   * RawEvent stage to model — `run()` returns already-normalized rows.
+   */
+  readonly import?: ImportAdapter;
 }
 
 export interface ProviderCapabilities {
@@ -24,10 +35,27 @@ export interface ProviderCapabilities {
   fixedInstanceUrl?: string;
   supportsRevocation: boolean;
   supportsIncrementalSync: boolean;
+  /**
+   * True for providers whose only ingest path is a file-upload import (spec
+   * 50). The dashboard uses this to branch the connect UI between the
+   * remote-token flow and the file-picker flow without reaching into the
+   * adapter shape.
+   */
+  supportsFileImport?: boolean;
   defaultScopes: readonly string[];
 }
 
-export type AuthAdapter = OAuthPkceAdapter | ApiTokenAdapter;
+export type AuthAdapter = OAuthPkceAdapter | ApiTokenAdapter | NoCredentialsAdapter;
+
+/**
+ * For providers that don't talk to a remote API on the user's behalf — the
+ * file-upload provider is the canonical case. Connect flow just stores an
+ * identity row keyed by a user-supplied label; nothing to validate, nothing
+ * to refresh, nothing to revoke.
+ */
+export interface NoCredentialsAdapter {
+  kind: 'none';
+}
 
 export interface OAuthPkceAdapter {
   kind: 'oauth-pkce';
@@ -97,6 +125,20 @@ export interface SyncAdapter {
 }
 
 export type SyncCursor = Record<string, unknown> & { cursorVersion: number };
+
+export interface ImportAdapter {
+  run(args: {
+    file: File;
+    modelId: string;
+    label: string;
+    identity: ExternalIdentity;
+    signal: AbortSignal;
+  }): Promise<{
+    contributions: NormalizedContribution[];
+    rejectedRows: number;
+  }>;
+  externalIdFor(c: NormalizedContribution): string;
+}
 
 export interface RawEvent {
   type: string;

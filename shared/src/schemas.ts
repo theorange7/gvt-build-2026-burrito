@@ -70,3 +70,24 @@ export const registerResponseSchema = z.object({
   token: z.string().min(1),
   expiresAt: z.number(),
 });
+
+export const importedContributionSchema = z.object({
+  source: z.string().min(1),
+  category: contributionCategorySchema,
+  signal: z.string().min(1),
+  rawData: z.record(z.unknown()).optional().default({}),
+  occurredAt: z.string().min(1),
+  weight: z.number().min(1).max(5),
+  externalId: z.string().optional(),
+  externalUrl: z.string().optional(),
+});
+
+export const importMetaSchema = z.object({
+  modelId: z.string().min(1),
+  label: z.string().min(1).max(200),
+});
+
+export const importResponseSchema = z.object({
+  contributions: z.array(importedContributionSchema),
+  rejectedRows: z.number().int().nonnegative(),
+});

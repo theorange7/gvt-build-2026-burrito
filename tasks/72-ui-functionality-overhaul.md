@@ -1,9 +1,9 @@
 # Spec 72 — UI and functionality overhaul
 
-**Status**: Shaped — ready to pick up (subsumes the UI scope of Specs 70 and 71)
+**Status**: Shaped — ready to pick up (subsumes the UI scope of Specs 70 and 71; incorporates file upload — Spec 50 — as a recap entry point)
 **Branch**: both (client primary; server gains one route; shared gains several types)
-**Appetite**: large (≤ 1 week) — see Notes; this is at the upper edge and likely needs 2 weeks if shipped as a single initiative. Phasing is intentional so the first 2–3 PRs are landable independently and can ship for demo even if later PRs slip.
-**Last shaped**: 2026-05-16
+**Appetite**: large (≤ 1 week) — see Notes; this is at the upper edge and likely needs 2 weeks if shipped as a single initiative. Phasing is intentional so the first 2–3 PRs are landable independently and can ship for demo even if later PRs slip. The file-upload-as-recap addition (2026-05-21 reshape) is incremental on top — see "File upload as a recap entry point".
+**Last shaped**: 2026-05-21
 
 ## Problem
 
@@ -37,6 +37,15 @@ The prototype also explores three navigation taxonomies (`flat`,
 `grouped`, `timeline-first`) via a tweaks panel. This spec picks
 **flat** as the v1 default and treats the other two as deferred
 explorations.
+
+Separately, **file upload** (Spec 50) shipped as a contribution
+provider but lands outside this workflow: an uploaded batch becomes
+loose artifacts in the timeline with no path into a recap. The
+Recap → Record → Wrap model has no first-class place for "I brought a
+file of my work — help me sit down with it." This spec closes that
+gap: a completed file upload auto-creates a recap session scoped to
+that upload, so file upload becomes a way *into* the recap workflow
+rather than a side-channel around it.
 
 The work is a full UI + functionality overhaul of the production app
 that lands behind the existing unlock gate, identity flow, and
@@ -152,6 +161,18 @@ The dashboard is rebuilt. It is **not** the existing
   - Green card; "[day] is in the book." + "nice. two panels locked,
     one skipped."
   - CTAs: "read your record →" + "continue".
+- File-upload session prompts (`FileUploadSessionPrompt`) — a stack
+  of cards below the day prompt, one per pending (open,
+  not-yet-closed) file-upload session. Reuses the `SessionPrompt`
+  card treatment (this pattern is new — not in the prototype — so it
+  borrows the existing card's visual language). Each card: "you
+  imported N artifacts as \"[label]\". when you're ready, we can sit
+  down with them." + "open session →" CTA linking to `/session/[id]`
+  (the session already exists — this is "open", not "start"). A
+  "✕ not now" dismissal suppresses the card for the day via the same
+  per-day dismissal mechanism as the day prompt; it does not delete
+  the session, which stays reachable from `/sessions`. See "File
+  upload as a recap entry point".
 - `SectionLabel` "TODAY · [day]" + the today's-artifact feed.
 - Today's artifact feed (`ArtifactFeed`): a stack of rows, each row
   is `[kind chip] [title] [source chip] [time]`. Read-only in v1
@@ -181,7 +202,8 @@ Pixel-match `Workbench` in `workbench.jsx`.
 - Header bar (cream, 2px ink bottom border): section label
   "EDITORIAL WORKBENCH" + display headline of the scope
   (`scope.label` — e.g., "Tuesday, May 14", or "May 10 → May 14",
-  or "about frontend/app", or "with @sam"). `[N PANELS]` chip.
+  or "about frontend/app", or "with @sam", or
+  "imported · \"Q1 commits\""). `[N PANELS]` chip.
   Right side: "✕ leave session" ghost button + "X OF Y RESOLVED"
   mono count.
 - Body (paper background): grid of `PanelCard`s, `minmax(320px, 1fr)`,
@@ -355,10 +377,84 @@ Pixel-match `SessionsIndex` in `timeline.jsx`.
 
 - "○ PAST SESSIONS" + display headline + supporting prose.
 - Card per session: mono session id + display date + scope chip
-  (e.g., "RANGE") + "N LOCKED" / "M SKIPPED" chips + "OPEN →".
+  ("DAY" / "RANGE" / "PROJECT" / "PERSON" / "FILE UPLOAD") + "N
+  LOCKED" / "M SKIPPED" chips + "OPEN →".
 - Click → routes to that session's read-only view (v1: same
   destination as `/record` filtered to that session — or just
   `/record` if filtering is too much work).
+
+### File upload as a recap entry point
+
+Spec 50 shipped the file-upload provider: the user uploads a text
+file, the server extracts contributions, and (with the Spec 50 review
+step) the user confirms dates and details in a modal before the rows
+land encrypted on the device. Today those rows simply join the
+`contributions` pool and become loose artifacts. This spec makes file
+upload a **first-class recap entry point**.
+
+In the Recap → Record → Wrap model, file upload is a means of **recap
+only**: its job is to hand the user a batch of work to sit down with.
+It is not a wrap entry point and not a timeline backfill.
+
+**Auto-created session on upload completion.** When a file-upload
+import completes — the user has confirmed the Spec 50 review modal and
+the rows are persisted — the client auto-creates a `Session` scoped to
+that upload. The session is created **open** (panels pending), never
+closed: the upload's job is to produce something to recap; the recap
+itself stays the user's to do. If an upload adds **zero** new
+artifacts (every row was a duplicate — `added === 0`), no session is
+created; the existing "all duplicates" import result is surfaced
+instead. Nothing to recap, no empty session.
+
+**One session per upload event.** Each upload creates exactly one
+file-upload session, keyed by a per-upload `uploadId` (the import
+queue item's id). Re-uploading under the same label still appends to
+the same file-upload *identity* (Spec 50 behaviour — unchanged) but
+creates a *new* session: each batch is its own sit-down.
+
+**Sessions per client per day.** A day has at most **one** day-scoped
+session — `SessionScope` of kind `day` is keyed by date, so two
+sessions for the same day cannot exist. File-upload sessions are
+**unbounded** per day: three uploads in a day yield three file-upload
+sessions. So a client's sessions for a given day are: one day session
+(if started) plus zero-or-more file-upload sessions.
+
+**No double-counting between the day session and file-upload
+sessions.** A file-upload session's artifacts are exactly the rows
+that upload produced; its panels reference those artifact ids
+directly. The day-scoped collection logic in
+`src/lib/sensemaking/collections.ts` **excludes** file-upload
+artifacts — even when an imported row's `occurredAt` is today (the
+Spec 50 review step auto-dates undated rows to the upload day), it
+belongs to its file-upload session, not the day session. The day
+session draws only from the daily recording: synced + manual
+artifacts. The collection filter keys this off the artifact's
+identity provider — rows whose identity has
+`providerId === 'file-upload'` are visible only to their own
+file-upload session.
+
+**Orchestrator change.** `importIntoIdentity` currently returns
+`{ added, skippedExisting, rejectedRows }`. To build the auto-created
+session's panels it must also return the **ids of the newly-added
+contributions** (`addedIds: string[]`). The session-creation helper
+(`createSessionFromUpload` in `src/lib/sensemaking/session.ts`) takes
+those ids, runs the same panel extractor used for every other scope,
+and writes the `Session` to the encrypted `sessions` table. The hook
+fires from the import queue (`ImportQueueContext`) on the `complete`
+transition, after the existing query-cache invalidation.
+
+**Workbench.** A file-upload session opens the same workbench as any
+other scope. Its `scopeLabel` is `imported · "[label]"` (e.g.
+`imported · "Q1 commits from work laptop"`). Panel extraction is
+unchanged: `by-repo` grouping when the upload produced > 5 artifacts,
+a single `all-of-day`-style panel otherwise.
+
+**Surfacing.** Pending file-upload sessions surface as a stack of
+prompt cards on the dashboard (see "Dashboard" above) and in
+`/sessions` with a `FILE UPLOAD` scope chip. The timeline
+(`/timeline`) stays day-recording-focused — a file-upload session is
+not a day, so it gets no timeline row in v1; a marker on the upload
+day is a v2 follow-up.
 
 ### Data shape (replaces + supersedes Spec 70's shape)
 
@@ -402,7 +498,12 @@ export type SessionScope =
   | { kind: "day"; date: string }
   | { kind: "range"; from: string; to: string }
   | { kind: "project"; projectId: string }
-  | { kind: "person"; handle: string };
+  | { kind: "person"; handle: string }
+  // file-upload sessions (Spec 50 + this spec): one per upload event.
+  // uploadId is unique per upload (the import-queue item id);
+  // identityId ties back to the Spec 50 file-upload identity for
+  // disconnect semantics; label is the user's batch label.
+  | { kind: "file-upload"; uploadId: string; identityId: string; label: string };
 
 export interface Session {
   id: string;
@@ -529,6 +630,25 @@ markers.
   ghost-disabled.
 - **Don't surface forbidden phrases anywhere.** Use the same
   copy-lint check as Spec 70.
+- **Don't merge a file upload's artifacts into the day session.**
+  File-upload artifacts belong to their own file-upload session only.
+  The day-scope collection must filter them out by identity provider —
+  see "File upload as a recap entry point". A row auto-dated to today
+  by the Spec 50 review step is the trap: it looks like a "today"
+  artifact but is not part of the daily recording.
+- **Don't auto-close the file-upload session.** It is created open,
+  with pending panels. The user does the recap; the upload only hands
+  them the batch.
+- **Don't create a session for an upload that added zero artifacts.**
+  If every extracted row was a duplicate (`added === 0`) there is
+  nothing to recap — surface the existing import result, create no
+  session.
+- **Don't reuse one session across re-uploads of the same label.**
+  Same identity, yes (Spec 50 behaviour); same session, no. Each
+  upload event is its own session keyed by `uploadId`.
+- **Don't give file-upload sessions a timeline row.** The timeline is
+  the day-by-day recording view. File-upload sessions live on the
+  dashboard prompt stack and in `/sessions` only.
 
 ## No-gos
 
@@ -553,6 +673,16 @@ markers.
 - **No new local-store encryption layer.** Reuse the existing
   envelope encryption.
 - **No new wrap renderer.** The existing one stays.
+- **No server-side creation of file-upload sessions.** The session is
+  created client-side and written to the encrypted `sessions` table,
+  exactly like every other session. The Spec 50 `/import` route is
+  unchanged — it still returns extracted rows and nothing else.
+- **No making file upload a wrap entry point.** File upload feeds the
+  recap. The wrap continues to read from the record (Spec 71). There
+  is no "make a wrap from this upload" affordance.
+- **No file-upload backfill of the day timeline.** Imported artifacts
+  do not appear in the dashboard's today artifact feed or in the
+  day-scoped session.
 
 ## Verification
 
@@ -625,6 +755,27 @@ Functional — record / timeline / sessions:
 - Clicking a sealed day → routes to `/record`.
 - `/sessions` lists all closed sessions with their resolution
   counts.
+
+Functional — file upload as recap:
+- Completing a file-upload import (Spec 50 modal → review step →
+  confirm) auto-creates one open `Session` of scope kind
+  `file-upload`, with panels extracted from exactly the rows that
+  upload added.
+- An import that adds zero new artifacts (all duplicates) creates no
+  session.
+- Re-uploading under an existing label creates a new, separate
+  file-upload session (same identity, new `uploadId`).
+- The day-scoped session for the upload day does not include any
+  file-upload artifacts, including rows auto-dated to today by the
+  review step.
+- The dashboard renders one `FileUploadSessionPrompt` card per
+  pending file-upload session; "open session →" routes to that
+  session's workbench; "✕ not now" suppresses the card for the day
+  without deleting the session.
+- `/sessions` lists file-upload sessions with the `FILE UPLOAD` scope
+  chip; the workbench header for one reads `imported · "[label]"`.
+- Locking a panel in a file-upload session writes a `RecordEntry`
+  the same as any other session; it appears in `/record`.
 
 Privacy invariants (extend the existing suites):
 - All new client modules under `src/components/session/`,
@@ -723,6 +874,15 @@ later ones.
 
 The `## Done` block + index update + changelog entry land on PR 5.
 
+**File-upload-as-recap placement.** The `file-upload` `SessionScope`
+variant + its Zod schema and the day-scope collection-exclusion filter
+land in PR 1 with the rest of the data layer. The auto-session hook
+(`createSessionFromUpload`, the `ImportQueueContext` wiring, the
+`importIntoIdentity` `addedIds` change), the workbench `scopeLabel`,
+and the dashboard `FileUploadSessionPrompt` stack land in PR 3 with
+the session machinery. The `/sessions` `FILE UPLOAD` chip lands in
+PR 5 polish.
+
 ### Cut-list if appetite blows out
 
 In order:
@@ -747,8 +907,16 @@ In order:
 If by end of Day 4 PR 3 isn't merge-ready, ship onboarding +
 dashboard only as a "preview" build and follow up with the rest.
 
-### Relationship to Specs 70 and 71
+### Relationship to Specs 50, 70 and 71
 
+- **Spec 50** (file-upload contribution provider): shipped and
+  `Done`. This spec consumes it as the recap entry point described in
+  "File upload as a recap entry point" — a completed upload
+  auto-creates a file-upload-scoped session. The only change Spec 50's
+  code needs is `importIntoIdentity` returning `addedIds`; the
+  `/import` route, the provider, and the review step are otherwise
+  untouched. Spec 50's spec file carries a forward-reference note
+  under its `Notes`.
 - **Spec 70** (interactive sense-making v0): UI scope is fully
   superseded by Spec 72. Data and server scope (Artifact type,
   consolidation logic, `/compose-panel` route, the record table,
@@ -807,8 +975,25 @@ new patterns.
   settings, or add one by hand."). Implementation lives in
   `SessionPrompt`'s empty branch.
 
+### Reshaping history
+
+- **2026-05-21** — added "File upload as a recap entry point". File
+  upload (Spec 50) was previously disconnected from the
+  Recap → Record → Wrap workflow; uploaded rows were loose artifacts.
+  The reshape makes a completed upload auto-create an open,
+  file-upload-scoped recap session, adds the `file-upload`
+  `SessionScope` variant, and establishes the "one day session +
+  N file-upload sessions per day" model with no double-counting
+  between them. Incremental on top of the existing five-PR plan —
+  see "File-upload-as-recap placement" under Phasing.
+
 ### Out-of-scope follow-ups (parking lot)
 
+- File-upload session markers on the day-by-day timeline (v1 keeps
+  file-upload sessions off the timeline; they surface on the
+  dashboard prompt stack and in `/sessions` only).
+- Auto-creating the day session (it stays user-initiated; only
+  file-upload sessions auto-create on completion).
 - Curated project grouping (naming, merging, renaming).
 - Person-detail "make a wrap together" — wire to Spec 71-evolved
   wrap path.

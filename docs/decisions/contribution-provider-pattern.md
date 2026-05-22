@@ -1,7 +1,36 @@
 # Contribution Provider Pattern
 
-Status: design proposal for Burrito v1
-Last updated: 2026-05-02
+Status: design proposal for Burrito v1 — extended by spec 50
+Last updated: 2026-05-17
+
+## Extension: file-upload import path (spec 50, 2026-05-17)
+
+The original pattern modelled every provider as **pull** (cursor + remote
+API + raw events → normalized contributions). Spec 50 adds **push** as a
+backwards-compatible second shape: a provider whose only ingest path is a
+one-shot file upload. The contract was extended:
+
+- `ContributionProvider.sync` is now optional and is joined by an
+  optional `ContributionProvider.import: ImportAdapter`. The registry
+  enforces "exactly one of sync or import" at registration time.
+- `AuthAdapter` gained a third variant `NoCredentialsAdapter`
+  (`{ kind: 'none' }`) for providers with no remote token to validate.
+- `ProviderCapabilities` gained `supportsFileImport: boolean` so UI can
+  branch without reaching into the adapter shape.
+- The orchestrator gained `connectFileUploadIdentity({ label })` and
+  `importIntoIdentity(identityId, file, { modelId, label? })`. Both reuse
+  the same `findExistingExternalIds` → `bulkAddContributions` path that
+  `syncIdentity` uses, so encryption-on-write and externalId-dedupe
+  guarantees come along unchanged.
+
+Privacy carve-out (only applies to the `file-upload` provider): the file
+contents do briefly leave the device, processed in memory by the server's
+`POST /import` and discarded immediately. The mechanism is bounded by
+`server/test/unit/privacy-invariants.test.ts` (no queue, table, blob, or
+disk imports in `import.ts`; no logging of file content). See
+`tasks/50-file-upload-provider.md`.
+
+---
 
 ## Motivation
 
