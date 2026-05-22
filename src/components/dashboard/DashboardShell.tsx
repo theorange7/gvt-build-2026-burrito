@@ -10,7 +10,7 @@
 import { useMutation } from '@tanstack/react-query';
 import { useLiveQuery } from 'dexie-react-hooks';
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AddProviderForm } from '@/components/settings/AddProviderForm';
 import { SyncControls } from '@/components/settings/SyncControls';
 import { ContributionFeed } from '@/components/dashboard/ContributionFeed';
@@ -23,7 +23,7 @@ import { PendingImportsList } from '@/components/dashboard/PendingImportsList';
 import { ResetModal } from '@/components/dashboard/ResetModal';
 import { useContributions } from '@/components/dashboard/useContributions';
 import { hasActiveKey } from '@/lib/local-store/crypto';
-import { db } from '@/lib/local-store/db';
+import { clearSessionId, db, META_KEYS } from '@/lib/local-store/db';
 import { listIdentities, type StoredIdentity } from '@/lib/local-store/identities';
 import { isSeeded, markSeeded, seedFromBundledDemo } from '@/lib/local-store/seed';
 import { listWraps } from '@/lib/local-store/wraps';
@@ -492,6 +492,42 @@ function providerColor(providerId: string, p: MxPalette): string {
   return map[providerId] ?? p.accent;
 }
 
+function LeavePreviewSection({ p }: { p: MxPalette }) {
+  const [busy, setBusy] = useState(false);
+
+  const handleLeave = useCallback(async () => {
+    setBusy(true);
+    // Delete meta keys from the current per-session DB while it is still active.
+    await db().meta.delete(META_KEYS.inviteValidated);
+    await db().meta.delete(META_KEYS.wrapInstallToken);
+    // Clear the session — db() will now point to the default DB on next open.
+    clearSessionId();
+    window.location.reload();
+  }, []);
+
+  return (
+    <div style={{ background: '#fff', border: '2px solid ' + p.ink, borderRadius: 16, boxShadow: '4px 4px 0 ' + p.ink, padding: '22px 26px' }}>
+      <p style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 10, fontWeight: 700, color: p.ink, letterSpacing: '0.14em', opacity: 0.6, margin: '0 0 6px' }}>PREVIEW</p>
+      <h2 style={{ fontFamily: '"Space Grotesk", system-ui, sans-serif', fontSize: 18, fontWeight: 700, color: p.ink, margin: '0 0 8px' }}>Leave preview</h2>
+      <p style={{ fontFamily: '"Space Grotesk", system-ui, sans-serif', fontSize: 13, color: p.ink, opacity: 0.65, margin: '0 0 14px', lineHeight: 1.5 }}>
+        Clear your invite session. You will need a valid invite code to re-enter.
+      </p>
+      <button
+        type="button"
+        onClick={handleLeave}
+        disabled={busy}
+        style={{
+          background: 'transparent', border: '2px solid ' + p.ink, borderRadius: 10,
+          padding: '9px 20px', fontFamily: '"Space Grotesk", system-ui, sans-serif', fontSize: 13, fontWeight: 700,
+          color: p.ink, cursor: busy ? 'not-allowed' : 'pointer', opacity: busy ? 0.5 : 1,
+        }}
+      >
+        {busy ? 'Leaving…' : 'Leave preview'}
+      </button>
+    </div>
+  );
+}
+
 function SettingsTab({
   p,
   profileName,
@@ -712,6 +748,9 @@ function SettingsTab({
       <p style={{ fontFamily: mxMono, fontSize: 10, color: p.ink, opacity: 0.55, letterSpacing: '0.08em', margin: 0, textAlign: 'center' }}>
         {connectedCount} / {totalProviders} provider{totalProviders !== 1 ? 's' : ''} connected
       </p>
+
+      {/* Leave preview section */}
+      <LeavePreviewSection p={p} />
 
       {/* Reset section */}
       <div style={{ background: '#fff', border: '2px solid ' + p.ink, borderRadius: 16, boxShadow: '4px 4px 0 ' + p.ink, padding: '22px 26px' }}>

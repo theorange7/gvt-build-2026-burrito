@@ -1,12 +1,53 @@
 'use client';
 
 import Link from 'next/link';
+import { useCallback, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { AddProviderForm } from './AddProviderForm';
 import { ProvidersList } from './ProvidersList';
+import { clearSessionId, db, META_KEYS } from '@/lib/local-store/db';
 
 // Side-effect import: registers built-in providers (GitLab Dedicated, …)
 // before the AddProviderForm reads from the registry.
 import '@/lib/providers';
+
+function LeavePreviewButton() {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+
+  const handleLeave = useCallback(async () => {
+    setBusy(true);
+    await db().meta.delete(META_KEYS.inviteValidated);
+    await db().meta.delete(META_KEYS.wrapInstallToken);
+    clearSessionId();
+    router.refresh();
+    window.location.reload();
+  }, [router]);
+
+  return (
+    <button
+      onClick={handleLeave}
+      disabled={busy}
+      style={{
+        fontFamily: "'Space Grotesk', sans-serif",
+        background: 'transparent',
+        border: '2px solid #0A0A0A',
+        boxShadow: '3px 3px 0 #0A0A0A',
+        borderRadius: '8px',
+        padding: '8px 18px',
+        color: '#0A0A0A',
+        fontWeight: 600,
+        fontSize: '0.875rem',
+        cursor: busy ? 'not-allowed' : 'pointer',
+        opacity: busy ? 0.5 : 1,
+      }}
+      onMouseEnter={(e) => { if (!busy) e.currentTarget.style.transform = 'translate(-1px,-1px)'; }}
+      onMouseLeave={(e) => { e.currentTarget.style.transform = 'translate(0,0)'; }}
+    >
+      {busy ? 'Leaving…' : 'Leave preview'}
+    </button>
+  );
+}
 
 export function SettingsShell() {
   return (
@@ -46,23 +87,26 @@ export function SettingsShell() {
           >
             Contribution providers.
           </h1>
-          <Link
-            href="/dashboard"
-            className="text-sm transition hover:translate-y-[-1px]"
-            style={{
-              fontFamily: "'Space Grotesk', sans-serif",
-              background: '#FBF5E5',
-              border: '2px solid #0A0A0A',
-              boxShadow: '3px 3px 0 #0A0A0A',
-              borderRadius: '8px',
-              padding: '8px 18px',
-              color: '#0A0A0A',
-              fontWeight: 600,
-              textDecoration: 'none',
-            }}
-          >
-            ← Back to dashboard
-          </Link>
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+            <LeavePreviewButton />
+            <Link
+              href="/dashboard"
+              className="text-sm transition hover:translate-y-[-1px]"
+              style={{
+                fontFamily: "'Space Grotesk', sans-serif",
+                background: '#FBF5E5',
+                border: '2px solid #0A0A0A',
+                boxShadow: '3px 3px 0 #0A0A0A',
+                borderRadius: '8px',
+                padding: '8px 18px',
+                color: '#0A0A0A',
+                fontWeight: 600,
+                textDecoration: 'none',
+              }}
+            >
+              ← Back to dashboard
+            </Link>
+          </div>
         </div>
         <p
           className="text-sm leading-7"
