@@ -18,10 +18,11 @@ import {
   lock,
   setActiveKey,
 } from '@/lib/local-store/crypto';
-import { db, META_KEYS } from '@/lib/local-store/db';
+import { db, META_KEYS, SESSION_STORAGE_KEY, setSessionId } from '@/lib/local-store/db';
 import { isBrowser } from '@/lib/local-store/platform';
+import { fetchInstallToken } from '@/lib/local-store/auth';
 
-type GateStatus = 'checking' | 'setup' | 'unlock' | 'unlocked';
+type GateStatus = 'checking' | 'invite' | 'setup' | 'unlock' | 'unlocked';
 
 const INK = '#0A0A0A';
 const CREAM = '#FFF4DE';
@@ -33,6 +34,7 @@ export function UnlockGate({ children }: { children: React.ReactNode }) {
   const [status, setStatus] = useState<GateStatus>('checking');
   const [passphrase, setPassphrase] = useState('');
   const [confirm, setConfirm] = useState('');
+  const [inviteCode, setInviteCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [showForgetDevice, setShowForgetDevice] = useState(false);
@@ -43,12 +45,45 @@ export function UnlockGate({ children }: { children: React.ReactNode }) {
       setStatus('unlocked');
       return;
     }
-    db()
-      .meta.get(META_KEYS.kdfSalt)
-      .then((row) => {
-        setStatus(row ? 'unlock' : 'setup');
-      });
+    // Invite check uses localStorage (synchronous) so we know which DB to open
+    // before Dexie is ever constructed.
+    if (!localStorage.getItem(SESSION_STORAGE_KEY)) {
+      setStatus('invite');
+      return;
+    }
+    // Session is active — db() now opens the per-session database.
+    (async () => {
+      const saltRow = await db().meta.get(META_KEYS.kdfSalt);
+      setStatus(saltRow ? 'unlock' : 'setup');
+    })();
   }, []);
+
+  const handleInvite = useCallback(async () => {
+    setError(null);
+    if (!inviteCode.trim()) {
+      setError('Enter your invite code.');
+      return;
+    }
+    setBusy(true);
+    try {
+      // 1. Validate with backend — no DB access yet so we don't open any DB prematurely.
+      const installToken = await fetchInstallToken(inviteCode.trim());
+      // 2. Activate the per-session namespace. db() will now open the correct
+      //    per-invite-code database for all subsequent calls.
+      setSessionId(inviteCode.trim());
+      // 3. Persist token and validation flag into the newly-scoped database.
+      await db().meta.put({ key: META_KEYS.wrapInstallToken, value: installToken });
+      await db().meta.put({ key: META_KEYS.inviteValidated, value: true });
+      setInviteCode('');
+      const saltRow = await db().meta.get(META_KEYS.kdfSalt);
+      setStatus(saltRow ? 'unlock' : 'setup');
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : '';
+      setError(msg === 'invalid-invite-code' ? 'Invalid invite code. Try again.' : 'Could not validate code. Is the server running?');
+    } finally {
+      setBusy(false);
+    }
+  }, [inviteCode]);
 
   const handleSetup = useCallback(async () => {
     setError(null);
@@ -160,12 +195,49 @@ export function UnlockGate({ children }: { children: React.ReactNode }) {
             lineHeight: 1.15,
           }}
         >
-          {status === 'setup'
-            ? 'Create your passphrase.'
-            : status === 'unlock'
-              ? 'Welcome back.'
-              : 'Loading…'}
+          {status === 'invite'
+            ? 'Enter your invite code.'
+            : status === 'setup'
+              ? 'Create your passphrase.'
+              : status === 'unlock'
+                ? 'Welcome back.'
+                : 'Loading…'}
         </h1>
+
+        {/* Invite form */}
+        {status === 'invite' ? (
+          <form
+            style={{ marginTop: '24px', display: 'grid', gap: '16px' }}
+            onSubmit={(e) => { e.preventDefault(); handleInvite(); }}
+          >
+            <p style={{ fontFamily: 'Space Grotesk, sans-serif', fontSize: '14px', lineHeight: 1.6, color: INK, opacity: 0.7 }}>
+              This is a private preview. Enter the invite code you received to get started.
+            </p>
+            <input
+              type="text"
+              autoFocus
+              autoComplete="off"
+              placeholder="BURRITO-XXXX-XX"
+              value={inviteCode}
+              onChange={(e) => setInviteCode(e.target.value)}
+              style={{ background: 'white', border: `2px solid ${INK}`, borderRadius: '10px', padding: '12px 16px', fontFamily: 'JetBrains Mono, monospace', fontSize: '15px', color: INK, outline: 'none', width: '100%', boxSizing: 'border-box', textTransform: 'uppercase' }}
+              onFocus={(e) => { e.currentTarget.style.borderColor = HOT; }}
+              onBlur={(e) => { e.currentTarget.style.borderColor = INK; }}
+            />
+            {error ? (
+              <p style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '12px', color: HOT, fontWeight: 600 }}>{error}</p>
+            ) : null}
+            <button
+              type="submit"
+              disabled={busy}
+              style={{ background: busy ? '#ccc' : HOT, border: `2px solid ${INK}`, boxShadow: busy ? 'none' : `3px 3px 0 ${INK}`, borderRadius: '10px', padding: '13px 20px', fontFamily: 'Space Grotesk, sans-serif', fontSize: '15px', fontWeight: 700, color: busy ? INK : CREAM, cursor: busy ? 'not-allowed' : 'pointer', width: '100%' }}
+              onMouseEnter={(e) => { if (!busy) { e.currentTarget.style.transform = 'translate(-1px,-1px)'; e.currentTarget.style.boxShadow = `4px 4px 0 ${INK}`; } }}
+              onMouseLeave={(e) => { e.currentTarget.style.transform = 'translate(0,0)'; e.currentTarget.style.boxShadow = busy ? 'none' : `3px 3px 0 ${INK}`; }}
+            >
+              {busy ? 'Checking…' : 'Continue'}
+            </button>
+          </form>
+        ) : null}
 
         {/* Checking state */}
         {status === 'checking' ? (

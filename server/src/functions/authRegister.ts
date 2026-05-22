@@ -17,10 +17,33 @@ function clientIp(request: HttpRequest): string {
   );
 }
 
+export function validateInviteCode(code: string): boolean {
+  const raw = process.env.INVITE_CODES;
+  if (!raw) return true; // no gate configured — open access
+  const allowed = raw.split(',').map((c) => c.trim()).filter(Boolean);
+  if (allowed.length === 0) return true;
+  return allowed.includes(code.trim());
+}
+
 export async function authRegister(
   request: HttpRequest,
   context: InvocationContext,
 ): Promise<HttpResponseInit> {
+  // Invite code gate — only enforced when INVITE_CODES env var is set.
+  const rawInviteCodes = process.env.INVITE_CODES;
+  if (rawInviteCodes) {
+    let body: Record<string, unknown> = {};
+    try {
+      body = (await request.json()) as Record<string, unknown>;
+    } catch {
+      // ignore parse errors — missing body means missing code
+    }
+    const code = typeof body.inviteCode === 'string' ? body.inviteCode : '';
+    if (!validateInviteCode(code)) {
+      return { status: 403, jsonBody: { error: 'invalid-invite-code' } };
+    }
+  }
+
   const ip = clientIp(request);
   const limit = checkIpRateLimit(ip, registerRateLimitPerHour());
   if (!limit.ok) {

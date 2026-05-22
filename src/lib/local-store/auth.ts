@@ -32,8 +32,16 @@ async function readStoredToken(): Promise<InstallToken | null> {
   return value;
 }
 
-async function fetchAndStoreToken(): Promise<InstallToken> {
-  const response = await fetch(`${getBackendUrl()}/auth/register`, { method: 'POST' });
+async function fetchAndStoreToken(inviteCode?: string): Promise<InstallToken> {
+  const hasCode = typeof inviteCode === 'string' && inviteCode.length > 0;
+  const response = await fetch(`${getBackendUrl()}/auth/register`, {
+    method: 'POST',
+    headers: hasCode ? { 'Content-Type': 'application/json' } : {},
+    body: hasCode ? JSON.stringify({ inviteCode }) : undefined,
+  });
+  if (response.status === 403) {
+    throw new Error('invalid-invite-code');
+  }
   if (!response.ok) {
     throw new Error(`Failed to register install token (${response.status})`);
   }
@@ -45,13 +53,34 @@ async function fetchAndStoreToken(): Promise<InstallToken> {
   return body;
 }
 
-export async function getOrRegisterInstallToken(): Promise<string> {
+/**
+ * Validate an invite code with the backend and return the issued token
+ * WITHOUT touching the local database. Used by UnlockGate so it can
+ * call setSessionId() to pick the right DB before writing anything.
+ */
+export async function fetchInstallToken(inviteCode?: string): Promise<InstallToken> {
+  const hasCode = typeof inviteCode === 'string' && inviteCode.length > 0;
+  const response = await fetch(`${getBackendUrl()}/auth/register`, {
+    method: 'POST',
+    headers: hasCode ? { 'Content-Type': 'application/json' } : {},
+    body: hasCode ? JSON.stringify({ inviteCode }) : undefined,
+  });
+  if (response.status === 403) throw new Error('invalid-invite-code');
+  if (!response.ok) throw new Error(`Failed to register install token (${response.status})`);
+  const body = (await response.json()) as InstallToken;
+  if (typeof body.token !== 'string' || typeof body.expiresAt !== 'number') {
+    throw new Error('Malformed register response');
+  }
+  return body;
+}
+
+export async function getOrRegisterInstallToken(inviteCode?: string): Promise<string> {
   const stored = await readStoredToken();
   const now = Math.floor(Date.now() / 1000);
   if (stored && stored.expiresAt > now + TOKEN_TTL_BUFFER_SECONDS) {
     return stored.token;
   }
-  const fresh = await fetchAndStoreToken();
+  const fresh = await fetchAndStoreToken(inviteCode);
   return fresh.token;
 }
 
