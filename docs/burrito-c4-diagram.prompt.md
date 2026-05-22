@@ -26,7 +26,7 @@ a C4 Container diagram for the Burrito system. Follow every rule below exactly.
 
 ### 1. Canvas and layout
 
-- Canvas: `width=1120 height=830`, `viewBox="0 0 1120 830"`.
+- Canvas: `width=1440 height=870`, `viewBox="0 0 1440 870"`.
 - Background: dark dot-grid pattern (`#07111F` fill, `#0B1E30` grid lines at 40px spacing).
 - All layout uses **named coordinate constants** at the top of the component function
   (e.g. `AUTH_X`, `WRAP_Y`, `COMP_R`) so coordinates are readable and editable, not magic numbers.
@@ -47,6 +47,7 @@ const C4 = {
   storage:   { bg: "#0F6674", border: "#084650", text: "#fff", sub: "#7DD5DF" },
   test:      { bg: "#4A2E7A", border: "#321D56", text: "#fff", sub: "#C0A0F0" },
   bound:     { fill: "rgba(17,104,189,0.05)", stroke: "#1168BD" },
+  extbound:  { fill: "rgba(85,85,85,0.05)",   stroke: "#505050" },
 };
 ```
 
@@ -87,8 +88,10 @@ Used only for Azure Blob Storage containers.
 **`Person({ x, y, w, label, sub })`**
 Circle head (r=14) above a rounded rect body. Shows label, sub-label, and `[Person]` tag.
 
-**`Boundary({ x, y, w, h, label })`**
+**`Boundary({ x, y, w, h, label, kind })`**
 Dashed rect (rx=12, strokeDasharray `"8,5"`) with a pill label badge that overlaps the top edge (y-10).
+`kind='external'` uses `C4.extbound` colors (gray stroke/fill) instead of the default blue.
+System and client boundaries use default (blue). Contribution Sources and LLM Providers boundaries use `kind='external'`.
 
 **`Arrow({ x1, y1, x2, y2, label, dashed, cx1, cy1, cx2, cy2, lx, ly })`**
 Straight line when no control points; cubic bezier (`C`) when cx1/cy1/cx2/cy2 provided.
@@ -98,19 +101,33 @@ Label position overrideable via `lx`/`ly`. SVG marker `#arr` (filled triangle, 8
 
 ### 5. Architecture — render these containers in this topology
 
+#### Column layout (left to right)
+
+1. **Left column**: Contribution Sources [External] boundary (leftmost, outside all system boundaries)
+2. **Client column**: Person + Client [Browser / Tauri] boundary
+3. **Adapter strip**: thin vertical Adapter Layer between Client and Azure system
+4. **Azure system**: Auth Service, Backend Services boundary (Wrapper Generator, Queue, Classifier, Import Handler), Composer, Azure Blob Storage cylinders
+5. **Far-right column**: LLM Providers [External] boundary (outside the Azure boundary) — Anthropic API, Azure AI Foundry, OLLAMA
+
 #### Boundaries (render before boxes so boxes sit on top)
-1. **Client [Browser / Tauri]** — left column boundary, dashed, wraps the 4 client components.
-2. **Burrito System [Azure]** — outer system boundary, wraps everything except the Person and Client boundary.
-3. **Backend Services [Container Apps]** — inner sub-boundary inside the Azure boundary, wraps Wrapper Generator, Queue, and Contribution Classifier only.
+1. **Contribution Sources [External]** — leftmost column, `kind='external'`, dashed gray. Wraps the Pull Providers box. Clickable → opens `providers` detail panel.
+2. **Client [Browser / Tauri]** — second column boundary, dashed blue, wraps the 5 client components.
+3. **Burrito System [Azure]** — outer system boundary, wraps Auth Service, Backend Services, Composer, and Azure Blob cylinders.
+4. **Backend Services [Container Apps]** — inner sub-boundary inside the Azure boundary, wraps Wrapper Generator, Queue, Contribution Classifier, and Import Handler. Clickable → opens `backend` detail panel.
+5. **LLM Providers [External]** — far-right column, `kind='external'`, dashed gray. Wraps Anthropic API, Azure AI Foundry, OLLAMA. Clickable → opens `llm` detail panel.
 
 #### Person
-- **User** — type `person`, sub "Browser / Tauri". Sits above the Client boundary.
+- **User** — type `person`, sub "Browser / Tauri". Sits above the Client boundary, horizontally centered over it.
 
-#### Client components (type `component`, inside Client boundary, stacked vertically with 18px gaps)
+#### Contribution Sources (type `external`, inside Contribution Sources boundary)
+- **Pull Providers** — tech "GitHub · GitLab · Jira", desc "OAuth PKCE + cursor-based event sync via ContributionProvider adapters"
+
+#### Client components (type `component`, inside Client boundary, stacked vertically with 36px gaps)
 1. Contribution Timeline — tech "UI component", desc "Sync providers + manual input"
 2. Wrapped Viewer — tech "UI component", desc "Playback, request and completed state"
 3. Auto Classifier — tech "WASM / JS", desc "Pre-classification before upload"
 4. Personal Vault — tech "IndexedDB", desc "Encrypted local contribution store"
+5. **File Import Panel** *(new)* — tech "UI component", desc "Two-step modal: label → file + egress disclosure · POST /import"
 
 #### Adapter Layer
 Thin vertical strip (width 22px) between Client boundary right edge and Auth Service.
@@ -123,10 +140,11 @@ Filled `#0F2540`, dashed stroke `#1A3A60`. Rotated label "Adapter Layer" (MONO, 
 - This box is clickable — opens detail panel for `auth`.
 
 #### Backend Services (inside Backend Services boundary)
-Three boxes stacked vertically with 44px+ gaps:
-1. **Wrapper Generator** — type `container`, tech "Azure Container Apps", desc "Orchestrates wrap: slides, music, media. Calls OLLAMA."
+Four boxes stacked vertically with 44px+ gaps:
+1. **Wrapper Generator** — type `container`, tech "Azure Container Apps", desc "Orchestrates wrap: 10 slice fan-out via callModel(). Writes result to Blob Shareable."
 2. **Queue** — type `component`, tech "Azure Service Bus", desc "Async job queue for generation tasks"
 3. **Contribution Classifier** — type `container`, tech "Azure Container Apps", desc "ML pipeline: tags and categorises contributions"
+4. **Import Handler** *(new)* — type `component`, tech "Azure Functions", desc "POST /import — LLM extraction, 256 KB cap, no persistence"
 
 The Backend Services boundary itself is clickable — opens detail panel for `backend`.
 
@@ -137,19 +155,19 @@ The Backend Services boundary itself is clickable — opens detail panel for `ba
 - Clickable — opens detail panel for `composer`.
 - Positioned below the Backend Services boundary, vertically aligned with it.
 
-#### OLLAMA (type `external`, right column)
-- tech: "Local LLM Runtime", desc: "Model inference for wrap generation"
-
-#### Blob: Shareable (Cylinder, right column)
-- tech: "Azure Blob Storage", desc: "cache · owner:asset\nowner r/w · all:r"
-- Clickable — opens detail panel for `shareable`.
-
-#### Blob: Download (Cylinder, right column)
-- tech: "Azure Blob Storage", desc: "Final packaged wraps for user download"
+#### Azure Blob Storage (Cylinders, right column inside Azure boundary)
+- **Blob: Shareable** — tech "Azure Blob Storage", desc "cache · owner:asset\nowner r/w · all:r". Clickable → `shareable` panel.
+- **Blob: Download** — tech "Azure Blob Storage", desc "Final packaged wraps for user download"
 
 #### UAT Agent (type `test`)
 - tech: "Playwright", desc: "Unit · Integration · e2e — pre-demo validation"
-- Positioned below Auth Service with ≥100px gap.
+- Positioned below Auth Service with ≥50px gap.
+
+#### LLM Providers (type `external`, inside LLM Providers boundary — **outside** the Azure system boundary)
+Three boxes stacked vertically:
+1. **Anthropic API** — tech "api.anthropic.com", desc "Classify · Wrap generation · File import\n3-attempt retry on 429/529"
+2. **Azure AI Foundry** — tech "*.services.ai.azure.com", desc "LLM-as-a-Service via AIProjectClient\nDeployment name = modelId"
+3. **OLLAMA** — tech "Local LLM Runtime", desc "Local model inference (opt-in)\nDefault: localhost:11434"
 
 ---
 
@@ -158,23 +176,26 @@ The Backend Services boundary itself is clickable — opens detail panel for `ba
 | From | To | Label | Style |
 |---|---|---|---|
 | Person | Client boundary top | "uses" | solid |
+| Pull Providers right | Contribution Timeline left | "sync pull" | solid, cubic bezier (arc right-then-up) |
 | Client (via Adapter) | Auth Service left | "JSON contract" | solid |
 | Auth right (top) | Wrapper Generator left | "POST /wrap" | solid, cubic bezier |
 | Auth right (mid) | Queue left | "enqueue" | solid, cubic bezier |
-| Auth right (bot) | Contribution Classifier left | "POST /classify" | solid, cubic bezier |
+| Auth right (lower-mid) | Contribution Classifier left | "POST /classify" | solid, cubic bezier |
+| Auth right (near-bottom) | Import Handler left | "POST /import" | solid, cubic bezier |
 | Auth bottom | Composer left | "POST /compose" | solid, cubic bezier, routes downward |
-| Wrapper Generator right | OLLAMA left | "LLM inference" | solid |
-| Wrapper Generator right (bottom) | Blob Shareable top-left | "store result" | solid, cubic bezier |
-| Composer right | Blob Download left | "write asset" | solid |
-| UAT Agent top | Auth bottom | "test all routes" | **dashed** |
+| Wrapper Generator right (top) | Anthropic API left | "callModel()" | solid, cubic bezier arcing **above** Blob cylinders |
+| Wrapper Generator right (bottom) | Blob Shareable top | "store result" | solid, cubic bezier |
+| Composer right | Blob Download left | "write asset" | solid, cubic bezier (goes up-right) |
+| UAT Agent top | Auth bottom | "test all routes" | **dashed**, straight vertical |
 
 All arrow fan-outs from Auth use cubic bezier control points to avoid overlapping the Backend Services boundary.
+The callModel() arrow from Wrapper Generator to Anthropic API must arc **above** the Blob cylinders (route at y ≈ 155–165, well above BSHARE_Y).
 
 ---
 
 ### 7. Detail panels
 
-Use `useState(null)` for `panel`. Clicking a clickable container calls `tog(key)` which toggles the panel.
+Use in-memory `panel` state (no localStorage). Clicking a clickable container calls `tog(key)`.
 Render the panel below the SVG as a dark card (`background: #0C1D2E`), with a left border in the container's `sub` color and a close button.
 Items are displayed in a CSS grid (minmax 210px).
 
@@ -182,16 +203,17 @@ Panel definitions:
 
 **auth** — "Auth Service [Gateway]"
 - 🔐 Token Validation — "Verifies Bearer tokens on every inbound request before passing to any service"
-- 🗺️ Route Dispatcher — "Inspects path prefix — routes /wrap, /classify, /queue, /compose to correct downstream"
+- 🗺️ Route Dispatcher — "Inspects path prefix — routes /wrap, /classify, /queue, /compose, /import to correct downstream"
 - 🚦 Rate Limiting — "Per-client throttling to protect backend services"
 - 📋 Audit Log — "All auth decisions logged for compliance and debugging"
 - note: "Single entry point. No backend service or Composer is reachable without passing through Auth."
 
 **backend** — "Backend Services [Azure Container Apps]"
-- 🎁 Wrapper Generator — "Orchestrates wrap creation; calls OLLAMA for generation; writes result to Blob Shareable"
+- 🎁 Wrapper Generator — "Orchestrates wrap creation; fans out across 10 slice prompts via callModel(); writes result to Blob Shareable"
 - 📬 Queue — "Azure Service Bus — async job queue for long-running generation tasks"
-- 🏷️ Contribution Classifier — "ML pipeline: tags and categorises contributions submitted from the client"
-- note: "All services only reachable via Auth Service. Hosted on Azure Container Apps."
+- 🏷️ Contribution Classifier — "POST /classify — LLM call: tags and categorises a single contribution signal"
+- 📂 Import Handler — "POST /import — synchronous LLM extraction from uploaded file (256 KB cap). No persistence, no queue. Returns NormalizedContribution[]."
+- note: "All services only reachable via Auth Service. callModel() dispatches to Anthropic API, Azure AI Foundry, or OLLAMA per models.config.json."
 
 **composer** — "Composer [Independent Service]"
 - 🎵 Music Assembly — "Selects and layers background music tracks for the wrap"
@@ -205,6 +227,18 @@ Panel definitions:
 - 👁️ Public Access — "all:r — share link is publicly readable by anyone"
 - note: "Azure Blob Storage with tiered ACL. Wrapper Generator writes here; shareable links point here."
 
+**providers** — "Contribution Sources [External]"
+- 🔄 Pull Providers — "GitHub, GitLab Dedicated, Jira — OAuth PKCE + cursor-based event sync via ContributionProvider adapters in src/lib/providers/"
+- 📁 File Upload — "One-shot push path: user drops a file → POST /import → LLM extracts contributions in-memory → discarded. Never stored server-side."
+- 🔌 Provider Abstraction — "Each source implements ContributionProvider: auth + identity + sync (pull) or import (push). Orchestrator owns encryption and persistence."
+- note: "All contributions — synced or file-extracted — are encrypted on-device. File upload is the only path where content leaves the device."
+
+**llm** — "LLM Providers [External]"
+- 🤖 Anthropic API — "Direct POST to api.anthropic.com with ANTHROPIC_API_KEY. Three-attempt retry on 429/529. Used for classify, wrap generation, and file import."
+- ☁️ Azure AI Foundry — "AIProjectClient → getAzureOpenAIClient. Deployment name = modelId in models.config.json. DefaultAzureCredential auth."
+- 🖥️ OLLAMA — "Local model inference via localhost:11434. Opt-in — no entry ships enabled by default. Configured per-model via baseUrl in models.config.json."
+- note: "Active provider selected per-model in models.config.json. callModel() in server/src/ai/client.ts dispatches to the matching ProviderAdapter."
+
 ---
 
 ### 8. Legend and footer
@@ -216,7 +250,7 @@ Footer text (MONO, 9px, `#2A4A6A`):
 `OUTPUT: JSON · Shareable URL · Download Package`
 
 Below the SVG, hint text (SANS, 10px, `#1A3A5A`):
-`Click Auth Service · Backend Services boundary · Composer · Blob: Shareable to expand details`
+`Click Contribution Sources · Auth Service · Backend Services boundary · Composer · Blob: Shareable · LLM Providers to expand details`
 
 ---
 
