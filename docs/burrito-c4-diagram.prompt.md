@@ -126,7 +126,7 @@ Label position overrideable via `lx`/`ly`. SVG marker `#arr` (filled triangle, 8
 1. Contribution Timeline — tech "UI component", desc "Sync providers + manual input"
 2. Wrapped Viewer — tech "UI component", desc "Playback, request and completed state"
 3. Auto Classifier — tech "WASM / JS", desc "Pre-classification before upload"
-4. Personal Vault — tech "IndexedDB", desc "Encrypted local contribution store"
+4. Personal Vault — tech "IndexedDB", desc "Per-invite-code encrypted store\n(wrapped-for-work-{slug})"
 5. **File Import Panel** *(new)* — tech "UI component", desc "Two-step modal: label → file + egress disclosure · POST /import"
 
 #### Adapter Layer
@@ -135,9 +135,15 @@ Filled `#0F2540`, dashed stroke `#1A3A60`. Rotated label "Adapter Layer" (MONO, 
 
 #### Auth Service (type `auth`, standalone gateway)
 - tech: "Azure API Management"
-- desc: "Token validation · Route dispatch\nAll traffic enters here first"
+- desc: "Invite-code gate · Token validation · Route dispatch\nAll traffic enters here first"
 - **GATEWAY badge**: small pill rect (fill `#0D5C45`, stroke `#5FD9B0`) on the top-right corner of the box.
 - This box is clickable — opens detail panel for `auth`.
+
+#### inviteCodes Table (type `storage`, directly below Auth Service)
+- tech: "Azure Table Storage"
+- desc: "PartitionKey: invite · RowKey: code\nactive · usedAt · createdAt"
+- Positioned directly below Auth Service in the same column, inside the Azure boundary.
+- Not clickable.
 
 #### Backend Services (inside Backend Services boundary)
 Four boxes stacked vertically with 44px+ gaps:
@@ -180,6 +186,7 @@ Three boxes stacked vertically:
 | Queue top | Wrapper Generator bottom | "SB trigger" | solid, straight vertical |
 | Auth right (lower-mid) | Contribution Classifier left | "POST /classify" | solid, cubic bezier |
 | Auth right (near-bottom) | Import Handler left | "POST /import" | solid, cubic bezier |
+| Auth right-bottom | inviteCodes Table right | "validate code" | solid, short bezier arcing right |
 | Auth bottom | Composer left | "POST /compose" | solid, cubic bezier, routes downward |
 | Wrapper Generator right (top) | Anthropic API left | "callModel()" | solid, cubic bezier arcing **above** Blob cylinders |
 | Wrapper Generator right (bottom) | Blob Shareable top | "store result" | solid, cubic bezier |
@@ -198,11 +205,12 @@ Items are displayed in a CSS grid (minmax 210px).
 Panel definitions:
 
 **auth** — "Auth Service [Gateway]"
+- 🎟️ Invite Code Gate — "POST /auth/register validates invite code against Azure Table Storage (inviteCodes). Falls back to INVITE_CODES env var if table not configured. Stamps usedAt on first use."
 - 🔐 Token Validation — "Verifies Bearer tokens on every inbound request before passing to any service"
 - 🗺️ Route Dispatcher — "Inspects path prefix — routes /wrap, /classify, /queue, /compose, /import to correct downstream"
 - 🚦 Rate Limiting — "Per-client throttling to protect backend services"
 - 📋 Audit Log — "All auth decisions logged for compliance and debugging"
-- note: "Single entry point. No backend service or Composer is reachable without passing through Auth."
+- note: "Single entry point. Invite code checked at /auth/register; per-install JWT issued on success. Each invite code gets its own isolated IndexedDB on the client (wrapped-for-work-{slug})."
 
 **backend** — "Backend Services [Azure Container Apps]"
 - 🎁 Wrapper Generator — "Orchestrates wrap creation; fans out across 10 slice prompts via callModel(); writes result to Blob Shareable"
