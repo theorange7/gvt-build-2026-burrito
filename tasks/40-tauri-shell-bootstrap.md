@@ -1,6 +1,6 @@
 # Spec 40 — Tauri 2 macOS shell bootstrap
 
-**Status**: Shaped — ready to pick up
+**Status**: Done — 2026-05-23 (claude/spec-40-bpkpC)
 **Branch**: client (everything under `src-tauri/`, `scripts/`, `package.json`, `next.config.mjs`, `src/lib/ai/`, `src/lib/local-store/platform.ts`)
 **Appetite**: medium (≤ 3 days; one day for the Rust crate + build wiring, one day for proving the static export round-trips cleanly, half a day for the no-divergence invariant)
 **Last shaped**: 2026-05-10
@@ -347,3 +347,35 @@ Server Component slipped past the static export.
   - Tauri updater plugin with hosted manifest.
   - Real icon set.
   - Windows / Linux targets (only if/when there's a real demand).
+
+## Done
+
+**Completed**: 2026-05-23
+**PR**: claude/spec-40-bpkpC
+**Summary**: Scaffolded the Tauri 2 crate under `src-tauri/` (`Cargo.toml`,
+`build.rs`, `src/main.rs`, `src/lib.rs`, `capabilities/default.json`). The
+shell carries no `invoke` handlers and no plugins in v1 — crypto, storage,
+and AI all stay in JavaScript. Replaced the stale `scripts/tauri-export.mjs`
+with `scripts/tauri-csp.mjs`, which templates `tauri.conf.json` from a new
+`tauri.conf.template.json`, substituting `${WRAP_API_ORIGIN}` from
+`NEXT_PUBLIC_WRAP_API_URL` (default `http://localhost:7071` if unset, and a
+hard error on `*`). The new CSP names the configured Functions origin in
+`connect-src` and reaches Anthropic only through that backend — the old
+`api.anthropic.com` allowance is gone. `security.devCsp` additionally
+allows `http://localhost:3000` and `ws://localhost:3000` for Next dev /
+HMR. `withGlobalTauri: false` and `macOSPrivateApi: false` are now
+explicit. Placeholder icons (orange flat-colour 32/128/256/512/1024 PNGs +
+a generated `.icns` + `.ico`) ship so `tauri:build` succeeds end-to-end;
+a real icon set is a follow-up. `tauri:check` script added and wired into
+`.github/workflows/ci.yml` as a `paths-filter`-gated job so the crate
+can't silently break without Rust on every developer's machine. The
+no-divergence invariant lands as `test/unit/tauri-invariants.test.ts` —
+asserts no static `@tauri-apps/api/*` imports under `src/`, that
+`endpoint.ts` still throws when `NEXT_PUBLIC_WRAP_API_URL` is unset (no
+implicit Tauri fallback), that `next.config.mjs` keeps the
+`TAURI=1` → `output: 'export'` mapping, and (when an `out/` directory
+exists) that the static export contains no `_next/server` and no
+`"use server"` directive in any emitted HTML. The `README.md`,
+`ARCHITECTURE.md`, `CLAUDE.md`, and `src-tauri/README.md` were already
+ahead of the implementation; verified they describe the post-spec state
+accurately. No deviation from the Solution shape.

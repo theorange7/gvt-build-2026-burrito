@@ -16,7 +16,8 @@
     "export:demo": "node scripts/export-demo.mjs",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
-    "tauri:build": "tauri build"
+    "tauri:build": "tauri build",
+    "tauri:check": "cargo check --manifest-path src-tauri/Cargo.toml"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.72.1",
