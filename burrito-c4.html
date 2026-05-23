@@ -353,12 +353,18 @@
   ${Arrow({ x1: ADAPTER_X + ADAPTER_W, y1: AUTH_Y + AUTH_H/2,
             x2: AUTH_X, y2: AUTH_Y + AUTH_H/2,
             label: "JSON contract" })}
-  ${Arrow({ x1: AUTH_X + AUTH_W, y1: AUTH_Y + 28,
-            x2: WRAP_X, y2: WRAP_Y + WRAP_H/2,
-            cx1: AUTH_X + AUTH_W + 22, cy1: AUTH_Y + 24,
-            cx2: WRAP_X - 16, cy2: WRAP_Y + WRAP_H/2,
+  ${Arrow({ x1: AUTH_X + AUTH_W, y1: AUTH_Y + 22,
+            x2: WRAP_X, y2: WRAP_Y + 28,
+            cx1: AUTH_X + AUTH_W + 22, cy1: AUTH_Y + 18,
+            cx2: WRAP_X - 16, cy2: WRAP_Y + 28,
             label: "POST /wrap",
-            lx: (AUTH_X + AUTH_W + WRAP_X)/2, ly: WRAP_Y + 20 })}
+            lx: (AUTH_X + AUTH_W + WRAP_X)/2, ly: WRAP_Y + 12 })}
+  ${Arrow({ x1: AUTH_X + AUTH_W, y1: AUTH_Y + 42,
+            x2: WRAP_X, y2: WRAP_Y + WRAP_H - 24,
+            cx1: AUTH_X + AUTH_W + 22, cy1: AUTH_Y + 38,
+            cx2: WRAP_X - 16, cy2: WRAP_Y + WRAP_H - 24,
+            label: "GET /wrap/{jobId}",
+            lx: (AUTH_X + AUTH_W + WRAP_X)/2, ly: WRAP_Y + WRAP_H - 10 })}
   ${Arrow({ x1: AUTH_X + AUTH_W, y1: AUTH_Y + AUTH_H/2,
             x2: QUEUE_X, y2: QUEUE_Y + QUEUE_H/2,
             cx1: AUTH_X + AUTH_W + 18, cy1: AUTH_Y + AUTH_H/2,
