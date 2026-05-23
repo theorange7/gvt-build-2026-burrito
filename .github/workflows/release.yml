@@ -1,0 +1,133 @@
+name: Release Tauri shell
+
+# Tag-triggered build of the macOS .app + .dmg, uploaded to a GitHub release.
+# Unsigned in v1 — recipients use right-click → Open to bypass Gatekeeper.
+# Signing + notarisation + the auto-updater all live in their own follow-up
+# spec (see tasks/41-tauri-updater-plugin.md). This workflow's job is to
+# prove the Tauri build round-trips and to make artifacts downloadable.
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing git tag to build (e.g. v0.1.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: write  # upload release assets
+
+concurrency:
+  group: release-${{ github.workflow }}-${{ github.event.inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build universal .app + .dmg, attach to release
+    # macos-14 = Apple Silicon. We cross-compile to x86_64 as well and lipo
+    # into a universal binary so the artifact runs on both architectures.
+    runs-on: macos-14
+    timeout-minutes: 60
+    env:
+      # Public — embedded in the JS bundle and the bundled CSP. Set as a
+      # repository variable so different deployments can publish different
+      # builds. Falls back to localhost for fork PRs that build without it.
+      NEXT_PUBLIC_WRAP_API_URL: ${{ vars.NEXT_PUBLIC_WRAP_API_URL || 'http://localhost:7071/api' }}
+    steps:
+      - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955  # v4.3.0
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320  # v4.4.0
+        with:
+          version: 10
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4.4.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install Rust toolchain + macOS targets
+        run: |
+          rustup update stable
+          rustup target add aarch64-apple-darwin x86_64-apple-darwin
+
+      - name: Cache cargo registry + build target
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4.3.0
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            src-tauri/target
+          key: tauri-release-${{ runner.os }}-${{ hashFiles('src-tauri/Cargo.toml') }}
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build Tauri (universal binary)
+        # `tauri build --target universal-apple-darwin` builds aarch64 +
+        # x86_64 and lipos them together. beforeBuildCommand handles the
+        # CSP templating and the Next static export.
+        run: pnpm tauri build --target universal-apple-darwin
+
+      - name: Package .app as .app.tar.gz
+        # The updater spec will consume this format; for now it's a
+        # convenient distribution shape (drag-extracted, no .dmg mount).
+        working-directory: src-tauri/target/universal-apple-darwin/release/bundle/macos
+        run: |
+          set -euo pipefail
+          APP_DIR=$(ls -d *.app | head -1)
+          if [[ -z "$APP_DIR" ]]; then
+            echo "No .app produced under src-tauri/target/universal-apple-darwin/release/bundle/macos/"
+            exit 1
+          fi
+          TARBALL_NAME="${APP_DIR%.app}.app.tar.gz"
+          tar -czf "$TARBALL_NAME" "$APP_DIR"
+          echo "TARBALL=$PWD/$TARBALL_NAME" >> "$GITHUB_ENV"
+
+      - name: Locate .dmg
+        run: |
+          set -euo pipefail
+          DMG=$(ls src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg | head -1)
+          if [[ -z "$DMG" ]]; then
+            echo "No .dmg produced under src-tauri/target/universal-apple-darwin/release/bundle/dmg/"
+            exit 1
+          fi
+          echo "DMG=$DMG" >> "$GITHUB_ENV"
+
+      - name: Create or update GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          if ! gh release view "$TAG" > /dev/null 2>&1; then
+            gh release create "$TAG" \
+              --title "$TAG" \
+              --draft \
+              --notes "Unsigned universal macOS build (aarch64 + x86_64).
+
+            **First launch**: right-click → Open to bypass Gatekeeper, or run:
+
+            \`\`\`
+            xattr -dr com.apple.quarantine \"/Applications/Wrapped for Work.app\"
+            \`\`\`
+
+            Signed + notarised builds and the auto-updater are tracked in spec 41."
+          fi
+          gh release upload "$TAG" "$DMG" "$TARBALL" --clobber
+
+      - name: Upload artifacts (also retained on the workflow run)
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
+        with:
+          name: tauri-bundle-${{ github.event.inputs.tag || github.ref_name }}
+          path: |
+            src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
+            src-tauri/target/universal-apple-darwin/release/bundle/macos/*.app.tar.gz
+          retention-days: 30
+          if-no-files-found: error

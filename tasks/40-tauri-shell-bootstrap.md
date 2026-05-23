@@ -378,4 +378,26 @@ exists) that the static export contains no `_next/server` and no
 `"use server"` directive in any emitted HTML. The `README.md`,
 `ARCHITECTURE.md`, `CLAUDE.md`, and `src-tauri/README.md` were already
 ahead of the implementation; verified they describe the post-spec state
-accurately. No deviation from the Solution shape.
+accurately.
+
+**Amendment (same PR)**: Added `.github/workflows/release.yml` — a
+tag-triggered (`push: tags: 'v*'` + `workflow_dispatch`) job on
+`macos-14` that installs both `aarch64-apple-darwin` and
+`x86_64-apple-darwin` Rust targets, runs `pnpm tauri build --target
+universal-apple-darwin`, tars the produced `.app` into `.app.tar.gz`
+(forward-compat shape for the updater spec), and uploads both the
+universal `.dmg` and the tarball to a draft GitHub release named after
+the tag (created on demand). The `NEXT_PUBLIC_WRAP_API_URL` repo
+variable controls the backend origin baked into the bundle; absent it,
+the build falls back to `http://localhost:7071/api` so fork PRs still
+produce *something*. The release is created as a draft to give the
+publisher a chance to promote it explicitly — auto-update tooling
+(spec 41) only follows non-draft `latest` releases, so a draft can't
+accidentally ship to the install base. The workflow also uploads the
+artifacts as a workflow-run artifact (30-day retention) as a backstop
+when the GitHub release upload step needs to be retried. No deviation
+from the Solution shape; verification items listed in spec 40 are now
+all reproducible from CI (the unverifiable-on-Linux ones — Rust compile,
+icon bundler — get exercised on every tag push). Follow-up: spec 41
+(`tasks/41-tauri-updater-plugin.md`) shaped in the same PR for the
+signed-manifest auto-updater on top of this release flow.
