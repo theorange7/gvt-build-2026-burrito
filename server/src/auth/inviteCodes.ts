@@ -8,6 +8,7 @@
  *   active       : boolean           (omit or set true to enable; false to revoke)
  *   label        : string?           (optional human-readable description)
  *   createdAt    : ISO string
+ *   usedAt       : ISO string?       (set on first successful validation)
  *
  * To add a code:   insert a row with partitionKey='invite', rowKey=code
  * To revoke a code: set active=false on the row, or delete it
@@ -25,6 +26,7 @@ type InviteCodeEntity = TableEntity<{
   active?: boolean;
   label?: string;
   createdAt: string;
+  usedAt?: string;
 }>;
 
 let cachedClient: Promise<TableClient> | null = null;
@@ -73,7 +75,15 @@ export async function isInviteCodeValid(code: string): Promise<boolean> {
   const client = await getClient();
   try {
     const entity = await client.getEntity<InviteCodeEntity>(PARTITION, code.trim());
-    return (entity as { active?: boolean }).active !== false;
+    const valid = (entity as { active?: boolean }).active !== false;
+    if (valid && !entity.usedAt) {
+      // Record first use — best-effort, don't fail the request if this write fails.
+      client.updateEntity(
+        { partitionKey: PARTITION, rowKey: code.trim(), usedAt: new Date().toISOString() },
+        'Merge',
+      ).catch(() => undefined);
+    }
+    return valid;
   } catch (err: unknown) {
     if ((err as { statusCode?: number }).statusCode === 404) return false;
     throw err;
