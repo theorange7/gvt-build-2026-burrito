@@ -1,0 +1,9 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Capabilities granted to the main WebView. v1 ships with core APIs only — no fs, shell, or http plugins. The CSP does the heavy lifting; capabilities just gate `invoke` access, which we don't use in v1.",
+  "windows": ["main"],
+  "permissions": [
+    "core:default"
+  ]
+}

@@ -1,6 +1,6 @@
 # Spec 40 — Tauri 2 macOS shell bootstrap
 
-**Status**: Shaped — ready to pick up
+**Status**: Done
 **Branch**: client (everything under `src-tauri/`, `scripts/`, `package.json`, `next.config.mjs`, `src/lib/ai/`, `src/lib/local-store/platform.ts`)
 **Appetite**: medium (≤ 3 days; one day for the Rust crate + build wiring, one day for proving the static export round-trips cleanly, half a day for the no-divergence invariant)
 **Last shaped**: 2026-05-10
@@ -347,3 +347,36 @@ Server Component slipped past the static export.
   - Tauri updater plugin with hosted manifest.
   - Real icon set.
   - Windows / Linux targets (only if/when there's a real demand).
+
+## Done
+
+**Completed**: 2026-05-23
+**PR**: claude/spec-40-cPdb4
+**Summary**: Scaffolded the Tauri 2 macOS crate under `src-tauri/`
+(`Cargo.toml`, `build.rs`, `src/main.rs`, `src/lib.rs`,
+`capabilities/default.json`, placeholder PNG / `.icns` / `.ico` icons). The
+crate is a thin WKWebView wrapper with no `invoke` handlers — crypto,
+storage, and AI all stay in JS. `tauri.conf.json` is now generated from a
+committed `tauri.conf.template.json` whose `${WRAP_API_ORIGIN}` placeholder
+is filled in at build time by the new `scripts/tauri-csp.mjs` (default
+fallback: `http://localhost:7071`). Both production `csp` and dev-only
+`devCsp` are templated; the dev variant additionally allows the
+`localhost:3000` HTTP + HMR socket. `connect-src` no longer references
+`api.anthropic.com`. The stale `scripts/tauri-export.mjs` is deleted —
+`src/app/api/` has been gone since the backend moved, and the privacy
+invariant test asserts it stays gone, so the stash dance is pure dead
+weight. `package.json` gains `tauri:check` (`cargo check
+--manifest-path src-tauri/Cargo.toml`). New
+`test/unit/tauri-invariants.test.ts` (9 checks) is the no-divergence
+contract: no static `@tauri-apps/api/*` imports anywhere in `src/`,
+`src/lib/ai/endpoint.ts` still throws when `NEXT_PUBLIC_WRAP_API_URL` is
+unset (no Tauri-specific fallback), `next.config.mjs` keeps `TAURI=1` →
+`output: 'export'` (and never falls back to `standalone`),
+`tauri-export.mjs` is absent, and the templating pipeline is wired up.
+Placeholder icons are flat-colour PNGs + a minimal `.icns` — replacing
+them is a follow-up. Docs already reflected the post-spec-40 state from a
+prior pass, so this PR only had to make the code match (`CLAUDE.md`,
+`README.md`, `ARCHITECTURE.md`, and `src-tauri/README.md` were all already
+accurate). No deviation from the Solution shape. Follow-ups deferred:
+real icon set, code signing + notarisation, Stronghold-backed key cache,
+`tauri-plugin-updater`, Windows / Linux targets.
