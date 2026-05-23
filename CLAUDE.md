@@ -145,9 +145,13 @@ When the user asks for "task N" or "spec N":
 5. **When you open the PR, mark the spec done in that same PR.** Flip
    `Status` to `Done`, append a `## Done` block to the spec file
    (Completed date / PR / one-paragraph summary including any deviation
-   from the shape), update the `tasks/README.md` index row, and add a
-   dated entry to `tasks/CHANGELOG.md`. All four edits land in the PR
-   that implements the spec — not a follow-up.
+   from the shape), update the `tasks/README.md` index row, and add an
+   entry to the root `CHANGELOG.md` under `[Unreleased]` — user/operator
+   framing, not internal "Solution shape" framing. Pick the right Keep
+   a Changelog bucket (`### Added` / `### Changed` / `### Fixed` /
+   `### Removed`). All four edits land in the PR that implements the
+   spec — not a follow-up. (`tasks/CHANGELOG.md` is frozen as a
+   historical archive of pre-CHANGELOG.md specs; don't add to it.)
 6. **Discoveries that don't fit the current spec** go under the spec's
    `Notes` section as bullets, not into the implementation.
 

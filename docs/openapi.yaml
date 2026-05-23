@@ -1,0 +1,591 @@
+openapi: 3.1.0
+info:
+  title: Wrapped for Work — server API
+  version: 0.1.0
+  summary: Azure Functions backend for Wrapped for Work.
+  description: |
+    The server owns all LLM and queue logic. All endpoints below are deployed
+    as Azure Functions and front the same `host.json`. The client (the Next.js
+    app under `/src`) is a thin caller — it holds no LLM credentials.
+
+    ## Authentication
+
+    Every endpoint except `POST /auth/register` requires a per-install JWT
+    presented as `Authorization: Bearer <token>`. Tokens are issued by
+    `POST /auth/register` and minted with a rotating signing key (`kid` in the
+    JWT protected header — see `server/src/auth/jwt.ts`).
+
+    ## Privacy posture
+
+    - No endpoint logs request bodies, model responses, tokens, or IP
+      addresses beyond the safe error code allowlist in
+      `server/src/privacy.ts`.
+    - `POST /wrap` (enqueue) omits `installId` from the Service Bus message
+      body — the worker resolves an opaque `jobLookupToken` via a table row.
+    - `GET /wrap/{jobId}` deletes the job row, lookup row, and result row on
+      first successful read. The result is read exactly once.
+    - `POST /import` does not persist file content anywhere — no queue, no
+      blob, no table, no disk. This is enforced by a static-analysis test
+      (`server/test/unit/privacy-invariants.test.ts`).
+
+    ## Source of truth
+
+    Request/response schemas mirror the Zod schemas in
+    `shared/src/schemas.ts`. If you edit one, edit the other.
+  contact:
+    name: Wrapped for Work
+    url: https://github.com/theorange7/gvt-build-2026-burrito
+
+servers:
+  - url: http://localhost:7071/api
+    description: Local Azure Functions host (run `func start` in `server/`).
+  - url: https://{functionAppHost}/api
+    description: Deployed Azure Functions host.
+    variables:
+      functionAppHost:
+        default: example.azurewebsites.net
+        description: The hostname of the deployed Function App.
+
+tags:
+  - name: auth
+    description: Per-install token issuance.
+  - name: classify
+    description: Single-signal contribution classification.
+  - name: wrap
+    description: Asynchronous wrap generation (enqueue + poll).
+  - name: import
+    description: File-upload contribution extraction (Spec 50).
+  - name: account
+    description: Per-install data lifecycle (Spec 51).
+
+security:
+  - bearerAuth: []
+
+paths:
+  /auth/register:
+    post:
+      tags: [auth]
+      operationId: authRegister
+      summary: Issue a per-install JWT.
+      description: |
+        Anonymous, no request body. Returns a per-install JWT signed with the
+        currently-active key (`kid` stamped into the protected header).
+        Rate-limited per source IP — see `server/src/auth/rateLimit.ts`.
+      security: []
+      responses:
+        '200':
+          description: Token issued.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RegisterResponse' }
+        '429':
+          description: Rate-limited.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RateLimitError' }
+        '500':
+          description: Token issuance failed.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /classify:
+    post:
+      tags: [classify]
+      operationId: classify
+      summary: Classify a single free-text contribution signal.
+      description: |
+        Forwards `freeText` to the configured LLM, returns a structured
+        `{ signal, category, weight }`. Stateless — nothing is persisted.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ClassifyRequest' }
+      responses:
+        '200':
+          description: Classification result.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ClassifyResponse' }
+        '400':
+          description: Body failed Zod validation.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          description: Classification failed (upstream or internal).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /wrap:
+    post:
+      tags: [wrap]
+      operationId: wrapEnqueue
+      summary: Enqueue a wrap-generation job.
+      description: |
+        Idempotent against `jobId` — concurrent POSTs of the same `jobId` from
+        the same install will see exactly one create and the rest return the
+        existing job's `{jobId, status, busy}`.
+
+        `busy: true` on the response means the global in-flight cap was hit at
+        enqueue time; the job is still queued and will run, but the client
+        should display a "we're busy" message.
+
+        Per-install in-flight cap is enforced — exceeding it returns `429`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EnqueueWrapRequest' }
+      responses:
+        '200':
+          description: Job created (or returned existing state).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EnqueueWrapResponse' }
+        '400':
+          description: Body failed Zod validation.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          description: Per-install in-flight cap exceeded.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '500':
+          description: Enqueue failed (auth, table, or Service Bus error).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '503':
+          description: Job row vanished between conflict-check and re-read; retry with a new `jobId`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /wrap/{jobId}:
+    get:
+      tags: [wrap]
+      operationId: wrapGet
+      summary: Poll job status; on completion, fetch the result exactly once.
+      description: |
+        Returns the current job status. When `status === 'complete'`, the
+        response body includes `sliceContent` **and** the server deletes the
+        job row, lookup row, and result row in the same call — a second `GET`
+        for the same `jobId` returns `410 result-already-fetched`.
+
+        For `status === 'failed'`, the job row and lookup row are deleted too;
+        the response carries the server-side error code in `error`.
+      parameters:
+        - in: path
+          name: jobId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: The same `jobId` the client supplied to `POST /wrap`.
+      responses:
+        '200':
+          description: Job state, polymorphic on `status`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GetWrapResponse' }
+        '400':
+          description: Missing path parameter.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: No such `jobId` for this install.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '410':
+          description: Result was already fetched (job and result row deleted on first read).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '500':
+          description: Internal error.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /import:
+    post:
+      tags: [import]
+      operationId: importFile
+      summary: Extract structured contributions from a small text file.
+      description: |
+        Multipart upload (`file` + `meta` parts). The server reads the file
+        body in memory, hands the extracted text to the chosen LLM, validates
+        rows row-by-row, and returns `{ contributions, rejectedRows }`.
+        Nothing is persisted — no queue, blob, table, disk, or cache.
+
+        File-size cap: **256 KB raw bytes**. Extracted text after `.docx`
+        decompression is also capped at 256 KB.
+
+        Supported MIME types: `text/plain`, `text/markdown`,
+        `application/vnd.openxmlformats-officedocument.wordprocessingml.document`
+        (`.docx`).
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file, meta]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: The file to extract. Max 256 KB.
+                meta:
+                  type: string
+                  description: JSON-stringified `ImportMeta` (`{ modelId, label }`).
+            encoding:
+              file:
+                contentType: text/plain, text/markdown, application/vnd.openxmlformats-officedocument.wordprocessingml.document
+              meta:
+                contentType: application/json
+      responses:
+        '200':
+          description: Extraction succeeded.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ImportResponse' }
+        '400':
+          description: Malformed multipart, missing part, invalid meta JSON, or empty file.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '413':
+          description: File or extracted text exceeded 256 KB.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '415':
+          description: Unsupported file type or undecodable bytes.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '500':
+          description: Internal error (auth or unexpected).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '502':
+          description: Upstream model error or unparseable model response.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /me/data:
+    delete:
+      tags: [account]
+      operationId: meReset
+      summary: Delete all server-side data for the calling install.
+      description: |
+        Removes `wrapJobs`, `wrapResults`, lookup rows, and (once Spec 31 has
+        landed) share-bundle rows for the install identified by the bearer
+        token. Identity comes solely from the JWT — no body is read.
+
+        Per-IP rate-limited to 10 calls per hour.
+      responses:
+        '204':
+          description: All resources deleted cleanly.
+        '207':
+          description: Partial success — some resource types failed and are listed in `failed`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ResetPartial' }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          description: Per-IP rate-limited.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RateLimitError' }
+        '500':
+          description: Internal error.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Per-install JWT minted by `POST /auth/register`.
+
+  responses:
+    Unauthorized:
+      description: "Missing or invalid `Authorization: Bearer <token>`."
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+          description: |
+            Stable error code drawn from the safe-code allowlist
+            (`server/src/privacy.ts`). Never carries user data.
+      example:
+        error: invalid-payload
+
+    RateLimitError:
+      allOf:
+        - $ref: '#/components/schemas/Error'
+        - type: object
+          properties:
+            resetAt:
+              type: integer
+              format: int64
+              description: Unix epoch milliseconds at which the rate-limit window resets.
+
+    RegisterResponse:
+      type: object
+      required: [token, expiresAt]
+      properties:
+        token:
+          type: string
+          minLength: 1
+          description: The signed JWT.
+        expiresAt:
+          type: integer
+          format: int64
+          description: Unix epoch seconds at which the token expires.
+
+    ContributionCategory:
+      type: string
+      enum:
+        - delivery
+        - collaboration
+        - mentorship
+        - process
+        - leadership
+        - other
+
+    WrapMode:
+      type: string
+      enum: [snapshot, year-end]
+
+    JobStatus:
+      type: string
+      enum: [queued, running, complete, failed]
+
+    ContributionForAi:
+      type: object
+      required: [source, category, signal, rawData, occurredAt, weight]
+      properties:
+        source:
+          type: string
+          minLength: 1
+        category: { $ref: '#/components/schemas/ContributionCategory' }
+        signal:
+          type: string
+          minLength: 1
+        rawData:
+          type: object
+          additionalProperties: true
+        occurredAt:
+          type: string
+          description: ISO-8601 datetime string.
+        weight:
+          type: number
+          minimum: 1
+          maximum: 5
+
+    SliceContent:
+      type: object
+      required: [sliceKey, headline, body]
+      properties:
+        sliceKey:
+          type: string
+        headline:
+          type: string
+        body:
+          type: string
+        stat:
+          type: [string, 'null']
+        supporting:
+          oneOf:
+            - type: array
+              items: { type: string }
+            - type: 'null'
+
+    ClassifyRequest:
+      type: object
+      required: [freeText]
+      properties:
+        source:
+          type: string
+          minLength: 1
+          default: manual
+        freeText:
+          type: string
+          minLength: 3
+
+    ClassifyResponse:
+      type: object
+      required: [signal, category, weight]
+      properties:
+        signal:
+          type: string
+        category: { $ref: '#/components/schemas/ContributionCategory' }
+        weight:
+          type: number
+          minimum: 1
+          maximum: 5
+
+    EnqueueWrapRequest:
+      type: object
+      required: [jobId, contributions, mode, windowStart, windowEnd]
+      properties:
+        jobId:
+          type: string
+          format: uuid
+        contributions:
+          type: array
+          items: { $ref: '#/components/schemas/ContributionForAi' }
+        mode: { $ref: '#/components/schemas/WrapMode' }
+        windowStart:
+          type: string
+          description: ISO-8601 datetime — inclusive start of the window.
+        windowEnd:
+          type: string
+          description: ISO-8601 datetime — exclusive end of the window.
+        modelId:
+          type: string
+          description: |
+            Optional override matching an `id` in
+            `server/src/ai/models.config.json`. Server picks a default if
+            omitted.
+
+    EnqueueWrapResponse:
+      type: object
+      required: [jobId, status]
+      properties:
+        jobId:
+          type: string
+        status: { $ref: '#/components/schemas/JobStatus' }
+        busy:
+          type: boolean
+          description: True when the global in-flight cap was hit at enqueue time.
+
+    GetWrapResponse:
+      oneOf:
+        - type: object
+          required: [status]
+          properties:
+            status:
+              type: string
+              enum: [queued, running]
+            busy:
+              type: boolean
+        - type: object
+          required: [status, sliceContent]
+          properties:
+            status:
+              type: string
+              const: complete
+            sliceContent:
+              type: array
+              items: { $ref: '#/components/schemas/SliceContent' }
+        - type: object
+          required: [status, error]
+          properties:
+            status:
+              type: string
+              const: failed
+            error:
+              type: string
+      discriminator:
+        propertyName: status
+
+    ImportedContribution:
+      type: object
+      required: [source, category, signal, occurredAt, weight]
+      properties:
+        source:
+          type: string
+          minLength: 1
+        category: { $ref: '#/components/schemas/ContributionCategory' }
+        signal:
+          type: string
+          minLength: 1
+        rawData:
+          type: object
+          additionalProperties: true
+          default: {}
+        occurredAt:
+          type: string
+          minLength: 1
+          description: ISO-8601 datetime string.
+        weight:
+          type: number
+          minimum: 1
+          maximum: 5
+        externalId:
+          type: string
+          description: |
+            Stable per-row identifier when the source supplies one (e.g. commit
+            SHA). Never persisted server-side — used only by the client for
+            deduplication.
+        externalUrl:
+          type: string
+
+    ImportMeta:
+      type: object
+      required: [modelId, label]
+      properties:
+        modelId:
+          type: string
+          minLength: 1
+          description: An `id` from `server/src/ai/models.config.json`.
+        label:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: Human-readable batch label; the client slugifies it for identity dedup.
+
+    ImportResponse:
+      type: object
+      required: [contributions, rejectedRows]
+      properties:
+        contributions:
+          type: array
+          items: { $ref: '#/components/schemas/ImportedContribution' }
+        rejectedRows:
+          type: integer
+          minimum: 0
+          description: Rows the LLM returned that failed `ImportedContribution` validation.
+
+    ResetPartial:
+      type: object
+      required: [failed]
+      properties:
+        failed:
+          type: array
+          items:
+            type: string
+            enum: [jobs, results, lookups, shares]
+          description: Resource types whose cleanup failed.

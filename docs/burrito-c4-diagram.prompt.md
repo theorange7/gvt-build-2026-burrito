@@ -1,7 +1,7 @@
 # Burrito C4 Architecture Diagram — Generation Prompt
 
 > **Usage:** Feed this file to Claude (via Claude Code, API, or chat) whenever the architecture changes.
-> The output is a single self-contained `burrito-c4.html` HTML file. Drop it into your repo and render with Vite / CRA / Next.
+> The output is a single self-contained HTML file written to `docs/burrito-c4.html`. Open it directly in a browser or render with Vite / CRA / Next.
 >
 > **CI trigger:** Run on any PR that modifies `docs/architecture/**` or `src/` to keep the diagram current.
 
@@ -19,7 +19,7 @@ exactly. Output ONLY the HTML file — no explanation, no markdown fences, no pr
 
 ## USER PROMPT
 
-Produce a file called `burrito-c4.html` — a single self-contained HTML component rendering
+Produce a file called `docs/burrito-c4.html` — a single self-contained HTML component rendering
 a C4 Container diagram for the Burrito system. Follow every rule below exactly.
 
 ---
