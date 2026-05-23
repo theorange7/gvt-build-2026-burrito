@@ -1,0 +1,34 @@
+Work log — Q1/Q2 2024
+
+---
+
+2024-02-14
+Shipped the real-time dashboard redesign (PR #418). Replaced the polling-based
+feed with a WebSocket connection, cutting perceived latency from ~3s to under
+200ms. Three other teams have since adopted the same pattern. Coordinated
+rollout across web, iOS, and Android to avoid version skew.
+
+---
+
+2024-03-05
+Led a two-hour onboarding session for four new engineers joining the platform
+team. Walked through the service architecture, the on-call runbook, and common
+failure modes. Wrote up a written version afterwards and added it to the team
+wiki so we don't have to repeat the session every quarter.
+
+---
+
+2024-04-22
+Identified and fixed a race condition in the job queue (issue #731) that caused
+roughly 1-in-500 background tasks to silently drop results. Root cause was an
+unguarded read-modify-write on the status field under concurrent workers.
+Added an integration test that reproduces the race deterministically.
+
+---
+
+2024-05-30
+Drafted and got alignment on a new incident severity matrix for the org. The
+previous definition of "SEV-2" had no objective criteria, which led to
+inconsistent paging and post-mortem coverage. Ran a review session with five
+team leads and published the updated runbook. Two incidents since then have
+been classified correctly on first call.
