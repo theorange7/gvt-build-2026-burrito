@@ -29,6 +29,11 @@ test.describe('network minimality', () => {
       });
     });
 
+    // Bypass the invite gate before the first navigation.
+    await page.addInitScript(() => {
+      localStorage.setItem('burrito:session', 'e2e-session');
+    });
+
     await page.goto('/dashboard');
     const fields = page.getByPlaceholder(/passphrase/i);
     await fields.nth(0).fill('network-test-passphrase');
