@@ -176,7 +176,7 @@ Three boxes stacked vertically:
 | Client (via Adapter) | Auth Service left | "JSON contract" | solid |
 | Auth right (top) | Wrapper Generator left (upper) | "POST /wrap" | solid, cubic bezier |
 | Auth right (just below top) | Wrapper Generator left (lower) | "GET /wrap/{jobId}" | solid, cubic bezier |
-| Auth right (mid) | Queue left | "enqueue" | solid, cubic bezier |
+| Wrapper Generator bottom | Queue top | "enqueue" | solid, straight vertical |
 | Queue top | Wrapper Generator bottom | "SB trigger" | solid, straight vertical |
 | Auth right (lower-mid) | Contribution Classifier left | "POST /classify" | solid, cubic bezier |
 | Auth right (near-bottom) | Import Handler left | "POST /import" | solid, cubic bezier |

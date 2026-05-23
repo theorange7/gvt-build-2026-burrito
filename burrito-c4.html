@@ -365,11 +365,10 @@
             cx2: WRAP_X - 16, cy2: WRAP_Y + WRAP_H - 24,
             label: "GET /wrap/{jobId}",
             lx: (AUTH_X + AUTH_W + WRAP_X)/2, ly: WRAP_Y + WRAP_H - 10 })}
-  ${Arrow({ x1: AUTH_X + AUTH_W, y1: AUTH_Y + AUTH_H/2,
-            x2: QUEUE_X, y2: QUEUE_Y + QUEUE_H/2,
-            cx1: AUTH_X + AUTH_W + 18, cy1: AUTH_Y + AUTH_H/2,
-            cx2: QUEUE_X - 18, cy2: QUEUE_Y + QUEUE_H/2,
-            label: "enqueue" })}
+  ${Arrow({ x1: WRAP_X + WRAP_W/2, y1: WRAP_Y + WRAP_H,
+            x2: QUEUE_X + QUEUE_W/2, y2: QUEUE_Y,
+            label: "enqueue",
+            lx: WRAP_X + WRAP_W/2 + 40, ly: (WRAP_Y + WRAP_H + QUEUE_Y)/2 })}
   ${Arrow({ x1: QUEUE_X + QUEUE_W/2, y1: QUEUE_Y,
             x2: WRAP_X + WRAP_W/2, y2: WRAP_Y + WRAP_H,
             label: "SB trigger",
