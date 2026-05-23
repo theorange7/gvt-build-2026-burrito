@@ -33,9 +33,12 @@ jobs:
     timeout-minutes: 60
     env:
       # Public — embedded in the JS bundle and the bundled CSP. Set as a
-      # repository variable so different deployments can publish different
-      # builds. Falls back to localhost for fork PRs that build without it.
-      NEXT_PUBLIC_WRAP_API_URL: ${{ vars.NEXT_PUBLIC_WRAP_API_URL || 'http://localhost:7071/api' }}
+      # repository variable (Settings → Secrets and variables → Actions →
+      # Variables → New repository variable) so it never lives in code.
+      # No fallback: a release artifact baked against localhost is a
+      # broken artifact, so missing config fails the build instead of
+      # shipping silently.
+      NEXT_PUBLIC_WRAP_API_URL: ${{ vars.NEXT_PUBLIC_WRAP_API_URL }}
     steps:
       - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955  # v4.3.0
         with:
@@ -67,6 +70,23 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Verify NEXT_PUBLIC_WRAP_API_URL is set
+        run: |
+          if [[ -z "${NEXT_PUBLIC_WRAP_API_URL:-}" ]]; then
+            echo "::error::NEXT_PUBLIC_WRAP_API_URL is not set."
+            echo "Set it as a repository variable: Settings → Secrets and variables → Actions → Variables → New repository variable."
+            echo "Example value: https://wrap.example.com/api"
+            exit 1
+          fi
+          if [[ "$NEXT_PUBLIC_WRAP_API_URL" == "*" ]]; then
+            echo "::error::NEXT_PUBLIC_WRAP_API_URL=* is not allowed — the bundled CSP must name the actual backend origin."
+            exit 1
+          fi
+          # Echo only the origin so the build log is auditable without
+          # leaking the full path or any query params.
+          ORIGIN=$(node -e "console.log(new URL(process.env.NEXT_PUBLIC_WRAP_API_URL).origin)")
+          echo "Building with backend origin: $ORIGIN"
 
       - name: Build Tauri (universal binary)
         # `tauri build --target universal-apple-darwin` builds aarch64 +
