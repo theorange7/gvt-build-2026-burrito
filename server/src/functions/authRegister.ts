@@ -6,6 +6,7 @@
 import { app, type HttpRequest, type HttpResponseInit, type InvocationContext } from '@azure/functions';
 import { signInstallToken } from '../auth/jwt';
 import { checkIpRateLimit } from '../auth/rateLimit';
+import { isInviteCodeValid, isInviteCodesTableConfigured } from '../auth/inviteCodes';
 import { registerRateLimitPerHour } from '../queue/concurrency';
 import { safeError } from '../privacy';
 
@@ -25,13 +26,28 @@ export function validateInviteCode(code: string): boolean {
   return allowed.includes(code.trim());
 }
 
+/**
+ * Resolve whether a submitted invite code is permitted.
+ *
+ * Priority:
+ *   1. Azure Tables (AZURE_TABLES_INVITE_CODES configured) — dynamic, no redeploy needed
+ *   2. INVITE_CODES env-var list — static fallback for local dev / CI
+ *   3. Neither configured → open access (returns true)
+ */
+async function isCodePermitted(code: string): Promise<boolean> {
+  if (isInviteCodesTableConfigured()) {
+    return isInviteCodeValid(code);
+  }
+  return validateInviteCode(code);
+}
+
 export async function authRegister(
   request: HttpRequest,
   context: InvocationContext,
 ): Promise<HttpResponseInit> {
-  // Invite code gate — only enforced when INVITE_CODES env var is set.
-  const rawInviteCodes = process.env.INVITE_CODES;
-  if (rawInviteCodes) {
+  // Invite code gate — active when Azure Tables or INVITE_CODES env var is configured.
+  const gateActive = isInviteCodesTableConfigured() || Boolean(process.env.INVITE_CODES);
+  if (gateActive) {
     let body: Record<string, unknown> = {};
     try {
       body = (await request.json()) as Record<string, unknown>;
@@ -39,7 +55,7 @@ export async function authRegister(
       // ignore parse errors — missing body means missing code
     }
     const code = typeof body.inviteCode === 'string' ? body.inviteCode : '';
-    if (!validateInviteCode(code)) {
+    if (!await isCodePermitted(code)) {
       return { status: 403, jsonBody: { error: 'invalid-invite-code' } };
     }
   }

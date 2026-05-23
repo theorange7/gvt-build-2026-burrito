@@ -26,7 +26,9 @@
 
     "AZURE_TABLES_CONNECTION_STRING": "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;TableEndpoint=http://127.0.0.1:10002/devstoreaccount1;",
     "AZURE_TABLES_JOBS": "wrapJobs",
-    "AZURE_TABLES_RESULTS": "wrapResults"
+    "AZURE_TABLES_RESULTS": "wrapResults",
+    "_comment_AZURE_TABLES_INVITE_CODES": "Optional. Set to the table name (e.g. 'inviteCodes') to enable dynamic invite-code management via Azure Table Storage. When set, the INVITE_CODES env-var is ignored. Leave empty to fall back to INVITE_CODES or open access.",
+    "AZURE_TABLES_INVITE_CODES": ""
   },
   "Host": {
     "CORS": "http://localhost:3000,tauri://localhost",
