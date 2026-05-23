@@ -6,7 +6,8 @@ what GitHub Actions configuration each one needs, how to promote a build,
 and how to roll back.
 
 For the manual `az` zip-deploy path (useful for hotfixes or when CI is
-broken), see `server-deploy.md`.
+broken), see `server-deploy.md`. For manual local Tauri builds (release-
+candidate testing, reproducing a CI failure), see `tauri-build.md`.
 
 ## Pipeline overview
 

@@ -91,6 +91,10 @@ Use this in CI or on machines where opening a window isn't possible.
 
 ## Build and release
 
+> Full operational runbook — single-arch vs. universal, smoke testing,
+> distribution, rollback, troubleshooting — lives at
+> `docs/runbooks/tauri-build.md`. The condensed version follows.
+
 ### 1. Set the backend URL
 
 The built `.app` calls the deployed Azure Functions backend. Export the URL
