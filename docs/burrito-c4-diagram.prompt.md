@@ -159,10 +159,6 @@ The Backend Services boundary itself is clickable — opens detail panel for `ba
 - **Blob: Shareable** — tech "Azure Blob Storage", desc "cache · owner:asset\nowner r/w · all:r". Clickable → `shareable` panel.
 - **Blob: Download** — tech "Azure Blob Storage", desc "Final packaged wraps for user download"
 
-#### UAT Agent (type `test`)
-- tech: "Playwright", desc: "Unit · Integration · e2e — pre-demo validation"
-- Positioned below Auth Service with ≥50px gap.
-
 #### LLM Providers (type `external`, inside LLM Providers boundary — **outside** the Azure system boundary)
 Three boxes stacked vertically:
 1. **Anthropic API** — tech "api.anthropic.com", desc "Classify · Wrap generation · File import\n3-attempt retry on 429/529"
@@ -186,8 +182,6 @@ Three boxes stacked vertically:
 | Wrapper Generator right (top) | Anthropic API left | "callModel()" | solid, cubic bezier arcing **above** Blob cylinders |
 | Wrapper Generator right (bottom) | Blob Shareable top | "store result" | solid, cubic bezier |
 | Composer right | Blob Download left | "write asset" | solid, cubic bezier (goes up-right) |
-| UAT Agent top | Auth bottom | "test all routes" | **dashed**, straight vertical |
-
 All arrow fan-outs from Auth use cubic bezier control points to avoid overlapping the Backend Services boundary.
 The callModel() arrow from Wrapper Generator to Anthropic API must arc **above** the Blob cylinders (route at y ≈ 155–165, well above BSHARE_Y).
 
@@ -243,8 +237,8 @@ Panel definitions:
 
 ### 8. Legend and footer
 
-Legend row at bottom of SVG: 7 color swatches with labels —
-Person · Auth Gateway · Container · Component · Storage · External · Test Agent.
+Legend row at bottom of SVG: 6 color swatches with labels —
+Person · Auth Gateway · Container · Component · Storage · External.
 
 Footer text (MONO, 9px, `#2A4A6A`):
 `OUTPUT: JSON · Shareable URL · Download Package`

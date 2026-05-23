@@ -103,9 +103,6 @@
       const BSHARE_X = 1143, BSHARE_Y = 314, BSHARE_W = 112, BSHARE_H = 130;
       const BDL_X = 1143, BDL_Y = 490, BDL_W = 112, BDL_H = 110;
 
-      // UAT Agent
-      const UAT_X = 600, UAT_Y = 506, UAT_W = 200, UAT_H = 100;
-
       // LLM Providers [External] boundary (outside Azure boundary, far-right column)
       const LLM_X = 1284, LLM_Y = 130, LLM_W = 148, LLM_H = 490;
       const ANTHRO_X = 1294, ANTHRO_Y = 165, ANTHRO_W = 128, ANTHRO_H = 100;
@@ -309,7 +306,6 @@
           ["Component", C4.component.bg],
           ["Storage", C4.storage.bg],
           ["External", C4.external.bg],
-          ["Test Agent", C4.test.bg],
         ];
 
         return `
@@ -403,9 +399,6 @@
             cx1: COMPOSER_X + COMPOSER_W + 18, cy1: COMPOSER_Y + COMPOSER_H/2,
             cx2: BDL_X - 18, cy2: BDL_Y + BDL_H/2,
             label: "write asset" })}
-  ${Arrow({ x1: UAT_X + UAT_W/2, y1: UAT_Y,
-            x2: AUTH_X + AUTH_W/2, y2: AUTH_Y + AUTH_H,
-            dashed: true, label: "test all routes" })}
 
   <!-- Person -->
   ${Person({ x: PERSON_X, y: PERSON_Y, w: PERSON_W, label: "User", sub: "Browser / Tauri" })}
@@ -481,11 +474,6 @@
   ${Cylinder({ x: BDL_X, y: BDL_Y, w: BDL_W, h: BDL_H,
                label: "Blob: Download", tech: "Azure Blob Storage",
                desc: "Final packaged wraps for user download" })}
-
-  <!-- UAT Agent -->
-  ${Box({ x: UAT_X, y: UAT_Y, w: UAT_W, h: UAT_H, type: "test",
-          label: "UAT Agent", tech: "Playwright",
-          desc: "Unit · Integration · e2e — pre-demo validation" })}
 
   <!-- LLM Providers (External, outside Azure boundary) -->
   ${Box({ x: ANTHRO_X, y: ANTHRO_Y, w: ANTHRO_W, h: ANTHRO_H, type: "external",
