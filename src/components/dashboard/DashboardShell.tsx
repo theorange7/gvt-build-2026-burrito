@@ -26,8 +26,8 @@ import { hasActiveKey } from '@/lib/local-store/crypto';
 import { clearSessionId, db, META_KEYS } from '@/lib/local-store/db';
 import { listIdentities, type StoredIdentity } from '@/lib/local-store/identities';
 import { isSeeded, markSeeded, seedFromBundledDemo } from '@/lib/local-store/seed';
-import { listWraps, listWrapShares, updateWrapShare } from '@/lib/local-store/wraps';
-import { revokeShare } from '@/lib/ai/share';
+import { listWraps } from '@/lib/local-store/wraps';
+import { useWrapShare } from '@/components/dashboard/useWrapShare';
 import { PROVIDERS_CONFIG } from '@/lib/providers/config';
 import type { Contribution, ContributionCategory } from '@/lib/types';
 import type { StoredWrap } from '@/lib/local-store/wraps';
@@ -340,50 +340,17 @@ function FirstRunPanel({
 // ---------------------------------------------------------------------------
 
 type WrapSummary = Pick<StoredWrap, 'id' | 'mode' | 'windowStart' | 'windowEnd' | 'createdAt'>;
-type ShareMap = Record<string, { shareSlug: string; shareUrl: string }>;
 
 function WrappedTab({ p, onGenerate }: { p: MxPalette; onGenerate: () => void }) {
   const [wraps, setWraps] = useState<WrapSummary[] | null>(null);
-  const [shares, setShares] = useState<ShareMap>({});
-  const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [revokingId, setRevokingId] = useState<string | null>(null);
+  const { shares, copiedId, revokingId, copyShareLink, stopSharing } = useWrapShare();
 
   useEffect(() => {
     listWraps().then(setWraps);
-    listWrapShares().then(setShares).catch(() => setShares({}));
   }, []);
 
   const fmt = (d: Date) =>
     d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-
-  async function handleCopy(wrapId: string, url: string) {
-    try {
-      await navigator.clipboard.writeText(url);
-      setCopiedId(wrapId);
-      window.setTimeout(() => setCopiedId((id) => (id === wrapId ? null : id)), 1800);
-    } catch {
-      /* clipboard blocked; ignore */
-    }
-  }
-
-  async function handleStopSharing(wrapId: string, slug: string) {
-    setRevokingId(wrapId);
-    try {
-      const result = await revokeShare(slug);
-      if (result === 'ok' || result === 'not-found') {
-        await updateWrapShare(wrapId, {});
-        setShares((prev) => {
-          const next = { ...prev };
-          delete next[wrapId];
-          return next;
-        });
-      }
-    } catch {
-      /* surface nothing — user can retry from the card */
-    } finally {
-      setRevokingId(null);
-    }
-  }
 
   return (
     <div style={{ maxWidth: 1280, margin: '0 auto', padding: '32px 24px' }}>
@@ -486,7 +453,7 @@ function WrappedTab({ p, onGenerate }: { p: MxPalette; onGenerate: () => void })
                   >
                     <button
                       type="button"
-                      onClick={() => handleCopy(wrap.id, shareInfo.shareUrl)}
+                      onClick={() => copyShareLink(wrap.id, shareInfo.shareUrl)}
                       style={{
                         background: p.lime, border: '2px solid ' + p.ink, borderRadius: 8,
                         boxShadow: '2px 2px 0 ' + p.ink, padding: '6px 12px',
@@ -499,7 +466,7 @@ function WrappedTab({ p, onGenerate }: { p: MxPalette; onGenerate: () => void })
                     </button>
                     <button
                       type="button"
-                      onClick={() => handleStopSharing(wrap.id, shareInfo.shareSlug)}
+                      onClick={() => stopSharing(wrap.id, shareInfo.shareSlug)}
                       disabled={revokingId === wrap.id}
                       style={{
                         background: p.paper, border: '2px solid ' + p.ink, borderRadius: 8,
