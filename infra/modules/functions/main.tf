@@ -69,9 +69,9 @@ resource "azurerm_function_app_flex_consumption" "main" {
     # WRAP_JWT_SECRET is retained so tokens signed under the legacy shim still
     # verify. Once all outstanding tokens have expired, WRAP_JWT_SECRET can be
     # removed from here and from Key Vault.
-    "WRAP_JWT_KEY_v1"    = "@Microsoft.KeyVault(SecretUri=${var.key_vault_uri}secrets/wrap-jwt-key-v1/)"
-    WRAP_JWT_ACTIVE_KID  = "v1"
-    WRAP_JWT_SECRET      = "@Microsoft.KeyVault(SecretUri=${var.key_vault_uri}secrets/wrap-jwt-secret/)"
+    "WRAP_JWT_KEY_v1"   = "@Microsoft.KeyVault(SecretUri=${var.key_vault_uri}secrets/wrap-jwt-key-v1/)"
+    WRAP_JWT_ACTIVE_KID = "v1"
+    WRAP_JWT_SECRET     = "@Microsoft.KeyVault(SecretUri=${var.key_vault_uri}secrets/wrap-jwt-secret/)"
 
     ANTHROPIC_API_KEY              = "@Microsoft.KeyVault(SecretUri=${var.key_vault_uri}secrets/anthropic-api-key/)"
     AZURE_FOUNDRY_PROJECT_ENDPOINT = "@Microsoft.KeyVault(SecretUri=${var.key_vault_uri}secrets/azure-foundry-project-endpoint/)"
