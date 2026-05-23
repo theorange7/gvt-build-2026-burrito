@@ -143,6 +143,11 @@ in the index table above.
      summary, including any deviation from the Solution shape).
    - Update the spec's row in the Index table above (status column
      becomes `Done — YYYY-MM-DD (#NN)`).
-   - Add a dated entry to `tasks/CHANGELOG.md` (newest-first).
+   - Add an entry to the root `CHANGELOG.md` under `[Unreleased]`,
+     written for users/operators (not the internal "Solution shape"
+     framing). Pick the right Keep a Changelog bucket — `### Added`,
+     `### Changed`, `### Fixed`, or `### Removed`. `tasks/CHANGELOG.md`
+     is a historical archive of pre-CHANGELOG.md specs and is no longer
+     updated.
 6. If you discover follow-up work that doesn't fit the current spec, add a
    bullet under "Notes" instead of doing it inline.
