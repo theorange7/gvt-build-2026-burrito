@@ -67,14 +67,14 @@ function realBlobClient(): BlobAPI {
 
     async deleteBundle(slug) {
       if (!isValidShareSlug(slug)) throw new Error('invalid-slug');
-      const iterator = container.listBlobsByHierarchy('/', { prefix: SHARES_PREFIX(slug) });
+      // Iterate every blob under the slug prefix and delete one at a time.
+      // The container has `wraps/{slug}/index.html` + `wraps/{slug}/assets/*`;
+      // a flat list is the simplest correct enumeration — listing by hierarchy
+      // (with a `/` delimiter) only returns top-level entries and would miss
+      // anything under `assets/`.
       for await (const item of container.listBlobsFlat({ prefix: SHARES_PREFIX(slug) })) {
         await container.deleteBlob(item.name);
       }
-      // listBlobsByHierarchy with delimiter is only used to assert the prefix
-      // exists; the flat iterator above handles removal. Reference it so the
-      // import is intentional and bundlers don't tree-shake the helper away.
-      void iterator;
     },
   };
 }
