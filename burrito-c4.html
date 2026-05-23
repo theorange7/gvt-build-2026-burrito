@@ -364,6 +364,10 @@
             cx1: AUTH_X + AUTH_W + 18, cy1: AUTH_Y + AUTH_H/2,
             cx2: QUEUE_X - 18, cy2: QUEUE_Y + QUEUE_H/2,
             label: "enqueue" })}
+  ${Arrow({ x1: QUEUE_X + QUEUE_W/2, y1: QUEUE_Y,
+            x2: WRAP_X + WRAP_W/2, y2: WRAP_Y + WRAP_H,
+            label: "SB trigger",
+            lx: QUEUE_X + QUEUE_W/2 + 42, ly: (QUEUE_Y + WRAP_Y + WRAP_H)/2 })}
   ${Arrow({ x1: AUTH_X + AUTH_W, y1: AUTH_Y + AUTH_H - 30,
             x2: CLASS_X, y2: CLASS_Y + CLASS_H/2,
             cx1: AUTH_X + AUTH_W + 22, cy1: AUTH_Y + AUTH_H - 26,
