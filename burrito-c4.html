@@ -7,9 +7,9 @@
     html, body { margin: 0; padding: 0; background: #0A1622; }
     body { font-family: 'IBM Plex Sans', sans-serif; }
     .wrap { padding: 24px; }
-    .hint { margin-top: 12px; max-width: 1120px; font-size: 10px; color: #1A3A5A; }
+    .hint { margin-top: 12px; max-width: 1440px; font-size: 10px; color: #1A3A5A; }
     .panel {
-      margin-top: 16px; max-width: 1120px;
+      margin-top: 16px; max-width: 1440px;
       background: #0C1D2E;
       padding: 18px 22px; border-radius: 6px;
       color: #D8E6F2;
@@ -42,7 +42,6 @@
       margin-top: 14px; font-size: 11px; font-style: italic;
       color: #7AB6E0; border-top: 1px solid #1A3A5A; padding-top: 10px;
     }
-    .clickable { cursor: pointer; }
   </style>
 </head>
 <body>
@@ -52,56 +51,63 @@
   </div>
 
   <script>
-    // ===================== App =====================
     function App(container) {
       // ----- Layout constants -----
-      const W = 1120, H = 830;
+      const W = 1440, H = 870;
 
       // Person
-      const PERSON_X = 105, PERSON_Y = 18, PERSON_W = 180;
+      const PERSON_X = 305, PERSON_Y = 18, PERSON_W = 180;
+
+      // Contribution Sources [External] boundary (leftmost column)
+      const SOURCES_X = 18, SOURCES_Y = 180, SOURCES_W = 192, SOURCES_H = 250;
+      const PULL_X = 28, PULL_Y = 225, PULL_W = 172, PULL_H = 120;
 
       // Client boundary
-      const CLIENT_X = 40, CLIENT_Y = 100;
-      const CLIENT_W = 260, CLIENT_H = 580;
+      const CLIENT_X = 260, CLIENT_Y = 100;
+      const CLIENT_W = 260, CLIENT_H = 675;
 
       // Client components
-      const COMP_X = 60, COMP_W = 220, COMP_H = 100;
+      const COMP_X = 278, COMP_W = 224, COMP_H = 96;
       const COMP1_Y = 130;
-      const COMP2_Y = 274;
-      const COMP3_Y = 418;
-      const COMP4_Y = 562;
+      const COMP2_Y = 262;
+      const COMP3_Y = 394;
+      const COMP4_Y = 526;
+      const COMP5_Y = 658;
 
       // Adapter Layer
-      const ADAPTER_X = 312, ADAPTER_Y = 130;
-      const ADAPTER_W = 22, ADAPTER_H = 540;
+      const ADAPTER_X = 532, ADAPTER_Y = 130;
+      const ADAPTER_W = 22, ADAPTER_H = 630;
 
       // System (Azure) boundary
-      const SYS_X = 348, SYS_Y = 100;
-      const SYS_W = 752, SYS_H = 670;
+      const SYS_X = 568, SYS_Y = 100;
+      const SYS_W = 700, SYS_H = 730;
 
       // Auth Service
-      const AUTH_X = 380, AUTH_Y = 310;
+      const AUTH_X = 600, AUTH_Y = 310;
       const AUTH_W = 200, AUTH_H = 140;
 
       // Backend Services boundary
-      const BACK_X = 620, BACK_Y = 130;
-      const BACK_W = 270, BACK_H = 480;
+      const BACK_X = 840, BACK_Y = 130;
+      const BACK_W = 280, BACK_H = 560;
 
       // Backend components
-      const WRAP_X = 640, WRAP_Y = 160, WRAP_W = 230, WRAP_H = 110;
-      const QUEUE_X = 640, QUEUE_Y = 314, QUEUE_W = 230, QUEUE_H = 80;
-      const CLASS_X = 640, CLASS_Y = 438, CLASS_W = 230, CLASS_H = 130;
+      const WRAP_X = 856, WRAP_Y = 160, WRAP_W = 248, WRAP_H = 110;
+      const QUEUE_X = 856, QUEUE_Y = 314, QUEUE_W = 248, QUEUE_H = 80;
+      const CLASS_X = 856, CLASS_Y = 438, CLASS_W = 248, CLASS_H = 110;
+      const IMPORT_X = 856, IMPORT_Y = 592, IMPORT_W = 248, IMPORT_H = 80;
 
       // Composer
-      const COMPOSER_X = 620, COMPOSER_Y = 640, COMPOSER_W = 270, COMPOSER_H = 110;
+      const COMPOSER_X = 840, COMPOSER_Y = 714, COMPOSER_W = 280, COMPOSER_H = 100;
 
-      // Right column
-      const OLLAMA_X = 920, OLLAMA_Y = 160, OLLAMA_W = 160, OLLAMA_H = 110;
-      const BSHARE_X = 920, BSHARE_Y = 314, BSHARE_W = 160, BSHARE_H = 130;
-      const BDL_X = 920, BDL_Y = 488, BDL_W = 160, BDL_H = 130;
+      // Azure Blob Storage (right column, inside Azure boundary)
+      const BSHARE_X = 1143, BSHARE_Y = 314, BSHARE_W = 112, BSHARE_H = 130;
+      const BDL_X = 1143, BDL_Y = 490, BDL_W = 112, BDL_H = 110;
 
-      // UAT Agent
-      const UAT_X = 380, UAT_Y = 580, UAT_W = 200, UAT_H = 100;
+      // LLM Providers [External] boundary (outside Azure boundary, far-right column)
+      const LLM_X = 1284, LLM_Y = 130, LLM_W = 148, LLM_H = 490;
+      const ANTHRO_X = 1294, ANTHRO_Y = 165, ANTHRO_W = 128, ANTHRO_H = 100;
+      const FOUNDRY_X = 1294, FOUNDRY_Y = 299, FOUNDRY_W = 128, FOUNDRY_H = 100;
+      const OLLAMA_X = 1294, OLLAMA_Y = 433, OLLAMA_W = 128, OLLAMA_H = 100;
 
       // ----- Colors -----
       const C4 = {
@@ -113,23 +119,21 @@
         storage:   { bg: "#0F6674", border: "#084650", text: "#fff", sub: "#7DD5DF" },
         test:      { bg: "#4A2E7A", border: "#321D56", text: "#fff", sub: "#C0A0F0" },
         bound:     { fill: "rgba(17,104,189,0.05)", stroke: "#1168BD" },
+        extbound:  { fill: "rgba(85,85,85,0.05)",   stroke: "#505050" },
       };
 
       const MONO = "'IBM Plex Mono', monospace";
       const SANS = "'IBM Plex Sans', sans-serif";
 
-      // ----- State (in-memory, no localStorage) -----
       let panel = null;
       function tog(k) { panel = (panel === k ? null : k); render(); }
 
-      // ----- SVG escaping -----
       function esc(s) {
         return String(s)
           .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
           .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
       }
 
-      // ----- Primitive: Box -----
       function Box({ x, y, w, h, type, label, tech, desc, active, onClick }) {
         const c = C4[type];
         const stroke = active ? "#FFD060" : c.border;
@@ -153,7 +157,6 @@
         </g>`;
       }
 
-      // ----- Primitive: Cylinder -----
       function Cylinder({ x, y, w, h, label, tech, desc, active, onClick }) {
         const c = C4.storage;
         const stroke = active ? "#FFD060" : c.border;
@@ -179,7 +182,6 @@
         </g>`;
       }
 
-      // ----- Primitive: Person -----
       function Person({ x, y, w, label, sub }) {
         const c = C4.person;
         const cx = x + w/2;
@@ -192,21 +194,23 @@
         </g>`;
       }
 
-      // ----- Primitive: Boundary -----
-      function Boundary({ x, y, w, h, label, onClick, active }) {
-        const stroke = active ? "#FFD060" : C4.bound.stroke;
+      function Boundary({ x, y, w, h, label, onClick, active, kind }) {
+        const isExt = kind === 'external';
+        const defStroke = isExt ? C4.extbound.stroke : C4.bound.stroke;
+        const defFill  = isExt ? C4.extbound.fill  : C4.bound.fill;
+        const stroke = active ? "#FFD060" : defStroke;
+        const fill   = active ? "rgba(255,208,96,0.04)" : defFill;
         const sw = active ? 2.5 : 1.5;
         const pillW = label.length * 7 + 18;
         const cursor = onClick ? 'pointer' : 'default';
         const evt = onClick ? `data-onclick="${esc(onClick)}"` : '';
         return `<g style="cursor:${cursor}" ${evt}>
-          <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="12" fill="${C4.bound.fill}" stroke="${stroke}" stroke-width="${sw}" stroke-dasharray="8,5"/>
+          <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="12" fill="${fill}" stroke="${stroke}" stroke-width="${sw}" stroke-dasharray="8,5"/>
           <rect x="${x + 14}" y="${y - 10}" width="${pillW}" height="20" rx="4" fill="#071524" stroke="${stroke}" stroke-width="1"/>
           <text x="${x + 14 + pillW/2}" y="${y + 4}" font-family="${MONO}" font-weight="bold" font-size="10" fill="${stroke}" text-anchor="middle">${esc(label)}</text>
         </g>`;
       }
 
-      // ----- Primitive: Arrow -----
       function Arrow({ x1, y1, x2, y2, label, dashed, cx1, cy1, cx2, cy2, lx, ly }) {
         const d = cx1 !== undefined
           ? `M ${x1},${y1} C ${cx1},${cy1} ${cx2},${cy2} ${x2},${y2}`
@@ -234,7 +238,7 @@
           color: C4.auth.sub,
           items: [
             ["🔐 Token Validation", "Verifies Bearer tokens on every inbound request before passing to any service"],
-            ["🗺️ Route Dispatcher", "Inspects path prefix — routes /wrap, /classify, /queue, /compose to correct downstream"],
+            ["🗺️ Route Dispatcher", "Inspects path prefix — routes /wrap, /classify, /queue, /compose, /import to correct downstream"],
             ["🚦 Rate Limiting", "Per-client throttling to protect backend services"],
             ["📋 Audit Log", "All auth decisions logged for compliance and debugging"],
           ],
@@ -244,11 +248,12 @@
           title: "Backend Services [Azure Container Apps]",
           color: C4.container.sub,
           items: [
-            ["🎁 Wrapper Generator", "Orchestrates wrap creation; calls OLLAMA for generation; writes result to Blob Shareable"],
+            ["🎁 Wrapper Generator", "Orchestrates wrap creation; fans out across 10 slice prompts via callModel(); writes result to Blob Shareable"],
             ["📬 Queue", "Azure Service Bus — async job queue for long-running generation tasks"],
-            ["🏷️ Contribution Classifier", "ML pipeline: tags and categorises contributions submitted from the client"],
+            ["🏷️ Contribution Classifier", "POST /classify — LLM call: tags and categorises a single contribution signal"],
+            ["📂 Import Handler", "POST /import — synchronous LLM extraction from uploaded file (256 KB cap). No persistence, no queue. Returns NormalizedContribution[]."],
           ],
-          note: "All services only reachable via Auth Service. Hosted on Azure Container Apps.",
+          note: "All services only reachable via Auth Service. callModel() dispatches to Anthropic API, Azure AI Foundry, or OLLAMA per models.config.json.",
         },
         composer: {
           title: "Composer [Independent Service]",
@@ -270,6 +275,26 @@
           ],
           note: "Azure Blob Storage with tiered ACL. Wrapper Generator writes here; shareable links point here.",
         },
+        providers: {
+          title: "Contribution Sources [External]",
+          color: C4.external.sub,
+          items: [
+            ["🔄 Pull Providers", "GitHub, GitLab Dedicated, Jira — OAuth PKCE + cursor-based event sync via ContributionProvider adapters in src/lib/providers/"],
+            ["📁 File Upload", "One-shot push path: user drops a file → POST /import → LLM extracts contributions in-memory → discarded. Never stored server-side."],
+            ["🔌 Provider Abstraction", "Each source implements ContributionProvider: auth + identity + sync (pull) or import (push). Orchestrator owns encryption and persistence."],
+          ],
+          note: "All contributions — synced or file-extracted — are encrypted on-device. File upload is the only path where content leaves the device.",
+        },
+        llm: {
+          title: "LLM Providers [External]",
+          color: C4.external.sub,
+          items: [
+            ["🤖 Anthropic API", "Direct POST to api.anthropic.com with ANTHROPIC_API_KEY. Three-attempt retry on 429/529. Used for classify, wrap generation, and file import."],
+            ["☁️ Azure AI Foundry", "AIProjectClient → getAzureOpenAIClient. Deployment name = modelId in models.config.json. DefaultAzureCredential auth."],
+            ["🖥️ OLLAMA", "Local model inference via localhost:11434. Opt-in — no entry ships enabled by default. Configured per-model via baseUrl in models.config.json."],
+          ],
+          note: "Active provider selected per-model in models.config.json. callModel() in server/src/ai/client.ts dispatches to the matching ProviderAdapter.",
+        },
       };
 
       // ----- SVG assembly -----
@@ -281,7 +306,6 @@
           ["Component", C4.component.bg],
           ["Storage", C4.storage.bg],
           ["External", C4.external.bg],
-          ["Test Agent", C4.test.bg],
         ];
 
         return `
@@ -301,53 +325,115 @@
 
   <rect width="${W}" height="${H}" fill="url(#grid)"/>
 
-  <!-- Boundaries first -->
-  ${Boundary({ x: CLIENT_X, y: CLIENT_Y, w: CLIENT_W, h: CLIENT_H, label: "Client [Browser / Tauri]" })}
-  ${Boundary({ x: SYS_X, y: SYS_Y, w: SYS_W, h: SYS_H, label: "Burrito System [Azure]" })}
-  ${Boundary({ x: BACK_X, y: BACK_Y, w: BACK_W, h: BACK_H, label: "Backend Services [Container Apps]", onClick: 'backend', active: panel === 'backend' })}
+  <!-- Boundaries (render before boxes so boxes sit on top) -->
+  ${Boundary({ x: SOURCES_X, y: SOURCES_Y, w: SOURCES_W, h: SOURCES_H,
+               label: "Contribution Sources [External]",
+               onClick: 'providers', active: panel === 'providers', kind: 'external' })}
+  ${Boundary({ x: CLIENT_X, y: CLIENT_Y, w: CLIENT_W, h: CLIENT_H,
+               label: "Client [Browser / Tauri]" })}
+  ${Boundary({ x: SYS_X, y: SYS_Y, w: SYS_W, h: SYS_H,
+               label: "Burrito System [Azure]" })}
+  ${Boundary({ x: BACK_X, y: BACK_Y, w: BACK_W, h: BACK_H,
+               label: "Backend Services [Container Apps]",
+               onClick: 'backend', active: panel === 'backend' })}
+  ${Boundary({ x: LLM_X, y: LLM_Y, w: LLM_W, h: LLM_H,
+               label: "LLM Providers [External]",
+               onClick: 'llm', active: panel === 'llm', kind: 'external' })}
 
-  <!-- Arrows -->
-  ${Arrow({ x1: PERSON_X + PERSON_W/2, y1: PERSON_Y + 78, x2: PERSON_X + PERSON_W/2, y2: CLIENT_Y, label: "uses" })}
-  ${Arrow({ x1: ADAPTER_X + ADAPTER_W, y1: AUTH_Y + AUTH_H/2, x2: AUTH_X, y2: AUTH_Y + AUTH_H/2, label: "JSON contract" })}
-  ${Arrow({ x1: AUTH_X + AUTH_W, y1: AUTH_Y + 28, x2: WRAP_X, y2: WRAP_Y + WRAP_H/2,
-            cx1: AUTH_X + AUTH_W + 38, cy1: AUTH_Y + 28,
-            cx2: WRAP_X - 38, cy2: WRAP_Y + WRAP_H/2,
+  <!-- Arrows (render before boxes) -->
+  ${Arrow({ x1: PERSON_X + PERSON_W/2, y1: PERSON_Y + 78,
+            x2: CLIENT_X + CLIENT_W/2, y2: CLIENT_Y,
+            label: "uses" })}
+  ${Arrow({ x1: PULL_X + PULL_W, y1: PULL_Y + PULL_H/2,
+            x2: COMP_X, y2: COMP1_Y + COMP_H/2,
+            cx1: 240, cy1: PULL_Y + PULL_H/2,
+            cx2: 258, cy2: COMP1_Y + COMP_H/2,
+            label: "sync pull",
+            lx: 228, ly: COMP1_Y + COMP_H/2 + 28 })}
+  ${Arrow({ x1: ADAPTER_X + ADAPTER_W, y1: AUTH_Y + AUTH_H/2,
+            x2: AUTH_X, y2: AUTH_Y + AUTH_H/2,
+            label: "JSON contract" })}
+  ${Arrow({ x1: AUTH_X + AUTH_W, y1: AUTH_Y + 22,
+            x2: WRAP_X, y2: WRAP_Y + 28,
+            cx1: AUTH_X + AUTH_W + 22, cy1: AUTH_Y + 18,
+            cx2: WRAP_X - 16, cy2: WRAP_Y + 28,
             label: "POST /wrap",
-            lx: (AUTH_X + AUTH_W + WRAP_X)/2, ly: WRAP_Y + 24 })}
-  ${Arrow({ x1: AUTH_X + AUTH_W, y1: AUTH_Y + AUTH_H/2, x2: QUEUE_X, y2: QUEUE_Y + QUEUE_H/2,
-            cx1: AUTH_X + AUTH_W + 30, cy1: AUTH_Y + AUTH_H/2,
-            cx2: QUEUE_X - 30, cy2: QUEUE_Y + QUEUE_H/2,
-            label: "enqueue" })}
-  ${Arrow({ x1: AUTH_X + AUTH_W, y1: AUTH_Y + AUTH_H - 28, x2: CLASS_X, y2: CLASS_Y + CLASS_H/2,
-            cx1: AUTH_X + AUTH_W + 38, cy1: AUTH_Y + AUTH_H - 28,
-            cx2: CLASS_X - 38, cy2: CLASS_Y + CLASS_H/2,
+            lx: (AUTH_X + AUTH_W + WRAP_X)/2, ly: WRAP_Y + 12 })}
+  ${Arrow({ x1: AUTH_X + AUTH_W, y1: AUTH_Y + 42,
+            x2: WRAP_X, y2: WRAP_Y + WRAP_H - 24,
+            cx1: AUTH_X + AUTH_W + 22, cy1: AUTH_Y + 38,
+            cx2: WRAP_X - 16, cy2: WRAP_Y + WRAP_H - 24,
+            label: "GET /wrap/{jobId}",
+            lx: (AUTH_X + AUTH_W + WRAP_X)/2, ly: WRAP_Y + WRAP_H - 10 })}
+  ${Arrow({ x1: WRAP_X + WRAP_W/2, y1: WRAP_Y + WRAP_H,
+            x2: QUEUE_X + QUEUE_W/2, y2: QUEUE_Y,
+            label: "enqueue",
+            lx: WRAP_X + WRAP_W/2 + 40, ly: (WRAP_Y + WRAP_H + QUEUE_Y)/2 })}
+  ${Arrow({ x1: QUEUE_X + QUEUE_W/2, y1: QUEUE_Y,
+            x2: WRAP_X + WRAP_W/2, y2: WRAP_Y + WRAP_H,
+            label: "SB trigger",
+            lx: QUEUE_X + QUEUE_W/2 + 42, ly: (QUEUE_Y + WRAP_Y + WRAP_H)/2 })}
+  ${Arrow({ x1: AUTH_X + AUTH_W, y1: AUTH_Y + AUTH_H - 30,
+            x2: CLASS_X, y2: CLASS_Y + CLASS_H/2,
+            cx1: AUTH_X + AUTH_W + 22, cy1: AUTH_Y + AUTH_H - 26,
+            cx2: CLASS_X - 16, cy2: CLASS_Y + CLASS_H/2,
             label: "POST /classify",
             lx: (AUTH_X + AUTH_W + CLASS_X)/2, ly: CLASS_Y + 8 })}
-  ${Arrow({ x1: AUTH_X + AUTH_W/2, y1: AUTH_Y + AUTH_H, x2: COMPOSER_X, y2: COMPOSER_Y + COMPOSER_H/2,
+  ${Arrow({ x1: AUTH_X + AUTH_W, y1: AUTH_Y + AUTH_H - 10,
+            x2: IMPORT_X, y2: IMPORT_Y + IMPORT_H/2,
+            cx1: AUTH_X + AUTH_W + 28, cy1: AUTH_Y + AUTH_H - 6,
+            cx2: IMPORT_X - 16, cy2: IMPORT_Y + IMPORT_H/2,
+            label: "POST /import",
+            lx: (AUTH_X + AUTH_W + IMPORT_X)/2, ly: IMPORT_Y - 12 })}
+  ${Arrow({ x1: AUTH_X + AUTH_W/2, y1: AUTH_Y + AUTH_H,
+            x2: COMPOSER_X, y2: COMPOSER_Y + COMPOSER_H/2,
             cx1: AUTH_X + AUTH_W/2, cy1: COMPOSER_Y + COMPOSER_H/2,
             cx2: COMPOSER_X - 50, cy2: COMPOSER_Y + COMPOSER_H/2,
             label: "POST /compose",
             lx: AUTH_X + AUTH_W/2 + 70, ly: COMPOSER_Y + COMPOSER_H/2 + 14 })}
-  ${Arrow({ x1: WRAP_X + WRAP_W, y1: WRAP_Y + WRAP_H/2, x2: OLLAMA_X, y2: OLLAMA_Y + OLLAMA_H/2, label: "LLM inference" })}
-  ${Arrow({ x1: WRAP_X + WRAP_W, y1: WRAP_Y + WRAP_H - 18, x2: BSHARE_X + 28, y2: BSHARE_Y,
-            cx1: WRAP_X + WRAP_W + 30, cy1: WRAP_Y + WRAP_H + 30,
-            cx2: BSHARE_X + 10, cy2: BSHARE_Y - 30,
+  ${Arrow({ x1: WRAP_X + WRAP_W, y1: WRAP_Y + 18,
+            x2: LLM_X, y2: ANTHRO_Y + ANTHRO_H/2,
+            cx1: WRAP_X + WRAP_W + 78, cy1: WRAP_Y - 4,
+            cx2: LLM_X - 18, cy2: ANTHRO_Y + 22,
+            label: "callModel()",
+            lx: WRAP_X + WRAP_W + 92, ly: WRAP_Y - 8 })}
+  ${Arrow({ x1: WRAP_X + WRAP_W, y1: WRAP_Y + WRAP_H - 20,
+            x2: BSHARE_X + BSHARE_W/2, y2: BSHARE_Y,
+            cx1: WRAP_X + WRAP_W + 20, cy1: WRAP_Y + WRAP_H + 12,
+            cx2: BSHARE_X + BSHARE_W/2, cy2: BSHARE_Y - 20,
             label: "store result",
-            lx: WRAP_X + WRAP_W + 50, ly: WRAP_Y + WRAP_H + 8 })}
-  ${Arrow({ x1: COMPOSER_X + COMPOSER_W, y1: COMPOSER_Y + COMPOSER_H/2, x2: BDL_X, y2: BDL_Y + BDL_H/2,
+            lx: WRAP_X + WRAP_W + 42, ly: WRAP_Y + WRAP_H + 10 })}
+  ${Arrow({ x1: COMPOSER_X + COMPOSER_W, y1: COMPOSER_Y + COMPOSER_H/2,
+            x2: BDL_X, y2: BDL_Y + BDL_H/2,
             cx1: COMPOSER_X + COMPOSER_W + 18, cy1: COMPOSER_Y + COMPOSER_H/2,
             cx2: BDL_X - 18, cy2: BDL_Y + BDL_H/2,
             label: "write asset" })}
-  ${Arrow({ x1: UAT_X + UAT_W/2, y1: UAT_Y, x2: AUTH_X + AUTH_W/2, y2: AUTH_Y + AUTH_H, dashed: true, label: "test all routes" })}
 
   <!-- Person -->
   ${Person({ x: PERSON_X, y: PERSON_Y, w: PERSON_W, label: "User", sub: "Browser / Tauri" })}
 
+  <!-- Contribution Sources: Pull Providers box -->
+  ${Box({ x: PULL_X, y: PULL_Y, w: PULL_W, h: PULL_H, type: "external",
+          label: "Pull Providers",
+          tech: "GitHub · GitLab · Jira",
+          desc: "OAuth PKCE + cursor-based event sync via ContributionProvider adapters" })}
+
   <!-- Client components -->
-  ${Box({ x: COMP_X, y: COMP1_Y, w: COMP_W, h: COMP_H, type: "component", label: "Contribution Timeline", tech: "UI component", desc: "Sync providers + manual input" })}
-  ${Box({ x: COMP_X, y: COMP2_Y, w: COMP_W, h: COMP_H, type: "component", label: "Wrapped Viewer", tech: "UI component", desc: "Playback, request and completed state" })}
-  ${Box({ x: COMP_X, y: COMP3_Y, w: COMP_W, h: COMP_H, type: "component", label: "Auto Classifier", tech: "WASM / JS", desc: "Pre-classification before upload" })}
-  ${Box({ x: COMP_X, y: COMP4_Y, w: COMP_W, h: COMP_H, type: "component", label: "Personal Vault", tech: "IndexedDB", desc: "Encrypted local contribution store" })}
+  ${Box({ x: COMP_X, y: COMP1_Y, w: COMP_W, h: COMP_H, type: "component",
+          label: "Contribution Timeline", tech: "UI component",
+          desc: "Sync providers + manual input" })}
+  ${Box({ x: COMP_X, y: COMP2_Y, w: COMP_W, h: COMP_H, type: "component",
+          label: "Wrapped Viewer", tech: "UI component",
+          desc: "Playback, request and completed state" })}
+  ${Box({ x: COMP_X, y: COMP3_Y, w: COMP_W, h: COMP_H, type: "component",
+          label: "Auto Classifier", tech: "WASM / JS",
+          desc: "Pre-classification before upload" })}
+  ${Box({ x: COMP_X, y: COMP4_Y, w: COMP_W, h: COMP_H, type: "component",
+          label: "Personal Vault", tech: "IndexedDB",
+          desc: "Encrypted local contribution store" })}
+  ${Box({ x: COMP_X, y: COMP5_Y, w: COMP_W, h: COMP_H, type: "component",
+          label: "File Import Panel", tech: "UI component",
+          desc: "Two-step modal: label → file + egress disclosure · POST /import" })}
 
   <!-- Adapter Layer -->
   <g>
@@ -355,7 +441,7 @@
     <text x="${ADAPTER_X + ADAPTER_W/2}" y="${ADAPTER_Y + ADAPTER_H/2}" font-family="${MONO}" font-size="8.5" fill="#2A5A90" text-anchor="middle" transform="rotate(-90 ${ADAPTER_X + ADAPTER_W/2} ${ADAPTER_Y + ADAPTER_H/2})">Adapter Layer</text>
   </g>
 
-  <!-- Auth + GATEWAY badge -->
+  <!-- Auth Service + GATEWAY badge -->
   ${Box({ x: AUTH_X, y: AUTH_Y, w: AUTH_W, h: AUTH_H, type: "auth",
           label: "Auth Service", tech: "Azure API Management",
           desc: "Token validation · Route dispatch\nAll traffic enters here first",
@@ -368,13 +454,16 @@
   <!-- Backend components -->
   ${Box({ x: WRAP_X, y: WRAP_Y, w: WRAP_W, h: WRAP_H, type: "container",
           label: "Wrapper Generator", tech: "Azure Container Apps",
-          desc: "Orchestrates wrap: slides, music, media. Calls OLLAMA." })}
+          desc: "Orchestrates wrap: 10 slice fan-out via callModel(). Writes result to Blob Shareable." })}
   ${Box({ x: QUEUE_X, y: QUEUE_Y, w: QUEUE_W, h: QUEUE_H, type: "component",
           label: "Queue", tech: "Azure Service Bus",
           desc: "Async job queue for generation tasks" })}
   ${Box({ x: CLASS_X, y: CLASS_Y, w: CLASS_W, h: CLASS_H, type: "container",
           label: "Contribution Classifier", tech: "Azure Container Apps",
           desc: "ML pipeline: tags and categorises contributions" })}
+  ${Box({ x: IMPORT_X, y: IMPORT_Y, w: IMPORT_W, h: IMPORT_H, type: "component",
+          label: "Import Handler", tech: "Azure Functions",
+          desc: "POST /import — LLM extraction, 256 KB cap, no persistence" })}
 
   <!-- Composer + INDEPENDENT badge -->
   ${Box({ x: COMPOSER_X, y: COMPOSER_Y, w: COMPOSER_W, h: COMPOSER_H, type: "container",
@@ -386,26 +475,25 @@
     <text x="${COMPOSER_X + 49}" y="${COMPOSER_Y + 14}" font-family="${MONO}" font-weight="bold" font-size="8" fill="#9EC5F5" text-anchor="middle">INDEPENDENT</text>
   </g>
 
-  <!-- OLLAMA -->
-  ${Box({ x: OLLAMA_X, y: OLLAMA_Y, w: OLLAMA_W, h: OLLAMA_H, type: "external",
-          label: "OLLAMA", tech: "Local LLM Runtime",
-          desc: "Model inference for wrap generation" })}
-
-  <!-- Blob: Shareable -->
+  <!-- Azure Blob Storage -->
   ${Cylinder({ x: BSHARE_X, y: BSHARE_Y, w: BSHARE_W, h: BSHARE_H,
                label: "Blob: Shareable", tech: "Azure Blob Storage",
                desc: "cache · owner:asset\nowner r/w · all:r",
                active: panel === 'shareable', onClick: 'shareable' })}
-
-  <!-- Blob: Download -->
   ${Cylinder({ x: BDL_X, y: BDL_Y, w: BDL_W, h: BDL_H,
                label: "Blob: Download", tech: "Azure Blob Storage",
                desc: "Final packaged wraps for user download" })}
 
-  <!-- UAT Agent -->
-  ${Box({ x: UAT_X, y: UAT_Y, w: UAT_W, h: UAT_H, type: "test",
-          label: "UAT Agent", tech: "Playwright",
-          desc: "Unit · Integration · e2e — pre-demo validation" })}
+  <!-- LLM Providers (External, outside Azure boundary) -->
+  ${Box({ x: ANTHRO_X, y: ANTHRO_Y, w: ANTHRO_W, h: ANTHRO_H, type: "external",
+          label: "Anthropic API", tech: "api.anthropic.com",
+          desc: "Classify · Wrap generation · File import\n3-attempt retry on 429/529" })}
+  ${Box({ x: FOUNDRY_X, y: FOUNDRY_Y, w: FOUNDRY_W, h: FOUNDRY_H, type: "external",
+          label: "Azure AI Foundry", tech: "*.services.ai.azure.com",
+          desc: "LLM-as-a-Service via AIProjectClient\nDeployment name = modelId" })}
+  ${Box({ x: OLLAMA_X, y: OLLAMA_Y, w: OLLAMA_W, h: OLLAMA_H, type: "external",
+          label: "OLLAMA", tech: "Local LLM Runtime",
+          desc: "Local model inference (opt-in)\nDefault: localhost:11434" })}
 
   <!-- Legend -->
   <g transform="translate(40, ${H - 50})">
@@ -445,15 +533,13 @@
       function render() {
         container.innerHTML = `
           ${buildSvg()}
-          <div class="hint">Click Auth Service · Backend Services boundary · Composer · Blob: Shareable to expand details</div>
+          <div class="hint">Click Contribution Sources · Auth Service · Backend Services boundary · Composer · Blob: Shareable · LLM Providers to expand details</div>
           ${buildPanel()}
         `;
 
-        // Wire click handlers on elements with data-onclick
         container.querySelectorAll('[data-onclick]').forEach(el => {
           el.addEventListener('click', () => tog(el.getAttribute('data-onclick')));
         });
-        // Close button
         const closeBtn = container.querySelector('[data-close]');
         if (closeBtn) closeBtn.addEventListener('click', () => { panel = null; render(); });
       }
@@ -461,7 +547,6 @@
       render();
     }
 
-    // Boot
     App(document.getElementById('root'));
   </script>
 </body>
