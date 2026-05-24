@@ -30,7 +30,7 @@ test.describe('UAT-015 — slice structure (fallback guarantee)', () => {
     await page.waitForTimeout(3000);
 
     const rows = await page.evaluate(async () => {
-      const open = indexedDB.open('wrapped-for-work');
+      const open = indexedDB.open('wrapped-for-work-test');
       const db: IDBDatabase = await new Promise((res, rej) => {
         open.onsuccess = () => res(open.result);
         open.onerror = () => rej(open.error);

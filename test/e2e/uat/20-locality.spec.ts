@@ -22,7 +22,12 @@ test.describe('UAT-020 — locality (privacy invariant)', () => {
     });
 
     await page.goto('/dashboard');
-    // Must show setup form (not unlock) — salt was wiped
+    // Clearing localStorage removes the session → invite gate appears (not passphrase form)
+    await expect(page.getByRole('heading', { name: /enter your invite code/i })).toBeVisible({ timeout: 5_000 });
+
+    // Bypass invite gate for fresh passphrase setup
+    await page.evaluate(() => localStorage.setItem('burrito:session', 'test'));
+    await page.goto('/dashboard');
     await expect(page.getByRole('heading', { name: /create your passphrase/i })).toBeVisible({ timeout: 5_000 });
 
     // Set up fresh and check count is 0

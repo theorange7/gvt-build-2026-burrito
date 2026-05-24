@@ -24,8 +24,9 @@
  *
  * KG-9 (JWT kid rotation) — Spec 20. Backend-only. No client-visible effect.
  *
- * KG-10 (unimplemented features) — Archive view, Share Link, weight editing, per-slide edit,
- *   draft save, Phi/Llama/Mistral, Slack/Jira/Confluence. Absence is correct for now.
+ * KG-10 (partially resolved) — Share Link (Spec 31) and File Upload provider (Spec 50)
+ *   have shipped. Archive view, weight editing, per-slide edit, draft save,
+ *   Slack/Jira/Confluence remain absent. No regression signal needed for remaining items.
  *
  * KG-11 (dead code) — Informational only. No regression signal needed.
  */

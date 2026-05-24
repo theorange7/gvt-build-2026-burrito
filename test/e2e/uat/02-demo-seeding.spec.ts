@@ -28,7 +28,7 @@ test.describe('UAT-002 — demo seeding', () => {
       .waitFor({ state: 'hidden', timeout: 15_000 });
 
     const count = await page.evaluate(async () => {
-      const open = indexedDB.open('wrapped-for-work');
+      const open = indexedDB.open('wrapped-for-work-test');
       const db: IDBDatabase = await new Promise((res, rej) => {
         open.onsuccess = () => res(open.result);
         open.onerror = () => rej(open.error);
@@ -52,7 +52,7 @@ test.describe('UAT-002 — demo seeding', () => {
       .waitFor({ state: 'hidden', timeout: 15_000 });
 
     const row = await page.evaluate(async () => {
-      const open = indexedDB.open('wrapped-for-work');
+      const open = indexedDB.open('wrapped-for-work-test');
       const db: IDBDatabase = await new Promise((res, rej) => {
         open.onsuccess = () => res(open.result);
         open.onerror = () => rej(open.error);
@@ -81,7 +81,7 @@ test.describe('UAT-002 — demo seeding', () => {
       .waitFor({ state: 'hidden', timeout: 15_000 });
 
     const seeded = await page.evaluate(async () => {
-      const open = indexedDB.open('wrapped-for-work');
+      const open = indexedDB.open('wrapped-for-work-test');
       const db: IDBDatabase = await new Promise((res, rej) => {
         open.onsuccess = () => res(open.result);
         open.onerror = () => rej(open.error);

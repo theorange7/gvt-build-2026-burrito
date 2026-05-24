@@ -39,7 +39,7 @@ test.describe('UAT-001 — passphrase setup', () => {
 
     // IndexedDB: kdfSalt row exists
     const salt = await page.evaluate(async () => {
-      const open = indexedDB.open('wrapped-for-work');
+      const open = indexedDB.open('wrapped-for-work-test');
       const db: IDBDatabase = await new Promise((res, rej) => {
         open.onsuccess = () => res(open.result);
         open.onerror = () => rej(open.error);
@@ -60,7 +60,7 @@ test.describe('UAT-001 — passphrase setup', () => {
 
     // No seeded flag yet
     const seeded = await page.evaluate(async () => {
-      const open = indexedDB.open('wrapped-for-work');
+      const open = indexedDB.open('wrapped-for-work-test');
       const db: IDBDatabase = await new Promise((res, rej) => {
         open.onsuccess = () => res(open.result);
         open.onerror = () => rej(open.error);

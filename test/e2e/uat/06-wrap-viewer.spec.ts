@@ -40,7 +40,7 @@ test.describe('UAT-006 — wrap viewer', () => {
     if (!jobId) return;
 
     const row = await page.evaluate(async (id) => {
-      const open = indexedDB.open('wrapped-for-work');
+      const open = indexedDB.open('wrapped-for-work-test');
       const db: IDBDatabase = await new Promise((res, rej) => {
         open.onsuccess = () => res(open.result);
         open.onerror = () => rej(open.error);

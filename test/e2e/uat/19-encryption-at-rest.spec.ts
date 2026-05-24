@@ -5,7 +5,7 @@ const PASS = 'correct horse battery staple';
 
 async function openIDB(page: Parameters<typeof clearStorage>[0]) {
   return page.evaluate(async () => {
-    const open = indexedDB.open('wrapped-for-work');
+    const open = indexedDB.open('wrapped-for-work-test');
     const db: IDBDatabase = await new Promise((res, rej) => {
       open.onsuccess = () => res(open.result);
       open.onerror = () => rej(open.error);
@@ -25,7 +25,7 @@ test.describe('UAT-019 — encryption at rest (privacy invariant)', () => {
 
   test('contribution rows have iv/ct and no plaintext signal', async ({ page }) => {
     const rows = await page.evaluate(async () => {
-      const open = indexedDB.open('wrapped-for-work');
+      const open = indexedDB.open('wrapped-for-work-test');
       const db: IDBDatabase = await new Promise((res, rej) => {
         open.onsuccess = () => res(open.result);
         open.onerror = () => rej(open.error);
@@ -54,7 +54,7 @@ test.describe('UAT-019 — encryption at rest (privacy invariant)', () => {
 
   test('serialized contribution rows contain no sensitive substrings', async ({ page }) => {
     const rows = await page.evaluate(async () => {
-      const open = indexedDB.open('wrapped-for-work');
+      const open = indexedDB.open('wrapped-for-work-test');
       const db: IDBDatabase = await new Promise((res, rej) => {
         open.onsuccess = () => res(open.result);
         open.onerror = () => rej(open.error);

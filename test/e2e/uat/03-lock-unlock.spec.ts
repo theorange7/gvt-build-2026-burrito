@@ -27,7 +27,7 @@ test.describe('UAT-003 — lock / unlock round-trip', () => {
 
     // Data is still encrypted (not cleared)
     const count = await page.evaluate(async () => {
-      const open = indexedDB.open('wrapped-for-work');
+      const open = indexedDB.open('wrapped-for-work-test');
       const db: IDBDatabase = await new Promise((res, rej) => {
         open.onsuccess = () => res(open.result);
         open.onerror = () => rej(open.error);

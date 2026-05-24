@@ -15,13 +15,22 @@ const STUB_SLICE_CONTENT = [
   { sliceKey: 'identity', headline: 'Stub headline', body: 'Stub body for identity.' },
 ];
 
+// The fixed test session ID. After clearStorage, all tests operate on
+// 'wrapped-for-work-test' so the invite gate is bypassed and the DB name
+// is deterministic for literal indexedDB.open() calls in tests.
+export const TEST_SESSION_ID = 'test';
+export const TEST_DB_NAME = `wrapped-for-work-${TEST_SESSION_ID}`;
+
 export async function clearStorage(page: Page): Promise<void> {
-  await page.evaluate(async () => {
+  await page.evaluate(async (sessionId) => {
     const dbs = await indexedDB.databases?.();
     if (dbs) for (const d of dbs) if (d.name) indexedDB.deleteDatabase(d.name);
     localStorage.clear();
     sessionStorage.clear();
-  });
+    // Pre-set the session so the invite-code gate is bypassed on the next
+    // page load. All tests operate on 'wrapped-for-work-test'.
+    localStorage.setItem('burrito:session', sessionId);
+  }, TEST_SESSION_ID);
 }
 
 export async function setupPassphrase(page: Page, pass: string): Promise<void> {
@@ -107,6 +116,25 @@ export async function stubBackend(
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({ signal: 'Test contribution', category: 'delivery', weight: 3 }),
+    });
+  });
+
+  await page.route(`${BACKEND}/me/data`, async (route) => {
+    if (route.request().method() !== 'DELETE') { await route.continue(); return; }
+    await route.fulfill({ status: 204 });
+  });
+
+  await page.route(`${BACKEND}/import`, async (route) => {
+    if (route.request().method() !== 'POST') { await route.continue(); return; }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        contributions: [
+          { signal: 'Stub imported contribution', category: 'delivery', weight: 3, occurredAt: new Date().toISOString() },
+        ],
+        rejectedRows: [],
+      }),
     });
   });
 
