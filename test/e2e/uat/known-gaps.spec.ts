@@ -91,6 +91,8 @@ test('KG-5: Lock during pending wrap shows unlock prompt not failure (regression
   const link = page.getByRole('link', { name: /view status/i });
   await expect(link).toBeVisible({ timeout: 30_000 });
   await link.click();
+  // Wait for PendingWrapView to mount (UnlockGate must be unlocked before we lock it)
+  await expect(page.getByRole('heading', { name: /generating your wrap/i })).toBeVisible({ timeout: 10_000 });
 
   // Simulate lock via beforeunload
   await page.evaluate(() => window.dispatchEvent(new Event('beforeunload')));

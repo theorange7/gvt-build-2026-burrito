@@ -80,7 +80,8 @@ test.describe('UAT-002 — demo seeding', () => {
       .getByRole('button', { name: /try with demo data/i })
       .waitFor({ state: 'hidden', timeout: 15_000 });
 
-    const seeded = await page.evaluate(async () => {
+    // Poll until the seeded flag appears in IDB (avoids any micro-timing races)
+    const seededHandle = await page.waitForFunction(async () => {
       const open = indexedDB.open('wrapped-for-work-test');
       const db: IDBDatabase = await new Promise((res, rej) => {
         open.onsuccess = () => res(open.result);
@@ -93,8 +94,9 @@ test.describe('UAT-002 — demo seeding', () => {
         req.onsuccess = () => res(req.result);
         req.onerror = () => rej(req.error);
       });
-      return row;
-    });
+      return row ?? null;
+    }, undefined, { timeout: 10_000 });
+    const seeded = await seededHandle.jsonValue();
     expect((seeded as Record<string, unknown>).value).toBe(true);
   });
 });

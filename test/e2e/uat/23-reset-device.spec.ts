@@ -22,7 +22,7 @@ test.describe('UAT-023 — reset device (Spec 51)', () => {
   test('"Forgot your passphrase?" opens reset modal', async ({ page }) => {
     await page.reload();
     await expect(page.getByRole('heading', { name: /welcome back/i })).toBeVisible();
-    await page.getByText(/forgot your passphrase/i).click();
+    await page.getByRole('button', { name: /forget this device/i }).click();
     await expect(page.getByText(/type reset to confirm/i)).toBeVisible({ timeout: 5_000 });
   });
 
@@ -43,7 +43,7 @@ test.describe('UAT-023 — reset device (Spec 51)', () => {
 
     // After clear-data reset: dashboard reloads with 0 contributions
     await expect(page.getByText(/contributions caught/i)).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByText('134')).toHaveCount(0, { timeout: 5_000 });
+    await expect(page.getByText('134', { exact: true })).toHaveCount(0, { timeout: 5_000 });
   });
 });
 

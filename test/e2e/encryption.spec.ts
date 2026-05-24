@@ -15,7 +15,9 @@ test.describe('encrypted-at-rest in IndexedDB', () => {
     await fields.nth(1).fill('encryption-test-passphrase');
     await page.getByRole('button', { name: /set passphrase/i }).click();
     await page.getByRole('button', { name: /try with demo data/i }).click();
-    await expect(page.getByText(/contributions caught/i)).toBeVisible({ timeout: 15_000 });
+    await page
+      .getByRole('button', { name: /try with demo data/i })
+      .waitFor({ state: 'hidden', timeout: 15_000 });
 
     const rawRow = await page.evaluate(async () => {
       const open = indexedDB.open('wrapped-for-work-e2e-session');

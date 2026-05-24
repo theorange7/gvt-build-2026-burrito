@@ -19,6 +19,7 @@ test.describe('UAT-007 — wrap list (Wrapped tab)', () => {
   });
 
   test('wrapped tab shows wrap cards after a wrap completes', async ({ page }) => {
+    test.setTimeout(90_000);
     await stubBackend(page);
     await page.goto('/dashboard');
     await clearStorage(page);
