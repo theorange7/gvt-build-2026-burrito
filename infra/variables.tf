@@ -114,3 +114,8 @@ variable "wrap_allowed_origins" {
   description = "Comma-separated list of CORS origins the Function app permits."
   type        = string
 }
+
+variable "foundry_resource_id" {
+  description = "The resource ID of our backend Azure AI Foundry resource"
+  type        = string
+}

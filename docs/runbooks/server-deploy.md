@@ -3,6 +3,12 @@
 Manual deploy of the Azure Functions backend to a provisioned Function App.
 Infra is managed by Terraform (`infra/`); this runbook covers the code deploy only.
 
+> **Most deploys should go through CI** — see `ci-deploys.md` for the
+> `Deploy server` workflow (OIDC-authenticated, smoke-tested, same artifact).
+> Use this manual path for hotfixes when CI is broken, when you need to
+> redeploy a specific previous zip, or when bootstrapping a new Function App
+> before the workflow has been pointed at it.
+
 ## Prerequisites
 
 - `az` CLI installed and logged in (`az login`).

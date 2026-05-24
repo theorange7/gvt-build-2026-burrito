@@ -1,0 +1,9 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Minimal capability set for the v1 shell. The WebView only needs core APIs — no fs, no shell, no http (the JS bundle handles its own fetches against the configured backend, gated by CSP).",
+  "windows": ["main"],
+  "permissions": [
+    "core:default"
+  ]
+}

@@ -176,3 +176,10 @@ resource "azurerm_key_vault_access_policy" "func_read" {
 
   secret_permissions = ["Get", "List"]
 }
+
+# ── RBAC: Functions managed identity → AI Foundry ────────────────────────────
+resource "azurerm_role_assignment" "func_foundry_ai_developer" {
+  scope                = var.foundry_resource_id # the AI Foundry resource ID
+  role_definition_name = "Azure AI Developer"
+  principal_id         = module.functions.principal_id
+}
