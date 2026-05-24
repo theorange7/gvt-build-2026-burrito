@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Burrito — 5-Minute Pitch</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --hot:    #FF4D2E;
+      --lime:   #C6FF3B;
+      --ink:    #0A0A0A;
+      --cream:  #FFF4DE;
+      --paper:  #FBF5E5;
+      --purple: #6B3DFF;
+      --sky:    #7BE3FF;
+      --border: 2px solid var(--ink);
+      --shadow: 4px 4px 0 var(--ink);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--paper);
+      color: var(--ink);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 17px;
+      line-height: 1.6;
+    }
+
+    /* ── Hero ─────────────────────────────────────────────────────────── */
+    .hero {
+      background: var(--ink);
+      color: var(--cream);
+      padding: 80px 40px 72px;
+      text-align: center;
+    }
+    .hero img {
+      height: 48px;
+      width: auto;
+      filter: invert(1);
+      margin-bottom: 36px;
+      opacity: 0.9;
+    }
+    .hero-eyebrow {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--lime);
+      margin-bottom: 20px;
+    }
+    .hero h1 {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: clamp(52px, 10vw, 100px);
+      line-height: 0.9;
+      letter-spacing: -0.03em;
+      text-transform: uppercase;
+      margin-bottom: 32px;
+    }
+    .hero h1 em {
+      display: block;
+      font-style: normal;
+      color: var(--hot);
+    }
+    .hero-tagline {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: clamp(18px, 3vw, 26px);
+      font-weight: 500;
+      max-width: 600px;
+      margin: 0 auto 40px;
+      opacity: 0.85;
+      line-height: 1.4;
+    }
+    .hero-tagline strong { color: var(--lime); font-weight: 700; }
+    .guide-link {
+      display: inline-block;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--ink);
+      background: var(--lime);
+      padding: 10px 20px;
+      border-radius: 6px;
+      text-decoration: none;
+      border: var(--border);
+      transition: transform 0.12s, box-shadow 0.12s;
+    }
+    .guide-link:hover { transform: translate(-2px,-2px); box-shadow: var(--shadow); }
+
+    /* ── Sections ─────────────────────────────────────────────────────── */
+    .block {
+      padding: 72px 40px;
+      border-bottom: var(--border);
+    }
+    .block:last-of-type { border-bottom: none; }
+    .inner { max-width: 800px; margin: 0 auto; }
+
+    .label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--hot);
+      margin-bottom: 16px;
+    }
+    h2 {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: clamp(32px, 5vw, 52px);
+      line-height: 1;
+      letter-spacing: -0.02em;
+      text-transform: uppercase;
+      margin-bottom: 24px;
+    }
+    .lead {
+      font-size: clamp(17px, 2.5vw, 21px);
+      line-height: 1.55;
+      max-width: 640px;
+    }
+
+    /* ── Problem block ─────────────────────────────────────────────────── */
+    .problem { background: var(--hot); color: var(--cream); }
+    .problem .label { color: var(--lime); }
+    .problem .lead  { opacity: 0.9; }
+    .problem-list {
+      list-style: none;
+      display: grid;
+      gap: 16px;
+      margin-top: 36px;
+    }
+    .problem-list li {
+      display: flex;
+      align-items: baseline;
+      gap: 16px;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 18px;
+      font-weight: 600;
+    }
+    .problem-list li::before {
+      content: '—';
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 14px;
+      color: var(--lime);
+      flex-shrink: 0;
+    }
+
+    /* ── How it works ──────────────────────────────────────────────────── */
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-top: 40px;
+    }
+    .step {
+      background: var(--cream);
+      border: var(--border);
+      border-radius: 12px;
+      padding: 28px 24px;
+      box-shadow: var(--shadow);
+    }
+    .step-num {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 48px;
+      line-height: 1;
+      color: var(--hot);
+      margin-bottom: 16px;
+    }
+    .step-title {
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 700;
+      font-size: 15px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 10px;
+    }
+    .step-desc { font-size: 14px; line-height: 1.5; opacity: 0.75; }
+
+    /* ── The wrap ──────────────────────────────────────────────────────── */
+    .wrap-block { background: var(--lime); }
+    .slides-strip {
+      display: flex;
+      gap: 10px;
+      margin-top: 36px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+    .slides-strip::-webkit-scrollbar { height: 4px; }
+    .slides-strip::-webkit-scrollbar-track { background: transparent; }
+    .slides-strip::-webkit-scrollbar-thumb { background: var(--ink); border-radius: 2px; }
+    .slide-chip {
+      flex-shrink: 0;
+      border: var(--border);
+      border-radius: 8px;
+      padding: 14px 16px;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      white-space: nowrap;
+      box-shadow: 3px 3px 0 var(--ink);
+    }
+    .s1  { background: #FF4D2E; color: #FFF4DE; }
+    .s2  { background: #C6FF3B; color: #0A0A0A; }
+    .s3  { background: #7BE3FF; color: #0A0A0A; }
+    .s4  { background: #0A0A0A; color: #FFF4DE; }
+    .s5  { background: #FFB3C7; color: #0A0A0A; }
+    .s6  { background: #6B3DFF; color: #FFF4DE; }
+    .s7  { background: #FBF5E5; color: #0A0A0A; }
+    .s8  { background: #FFF4DE; color: #0A0A0A; }
+    .s9  { background: #0A0A0A; color: #FF4D2E; }
+    .s10 { background: #C6FF3B; color: #0A0A0A; }
+
+    /* ── Privacy ───────────────────────────────────────────────────────── */
+    .privacy-block { background: var(--ink); color: var(--cream); }
+    .privacy-block .label { color: var(--lime); }
+    .privacy-block h2 { color: var(--cream); }
+    .privacy-cols {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      margin-top: 40px;
+    }
+    @media (max-width: 560px) { .privacy-cols { grid-template-columns: 1fr; } }
+    .privacy-col {
+      border: 2px solid rgba(255,255,255,0.15);
+      border-radius: 12px;
+      padding: 24px;
+    }
+    .privacy-col-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      margin-bottom: 16px;
+    }
+    .stays  .privacy-col-label { color: var(--lime); }
+    .leaves .privacy-col-label { color: var(--sky); }
+    .privacy-col ul { list-style: none; display: grid; gap: 10px; }
+    .privacy-col li { font-size: 14px; opacity: 0.8; display: flex; gap: 10px; align-items: baseline; }
+    .stays  li::before { content: '✓'; color: var(--lime); font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+    .leaves li::before { content: '↑'; color: var(--sky);  font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+
+    /* ── Footer ────────────────────────────────────────────────────────── */
+    footer {
+      background: var(--cream);
+      border-top: var(--border);
+      padding: 48px 40px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 20px;
+    }
+    footer img { height: 28px; width: auto; opacity: 0.5; }
+    footer p {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      opacity: 0.4;
+    }
+    footer a {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--ink);
+      text-decoration: none;
+      opacity: 0.6;
+      border-bottom: 1px solid currentColor;
+    }
+    footer a:hover { opacity: 1; }
+
+    @media (max-width: 600px) {
+      .block { padding: 56px 24px; }
+      .hero  { padding: 60px 24px 56px; }
+      footer { padding: 36px 24px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Hero ───────────────────────────────────────────────────────────── -->
+<header class="hero">
+  <img src="./logo.png" alt="Burrito" />
+  <p class="hero-eyebrow">5-minute pitch</p>
+  <h1>Your work.<em>Wrapped.</em></h1>
+  <p class="hero-tagline">Burrito turns a year of engineering contributions into <strong>10 editorial slides</strong> — ready in 60 seconds, stored only on your device.</p>
+  <a href="./user-guide.html" class="guide-link">Read the full guide →</a>
+</header>
+
+<!-- ── The problem ─────────────────────────────────────────────────────── -->
+<div class="block problem">
+  <div class="inner">
+    <div class="label">The problem</div>
+    <h2>You ship. Nobody notices.</h2>
+    <p class="lead">Performance reviews reward whoever writes the best self-assessment. The best work — the late-night fix, the cross-team unblock, the mentorship — doesn't make it into the doc.</p>
+    <ul class="problem-list">
+      <li>Git has no narrative layer</li>
+      <li>Jira tickets don't capture impact</li>
+      <li>You can't remember Q1 in December</li>
+      <li>Copy-pasting PRs into a Google Doc is not a system</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ── How it works ────────────────────────────────────────────────────── -->
+<div class="block">
+  <div class="inner">
+    <div class="label">How it works</div>
+    <h2>Three steps.</h2>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">01</div>
+        <div class="step-title">Collect your signal</div>
+        <p class="step-desc">Connect GitLab, import a commit log, or type notes manually. Everything is encrypted on your device the moment it lands.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">02</div>
+        <div class="step-title">Pick a mode</div>
+        <p class="step-desc"><strong>Snapshot</strong> for any date range. <strong>Year-End</strong> for the full calendar year. Choose the AI model. Hit generate.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">03</div>
+        <div class="step-title">Get your wrap</div>
+        <p class="step-desc">60 seconds later: 10 slides, each targeting a different dimension of your work. Ready to present or share.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── The wrap ─────────────────────────────────────────────────────────── -->
+<div class="block wrap-block">
+  <div class="inner">
+    <div class="label">What you get</div>
+    <h2>10 slides that tell the story.</h2>
+    <p class="lead">Each slide reads only the contributions relevant to it. A slide with no signal is simply skipped — no padding, no filler.</p>
+    <div class="slides-strip">
+      <div class="slide-chip s1">Launches Shipped</div>
+      <div class="slide-chip s2">Velocity</div>
+      <div class="slide-chip s3">Cross-Team Impact</div>
+      <div class="slide-chip s4">Deep Work Streak</div>
+      <div class="slide-chip s5">Mentorship</div>
+      <div class="slide-chip s6">Initiative</div>
+      <div class="slide-chip s7">Collaboration Style</div>
+      <div class="slide-chip s8">Consistency</div>
+      <div class="slide-chip s9">Highlight Reel</div>
+      <div class="slide-chip s10">Identity</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Privacy ──────────────────────────────────────────────────────────── -->
+<div class="block privacy-block">
+  <div class="inner">
+    <div class="label">Privacy first</div>
+    <h2>Local-first. Always.</h2>
+    <p class="lead" style="opacity:0.85;">Your contributions never touch a database. The server is a stateless AI proxy — it sees signal text, nothing else.</p>
+    <div class="privacy-cols">
+      <div class="privacy-col stays">
+        <div class="privacy-col-label">Stays on your device</div>
+        <ul>
+          <li>Your passphrase and encryption key</li>
+          <li>All contribution text, encrypted at rest</li>
+          <li>Generated wrap content</li>
+          <li>Your name and profile</li>
+          <li>All identifiers and IDs</li>
+        </ul>
+      </div>
+      <div class="privacy-col leaves">
+        <div class="privacy-col-label">Sent to the AI proxy</div>
+        <ul>
+          <li>Contribution signal text only</li>
+          <li>No names, no IDs, no account links</li>
+          <li>An anonymous per-install token</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Footer ───────────────────────────────────────────────────────────── -->
+<footer>
+  <img src="./logo.png" alt="Burrito" />
+  <p>Private Preview · 2026</p>
+  <a href="./user-guide.html">Full user guide →</a>
+</footer>
+
+</body>
+</html>
