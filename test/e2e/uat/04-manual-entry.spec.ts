@@ -15,7 +15,7 @@ test.describe('UAT-004 — manual contribution entry (client-only, stub backend)
 
   test('successful classify and save shows green banner', async ({ page }) => {
     // Open the manual entry form
-    await page.getByRole('button', { name: /add contribution manually/i }).click();
+    await page.getByRole('button', { name: /add manually/i }).click();
     await page.getByPlaceholder(/describe a contribution/i).fill(
       'Led the design review for the new payment-rail v2 migration plan.',
     );
@@ -37,7 +37,7 @@ test.describe('UAT-004 — manual contribution entry (full-stack)', () => {
   });
 
   test('classify hit real backend and saves', async ({ page }) => {
-    await page.getByRole('button', { name: /add contribution manually/i }).click();
+    await page.getByRole('button', { name: /add manually/i }).click();
     await page.getByPlaceholder(/describe a contribution/i).fill(
       'Led the design review for the new payment-rail v2 migration plan.',
     );

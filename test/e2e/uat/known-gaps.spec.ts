@@ -95,7 +95,8 @@ test('KG-5: Lock during pending wrap shows unlock prompt not failure (regression
   // Simulate lock via beforeunload
   await page.evaluate(() => window.dispatchEvent(new Event('beforeunload')));
 
-  // If fixed: an unlock prompt appears instead of staying in queued/failed state.
-  // After beforeunload clears the key, UnlockGate shows "Welcome back." on next mount.
-  await expect(page.getByRole('heading', { name: /welcome back/i })).toBeVisible({ timeout: 10_000 });
+  // If fixed: PendingWrapView shows the paused-locked unlock prompt instead of
+  // staying in queued/failed state. usePendingWrap sets phase:'paused-locked' on
+  // the next tick after the key is cleared, which renders this text.
+  await expect(page.getByText(/unlock your local store to resume/i)).toBeVisible({ timeout: 10_000 });
 });
