@@ -98,6 +98,7 @@ Future / new features:
 
 | ID | Title | Status | Branch | Appetite |
 |----|-------|--------|--------|----------|
+| 15 | Client web deploy via Azure Static Web Apps | Shaped — ready | both | small |
 | 30 | Composer — music-synced video render service | Shaped — ready | composer + server + client | large |
 | 31 | Shareable highlight wheels (public bundle + revoke) | Shaped — ready | both | large |
 | 40 | Tauri 2 macOS shell bootstrap | Done — 2026-05-23 (claude/spec-40-bpkpC) | client | medium |
