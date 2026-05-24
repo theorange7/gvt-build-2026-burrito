@@ -10,10 +10,6 @@ test.describe('encrypted-at-rest in IndexedDB', () => {
 
   test('contribution signals are not stored as plaintext strings', async ({ page }) => {
     await page.goto('/dashboard');
-    // Bypass invite-code gate: set a fixed session so the app opens the
-    // per-session DB ('wrapped-for-work-test') and skips the invite form.
-    await page.evaluate(() => localStorage.setItem('burrito:session', 'test'));
-    await page.goto('/dashboard');
     const fields = page.getByPlaceholder(/passphrase/i);
     await fields.nth(0).fill('encryption-test-passphrase');
     await fields.nth(1).fill('encryption-test-passphrase');
@@ -22,7 +18,7 @@ test.describe('encrypted-at-rest in IndexedDB', () => {
     await expect(page.getByText(/contributions caught/i)).toBeVisible({ timeout: 15_000 });
 
     const rawRow = await page.evaluate(async () => {
-      const open = indexedDB.open('wrapped-for-work-test');
+      const open = indexedDB.open('wrapped-for-work-e2e-session');
       const db: IDBDatabase = await new Promise((resolve, reject) => {
         open.onsuccess = () => resolve(open.result);
         open.onerror = () => reject(open.error);

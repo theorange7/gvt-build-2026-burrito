@@ -84,9 +84,6 @@ async function mockGitLab(page: Page) {
 
 async function unlock(page: Page) {
   await page.goto('/dashboard');
-  // Bypass invite-code gate so the passphrase setup form is shown.
-  await page.evaluate(() => localStorage.setItem('burrito:session', 'test'));
-  await page.goto('/dashboard');
   const fields = page.getByPlaceholder(/passphrase/i);
   await fields.nth(0).fill(PASSPHRASE);
   await fields.nth(1).fill(PASSPHRASE);
@@ -148,7 +145,7 @@ test.describe('GitLab provider — settings + sync flow', () => {
     await expect(page.getByText(/Last sync: \+\s*[1-9]\d*\s*new/i)).toBeVisible({ timeout: 10_000 });
 
     const stored = await page.evaluate(async () => {
-      const open = indexedDB.open('wrapped-for-work-test');
+      const open = indexedDB.open('wrapped-for-work-e2e-session');
       const idb: IDBDatabase = await new Promise((resolve, reject) => {
         open.onsuccess = () => resolve(open.result);
         open.onerror = () => reject(open.error);
@@ -184,7 +181,7 @@ test.describe('GitLab provider — settings + sync flow', () => {
           req.onerror = () => reject(req.error);
         });
       }
-      const open = indexedDB.open('wrapped-for-work-test');
+      const open = indexedDB.open('wrapped-for-work-e2e-session');
       const db: IDBDatabase = await new Promise((resolve, reject) => {
         open.onsuccess = () => resolve(open.result);
         open.onerror = () => reject(open.error);
