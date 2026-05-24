@@ -9,6 +9,25 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+#### HTML user guide and 5-minute pitch page (PR #74)
+
+Two static pages added to `public/` for the private preview:
+
+- `public/user-guide.html` — full seven-section reference guide covering
+  onboarding, the dashboard, adding contributions (manual entry, file import,
+  provider sync), wrap generation, all 10 slide types, settings, and the
+  privacy model. Written in the Burrito brand voice with the app's full design
+  language (Space Grotesk, Syne, JetBrains Mono, DM Sans; Tomato palette tokens;
+  ink borders with drop shadows).
+
+- `public/pitch.html` — a concise one-pager for new users: what the product is,
+  the gap it fills, how it works in three steps, the 10 slide chips, and the
+  privacy model split into what stays on device vs. what reaches the AI proxy.
+  The two pages link to each other.
+
+Both pages use `./logo.png` (relative path) and are served statically by
+Next.js from the `public/` directory.
+
 #### OpenAPI 3.1 spec for the server API at `docs/openapi.yaml`
 
 Every HTTP endpoint the server exposes — `POST /auth/register`,
