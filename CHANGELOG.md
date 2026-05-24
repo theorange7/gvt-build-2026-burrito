@@ -9,6 +9,19 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+## [0.1.0-alpha-tauri] - 2026-05-24
+
+### Added
+
+#### App logo for the Tauri macOS shell
+
+The spiral-with-red-accent logo is now used as the application icon across all
+required Tauri icon formats: `32x32.png`, `128x128.png`, `128x128@2x.png`,
+`icon.png` (512 px), `icon.icns` (macOS, all standard densities), and
+`icon.ico` (Windows multi-size). The source image lives at
+`public/logo.png` (1024 × 1024 RGBA PNG). Version bumped to
+`0.1.0-alpha-tauri` in `src-tauri/tauri.conf.json` and `src-tauri/Cargo.toml`.
+
 #### OpenAPI 3.1 spec for the server API at `docs/openapi.yaml`
 
 Every HTTP endpoint the server exposes — `POST /auth/register`,
