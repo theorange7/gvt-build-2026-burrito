@@ -1,0 +1,985 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Wrapped for Work — User Guide</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;700&display=swap" rel="stylesheet" />
+  <style>
+    /* ─── Tokens ─────────────────────────────────────────────────────────── */
+    :root {
+      --hot:    #FF4D2E;
+      --lime:   #C6FF3B;
+      --ink:    #0A0A0A;
+      --cream:  #FFF4DE;
+      --paper:  #FBF5E5;
+      --purple: #6B3DFF;
+      --sky:    #7BE3FF;
+      --rose:   #FFB3C7;
+      --border: 2px solid var(--ink);
+      --shadow: 4px 4px 0 var(--ink);
+      --shadow-sm: 3px 3px 0 var(--ink);
+    }
+
+    /* ─── Reset ──────────────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    /* ─── Base ───────────────────────────────────────────────────────────── */
+    body {
+      background: var(--paper);
+      color: var(--ink);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 17px;
+      line-height: 1.65;
+    }
+
+    /* ─── Layout ─────────────────────────────────────────────────────────── */
+    .container {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* ─── Nav ────────────────────────────────────────────────────────────── */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: var(--ink);
+      color: var(--cream);
+      border-bottom: var(--border);
+    }
+    .nav-inner {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      height: 52px;
+    }
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+      color: var(--cream);
+      flex-shrink: 0;
+    }
+    .nav-logo img {
+      height: 28px;
+      width: auto;
+      filter: invert(1);
+    }
+    .nav-title {
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 700;
+      font-size: 14px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .nav-links {
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap;
+      list-style: none;
+      margin-left: auto;
+    }
+    .nav-links a {
+      color: var(--cream);
+      text-decoration: none;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 500;
+      opacity: 0.6;
+      padding: 4px 8px;
+      border-radius: 4px;
+      transition: opacity 0.15s, background 0.15s;
+    }
+    .nav-links a:hover { opacity: 1; background: rgba(255,255,255,0.1); }
+
+    /* ─── Hero ───────────────────────────────────────────────────────────── */
+    .hero {
+      background: var(--hot);
+      color: var(--cream);
+      border-bottom: var(--border);
+      padding: 72px 24px 64px;
+      text-align: center;
+    }
+    .hero-logo {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+    .hero-logo img {
+      height: 52px;
+      width: auto;
+      filter: invert(1);
+    }
+    .hero h1 {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: clamp(42px, 7vw, 72px);
+      line-height: 0.95;
+      letter-spacing: -0.02em;
+      text-transform: uppercase;
+      margin-bottom: 20px;
+    }
+    .hero h1 span {
+      display: block;
+      color: var(--lime);
+    }
+    .hero-sub {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 18px;
+      font-weight: 400;
+      opacity: 0.9;
+      max-width: 520px;
+      margin: 0 auto 32px;
+    }
+    .hero-badge {
+      display: inline-block;
+      background: var(--ink);
+      color: var(--lime);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      padding: 6px 14px;
+      border-radius: 4px;
+    }
+
+    /* ─── TOC ────────────────────────────────────────────────────────────── */
+    .toc {
+      background: var(--cream);
+      border: var(--border);
+      border-radius: 12px;
+      padding: 32px;
+      margin: 48px 0;
+      box-shadow: var(--shadow);
+    }
+    .toc-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--hot);
+      margin-bottom: 20px;
+    }
+    .toc ol {
+      list-style: none;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 8px;
+    }
+    .toc a {
+      display: block;
+      text-decoration: none;
+      color: var(--ink);
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      padding: 8px 12px;
+      border: 2px solid transparent;
+      border-radius: 6px;
+      transition: all 0.12s;
+    }
+    .toc a:hover {
+      border-color: var(--ink);
+      background: var(--paper);
+      transform: translate(-1px, -1px);
+      box-shadow: var(--shadow-sm);
+    }
+    .toc a .num {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--hot);
+      margin-right: 6px;
+    }
+
+    /* ─── Section structure ──────────────────────────────────────────────── */
+    .section {
+      padding: 64px 0;
+      border-bottom: var(--border);
+    }
+    .section:last-of-type { border-bottom: none; }
+
+    .section-header {
+      display: flex;
+      align-items: baseline;
+      gap: 16px;
+      margin-bottom: 40px;
+    }
+    .section-num {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--hot);
+      flex-shrink: 0;
+    }
+    h2 {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: clamp(26px, 4vw, 36px);
+      letter-spacing: -0.02em;
+      text-transform: uppercase;
+      line-height: 1;
+    }
+    h3 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 700;
+      font-size: 16px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--ink);
+      margin: 36px 0 16px;
+    }
+    h3:first-child { margin-top: 0; }
+
+    p { margin-bottom: 16px; }
+    p:last-child { margin-bottom: 0; }
+
+    /* ─── Cards ──────────────────────────────────────────────────────────── */
+    .card {
+      background: var(--cream);
+      border: var(--border);
+      border-radius: 12px;
+      padding: 28px 32px;
+      box-shadow: var(--shadow);
+      margin-bottom: 20px;
+    }
+    .card:last-child { margin-bottom: 0; }
+    .card-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--hot);
+      margin-bottom: 10px;
+    }
+    .card h3 {
+      margin-top: 0;
+      font-size: 15px;
+      font-family: 'Space Grotesk', sans-serif;
+    }
+
+    /* ─── Steps ──────────────────────────────────────────────────────────── */
+    .steps {
+      list-style: none;
+      counter-reset: steps;
+    }
+    .steps li {
+      counter-increment: steps;
+      display: flex;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+    .steps li::before {
+      content: counter(steps, decimal-leading-zero);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--cream);
+      background: var(--ink);
+      min-width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .steps li p { margin: 0; }
+
+    /* ─── Feature grid ───────────────────────────────────────────────────── */
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 16px;
+    }
+    .feature-card {
+      background: var(--cream);
+      border: var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: var(--shadow-sm);
+      transition: transform 0.12s, box-shadow 0.12s;
+    }
+    .feature-card:hover {
+      transform: translate(-2px, -2px);
+      box-shadow: var(--shadow);
+    }
+    .feature-icon {
+      font-size: 28px;
+      margin-bottom: 12px;
+      display: block;
+    }
+    .feature-title {
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 700;
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 8px;
+    }
+    .feature-desc {
+      font-size: 14px;
+      color: rgba(10,10,10,0.7);
+      line-height: 1.5;
+    }
+
+    /* ─── Slide grid ─────────────────────────────────────────────────────── */
+    .slide-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 12px;
+    }
+    .slide-card {
+      border: var(--border);
+      border-radius: 10px;
+      padding: 20px;
+      box-shadow: var(--shadow-sm);
+      position: relative;
+      overflow: hidden;
+    }
+    .slide-num {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      opacity: 0.5;
+      margin-bottom: 8px;
+    }
+    .slide-name {
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 700;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 8px;
+    }
+    .slide-desc {
+      font-size: 13px;
+      line-height: 1.5;
+      opacity: 0.8;
+    }
+
+    /* Slide color themes */
+    .slide-launches  { background: #FF4D2E; color: #FFF4DE; }
+    .slide-velocity  { background: #C6FF3B; color: #0A0A0A; }
+    .slide-crossteam { background: #7BE3FF; color: #0A0A0A; }
+    .slide-deepwork  { background: #0A0A0A; color: #FFF4DE; }
+    .slide-mentorship{ background: #FFB3C7; color: #0A0A0A; }
+    .slide-initiative{ background: #6B3DFF; color: #FFF4DE; }
+    .slide-collab    { background: #FBF5E5; color: #0A0A0A; border: 2px solid #0A0A0A; }
+    .slide-consistency{background: #FFF4DE; color: #0A0A0A; }
+    .slide-highlight { background: #0A0A0A; color: #FF4D2E; }
+    .slide-identity  { background: #C6FF3B; color: #0A0A0A; }
+
+    /* ─── Callout boxes ───────────────────────────────────────────────────── */
+    .callout {
+      display: flex;
+      gap: 16px;
+      padding: 20px 24px;
+      border: var(--border);
+      border-radius: 10px;
+      margin: 24px 0;
+    }
+    .callout-icon {
+      font-size: 20px;
+      flex-shrink: 0;
+      line-height: 1.4;
+    }
+    .callout p { margin: 0; font-size: 15px; line-height: 1.55; }
+    .callout-privacy { background: var(--lime); }
+    .callout-tip     { background: var(--sky); }
+    .callout-warn    { background: var(--rose); }
+
+    /* ─── Inline code ─────────────────────────────────────────────────────── */
+    code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      background: var(--ink);
+      color: var(--lime);
+      padding: 2px 7px;
+      border-radius: 4px;
+    }
+
+    /* ─── Tag badges ──────────────────────────────────────────────────────── */
+    .badge {
+      display: inline-block;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 3px 8px;
+      border-radius: 4px;
+      border: 1.5px solid var(--ink);
+      margin-right: 4px;
+      vertical-align: middle;
+    }
+    .badge-hot     { background: var(--hot); color: var(--cream); border-color: var(--hot); }
+    .badge-lime    { background: var(--lime); color: var(--ink); }
+    .badge-ink     { background: var(--ink); color: var(--cream); border-color: var(--ink); }
+    .badge-purple  { background: var(--purple); color: var(--cream); border-color: var(--purple); }
+
+    /* ─── Category pills ──────────────────────────────────────────────────── */
+    .pill-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 16px 0;
+    }
+    .pill {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 5px 12px;
+      border-radius: 20px;
+      border: var(--border);
+    }
+    .pill-delivery     { background: #FF4D2E; color: #FFF4DE; }
+    .pill-collaboration{ background: #7BE3FF; color: #0A0A0A; }
+    .pill-mentorship   { background: #FFB3C7; color: #0A0A0A; }
+    .pill-process      { background: #C6FF3B; color: #0A0A0A; }
+    .pill-leadership   { background: #6B3DFF; color: #FFF4DE; }
+
+    /* ─── Privacy meter ───────────────────────────────────────────────────── */
+    .privacy-block {
+      background: var(--ink);
+      color: var(--cream);
+      border-radius: 16px;
+      padding: 40px 36px;
+      box-shadow: var(--shadow);
+    }
+    .privacy-block h3 { color: var(--lime); margin-bottom: 20px; }
+    .privacy-block p  { font-size: 15px; opacity: 0.85; margin-bottom: 12px; }
+    .privacy-block p:last-child { margin-bottom: 0; }
+    .privacy-list {
+      list-style: none;
+      margin: 20px 0;
+    }
+    .privacy-list li {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+      margin-bottom: 12px;
+      font-size: 15px;
+    }
+    .privacy-list li::before {
+      content: '✓';
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--lime);
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    /* ─── Palette preview ─────────────────────────────────────────────────── */
+    .palette-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 12px;
+      margin: 20px 0;
+    }
+    .palette-card {
+      border: var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: var(--shadow-sm);
+    }
+    .palette-swatch { height: 48px; }
+    .palette-meta {
+      padding: 12px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 700;
+      background: var(--cream);
+    }
+
+    /* ─── Mode comparison ─────────────────────────────────────────────────── */
+    .mode-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    @media (max-width: 600px) { .mode-grid { grid-template-columns: 1fr; } }
+    .mode-card { border-radius: 12px; padding: 28px; border: var(--border); box-shadow: var(--shadow-sm); }
+    .mode-snapshot { background: var(--lime); }
+    .mode-yearend  { background: var(--hot); color: var(--cream); }
+    .mode-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      opacity: 0.7;
+      margin-bottom: 10px;
+    }
+    .mode-title {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 22px;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+    .mode-detail { font-size: 14px; line-height: 1.55; }
+
+    /* ─── Footer ──────────────────────────────────────────────────────────── */
+    footer {
+      background: var(--ink);
+      color: var(--cream);
+      padding: 48px 24px;
+      border-top: var(--border);
+      text-align: center;
+    }
+    footer img {
+      height: 36px;
+      width: auto;
+      filter: invert(1);
+      margin-bottom: 16px;
+      opacity: 0.6;
+    }
+    footer p {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      opacity: 0.4;
+      margin-bottom: 6px;
+    }
+
+    /* ─── Responsive ──────────────────────────────────────────────────────── */
+    @media (max-width: 640px) {
+      .nav-links { display: none; }
+      .hero { padding: 48px 20px 40px; }
+      .section { padding: 48px 0; }
+      .card { padding: 20px; }
+      .toc ol { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ─── Navigation ─────────────────────────────────────────────────────── -->
+<nav>
+  <div class="nav-inner">
+    <a href="#top" class="nav-logo">
+      <img src="/logo.png" alt="Wrapped for Work" />
+      <span class="nav-title">User Guide</span>
+    </a>
+    <ul class="nav-links">
+      <li><a href="#getting-started">Start</a></li>
+      <li><a href="#dashboard">Dashboard</a></li>
+      <li><a href="#adding-contributions">Contributions</a></li>
+      <li><a href="#generating-a-wrap">Wrap</a></li>
+      <li><a href="#your-slides">Slides</a></li>
+      <li><a href="#settings">Settings</a></li>
+      <li><a href="#privacy">Privacy</a></li>
+    </ul>
+  </div>
+</nav>
+
+<!-- ─── Hero ───────────────────────────────────────────────────────────── -->
+<div id="top">
+  <div class="hero">
+    <div class="hero-logo">
+      <img src="/logo.png" alt="Wrapped for Work logo" />
+    </div>
+    <h1>Wrapped<span>for Work.</span></h1>
+    <p class="hero-sub">Turn a year of engineering contributions into a 10-slide editorial recap — generated in 60 seconds, stored only on your device.</p>
+    <span class="hero-badge">Private Preview · User Guide</span>
+  </div>
+</div>
+
+<!-- ─── Main content ───────────────────────────────────────────────────── -->
+<main class="container">
+
+  <!-- TOC -->
+  <div class="toc">
+    <div class="toc-label">Contents</div>
+    <ol>
+      <li><a href="#getting-started"><span class="num">01</span>Getting Started</a></li>
+      <li><a href="#dashboard"><span class="num">02</span>The Dashboard</a></li>
+      <li><a href="#adding-contributions"><span class="num">03</span>Adding Contributions</a></li>
+      <li><a href="#generating-a-wrap"><span class="num">04</span>Generating a Wrap</a></li>
+      <li><a href="#your-slides"><span class="num">05</span>Your Slides</a></li>
+      <li><a href="#settings"><span class="num">06</span>Settings &amp; Providers</a></li>
+      <li><a href="#privacy"><span class="num">07</span>Privacy Model</a></li>
+    </ol>
+  </div>
+
+  <!-- ─── 01 Getting Started ─────────────────────────────────────────── -->
+  <section class="section" id="getting-started">
+    <div class="section-header">
+      <span class="section-num">01</span>
+      <h2>Getting Started</h2>
+    </div>
+
+    <p>Wrapped for Work is in private preview. You need an invite code to enter, and a passphrase to protect everything inside.</p>
+
+    <h3>Enter your invite code</h3>
+    <p>When you first open the app, you'll be asked for an invite code. Codes follow the format <code>BURRITO-XXXX-XX</code>. Enter yours and press <strong>Continue</strong>.</p>
+
+    <h3>Create your passphrase</h3>
+    <div class="card">
+      <div class="card-label">First launch</div>
+      <p>You'll be prompted to <em>"Create your passphrase"</em>. Choose at least 8 characters. This passphrase derives the encryption key that locks your contributions and wraps to this device.</p>
+      <div class="callout callout-warn" style="margin-top: 16px;">
+        <span class="callout-icon">⚠️</span>
+        <p><strong>Write it down.</strong> If you forget your passphrase, your data is unrecoverable. The server never sees your passphrase or your data. There is no reset.</p>
+      </div>
+    </div>
+
+    <h3>Returning users</h3>
+    <p>On every subsequent visit you'll see <em>"Welcome back"</em> — enter your passphrase to unlock the vault and return to the dashboard. If you need to start over on this device, tap <strong>Forget this device</strong>.</p>
+
+    <h3>First-time dashboard</h3>
+    <p>On your first login you'll see the <strong>FIRST LAUNCH</strong> panel. You have two choices:</p>
+
+    <ol class="steps">
+      <li><p><strong>Try with demo data</strong> — loads 134 mocked contributions spanning the full year. Great for exploring the wrap experience before adding your own work.</p></li>
+      <li><p><strong>Start fresh</strong> — blank slate. Start adding contributions immediately via manual entry, file import, or a connected provider.</p></li>
+    </ol>
+  </section>
+
+  <!-- ─── 02 Dashboard ───────────────────────────────────────────────── -->
+  <section class="section" id="dashboard">
+    <div class="section-header">
+      <span class="section-num">02</span>
+      <h2>The Dashboard</h2>
+    </div>
+
+    <p>The dashboard has three tabs: <span class="badge badge-ink">Dashboard</span> <span class="badge badge-ink">Wraps</span> <span class="badge badge-ink">Settings</span>.</p>
+
+    <h3>Dashboard tab</h3>
+    <p>Your contributions live here, surfaced in three visual layers:</p>
+
+    <div class="feature-grid">
+      <div class="feature-card">
+        <span class="feature-icon">📅</span>
+        <div class="feature-title">Contribution Timeline</div>
+        <p class="feature-desc">Week-by-week cards for the past twelve months. Each card shows the signal text, source kind, category badge, and weight (1–5 dots). Tap <strong>LOAD MORE WEEKS</strong> to scroll further back.</p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-icon">📊</span>
+        <div class="feature-title">Year Rhythm</div>
+        <p class="feature-desc">A 12-bar monthly histogram. The peak month glows hot red. High-activity months are purple. Baseline months are ink black.</p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-icon">🗂️</span>
+        <div class="feature-title">By Category</div>
+        <p class="feature-desc">Horizontal bar chart breaking down your contributions across Delivery, Collaboration, Mentorship, Process, and Leadership.</p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-icon">🌯</span>
+        <div class="feature-title">Ready Enough</div>
+        <p class="feature-desc">When you have enough signal, the <strong>WRAP IT 🌯</strong> card appears. One click opens the wrap generation modal.</p>
+      </div>
+    </div>
+
+    <h3>Wraps tab</h3>
+    <p>Every wrap you've generated is listed here as a card. Each card shows the mode badge (<span class="badge badge-hot">YEAR-END</span> or <span class="badge badge-lime">SNAPSHOT</span>), the date range it covered, and a <strong>view wrap →</strong> link. From here you can also tap <strong>+ Generate wrap 🌯</strong> to start a new one.</p>
+
+    <h3>Theme switcher</h3>
+    <p>Four colour palettes are available via the palette switcher in the dashboard toolbar:</p>
+    <div class="palette-row">
+      <div class="palette-card">
+        <div class="palette-swatch" style="background: linear-gradient(135deg, #FF4D2E 50%, #C6FF3B 50%);"></div>
+        <div class="palette-meta">Tomato <span style="opacity:0.5">· default</span></div>
+      </div>
+      <div class="palette-card">
+        <div class="palette-swatch" style="background: linear-gradient(135deg, #6137B3 50%, #3D68BD 50%);"></div>
+        <div class="palette-meta">GovTech SG</div>
+      </div>
+      <div class="palette-card">
+        <div class="palette-swatch" style="background: linear-gradient(135deg, #D97757 50%, #D6E4B8 50%);"></div>
+        <div class="palette-meta">Soft</div>
+      </div>
+      <div class="palette-card">
+        <div class="palette-swatch" style="background: linear-gradient(135deg, #F25C54 50%, #FFD166 50%);"></div>
+        <div class="palette-meta">Sunset</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── 03 Adding Contributions ───────────────────────────────────── -->
+  <section class="section" id="adding-contributions">
+    <div class="section-header">
+      <span class="section-num">03</span>
+      <h2>Adding Contributions</h2>
+    </div>
+
+    <p>Contributions are the signals the AI reads when generating your wrap. You can get them into the app three ways.</p>
+
+    <h3>Manual entry</h3>
+    <p>Tap the <strong>+ Manual</strong> button in the dashboard toolbar to open <em>"Add the work that systems miss."</em></p>
+    <div class="card">
+      <ol class="steps">
+        <li><p>Write a short <strong>Contribution</strong> description — a sentence or two is enough.</p></li>
+        <li><p>Set the <strong>Date</strong> (defaults to today).</p></li>
+        <li><p>Choose a <strong>Category</strong> using the quick-select badges, or pick from the dropdown.</p></li>
+        <li><p>Tap <strong>Add Contribution</strong>. The AI classifies it in the background. The modal stays open so you can add more.</p></li>
+      </ol>
+      <div class="callout callout-privacy" style="margin-top: 16px;">
+        <span class="callout-icon">🔐</span>
+        <p>Classified on save. Stored only on this device.</p>
+      </div>
+    </div>
+
+    <h3>Available categories</h3>
+    <div class="pill-row">
+      <span class="pill pill-delivery">Delivery</span>
+      <span class="pill pill-collaboration">Collaboration</span>
+      <span class="pill pill-mentorship">Mentorship</span>
+      <span class="pill pill-process">Process</span>
+      <span class="pill pill-leadership">Leadership</span>
+    </div>
+    <p style="font-size: 14px; opacity: 0.7;">Not sure which to pick? Leave it — the classifier will choose when it processes your contribution.</p>
+
+    <h3>File import</h3>
+    <p>Tap the <strong>📄 Import</strong> button to batch-import from a document. This is ideal for importing commit logs, sprint notes, or a personal brag doc.</p>
+    <div class="card">
+      <div class="card-label">Two-step import</div>
+      <ol class="steps">
+        <li><p><strong>Label</strong> — give the batch a name (e.g., <em>"Q1 commits"</em>).</p></li>
+        <li><p><strong>File</strong> — pick a <code>.txt</code>, <code>.md</code>, or <code>.docx</code> file (max 256 KB). Choose the AI model to use for extraction. Tap upload.</p></li>
+      </ol>
+      <p style="margin-top: 12px;">The file is parsed by the AI, which extracts individual contributions and queues them. A pending indicator appears in the timeline while processing runs.</p>
+    </div>
+
+    <h3>Provider sync</h3>
+    <p>Connect a provider in <strong>Settings</strong> to have contributions pulled automatically. Currently supported:</p>
+    <div class="feature-grid">
+      <div class="feature-card">
+        <span class="feature-icon">◈</span>
+        <div class="feature-title">GitLab Dedicated</div>
+        <p class="feature-desc">Syncs MRs, code reviews, and commits. Authenticate with an API token. Shows last-sync time and a manual sync trigger.</p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-icon">⬡</span>
+        <div class="feature-title">More coming</div>
+        <p class="feature-desc">GitHub, Jira, Slack, and Confluence integrations are in the pipeline. File import covers all of these in the meantime.</p>
+      </div>
+    </div>
+
+    <div class="callout callout-tip">
+      <span class="callout-icon">💡</span>
+      <p><strong>Weight matters.</strong> Each contribution has a weight from 1–5, set by the classifier. High-weight contributions (4–5) appear in the Highlight Reel and Identity slides. If something important was under-weighted, add a manual entry with more descriptive signal text.</p>
+    </div>
+  </section>
+
+  <!-- ─── 04 Generating a Wrap ──────────────────────────────────────── -->
+  <section class="section" id="generating-a-wrap">
+    <div class="section-header">
+      <span class="section-num">04</span>
+      <h2>Generating a Wrap</h2>
+    </div>
+
+    <p>When you're ready, tap <strong>Generate Wrap</strong> or <strong>WRAP IT 🌯</strong>. The modal is titled <em>"Pick the lens for this story."</em></p>
+
+    <h3>Choose a mode</h3>
+    <div class="mode-grid">
+      <div class="mode-card mode-snapshot">
+        <div class="mode-label">Mode A</div>
+        <div class="mode-title">Snapshot</div>
+        <div class="mode-detail">
+          <strong>Stat-forward, personal check-in.</strong><br />
+          Pick any date range using the <strong>FROM</strong> and <strong>TO</strong> fields. Good for quarterly reviews, sprint retrospectives, or a mid-year check-in.
+        </div>
+      </div>
+      <div class="mode-card mode-yearend">
+        <div class="mode-label">Mode B</div>
+        <div class="mode-title">Year-End</div>
+        <div class="mode-detail">
+          <strong>Editorial, appraisal-ready.</strong><br />
+          Automatically locked to the full calendar year. The AI writes longer, more editorial copy — suited for performance reviews and annual recaps.
+        </div>
+      </div>
+    </div>
+
+    <h3>Choose a model</h3>
+    <p>Select from the <strong>MODEL</strong> dropdown. The available models depend on your deployment, but typically include:</p>
+    <div class="card">
+      <ul style="list-style: none; display: grid; gap: 10px;">
+        <li><code>claude-haiku-4-5</code> <span style="font-size: 13px; opacity: 0.6; margin-left: 8px;">Fast and cost-efficient. Good for most wraps.</span></li>
+        <li><code>gpt-5.5-1</code> <span style="font-size: 13px; opacity: 0.6; margin-left: 8px;">Azure Foundry. High quality for Year-End mode.</span></li>
+      </ul>
+    </div>
+
+    <h3>Generation timeline</h3>
+    <ol class="steps">
+      <li><p>Tap <strong>Generate</strong> (bottom right, hot red).</p></li>
+      <li><p>The modal shows <em>"Generating your wrap… ~20 seconds."</em> Ten slide prompts run in parallel on the server.</p></li>
+      <li><p>If the service is busy, you'll see a <em>"Queued"</em> status with a <strong>View status →</strong> link.</p></li>
+      <li><p>Once done, your wrap is encrypted and saved locally. The app navigates to the wrap viewer automatically.</p></li>
+    </ol>
+
+    <div class="callout callout-privacy">
+      <span class="callout-icon">🔐</span>
+      <p>Your contributions are sent to the AI proxy <strong>without identifiers</strong> — no user IDs, no names, no external IDs. The result comes back and is stored encrypted on this device.</p>
+    </div>
+  </section>
+
+  <!-- ─── 05 Your Slides ─────────────────────────────────────────────── -->
+  <section class="section" id="your-slides">
+    <div class="section-header">
+      <span class="section-num">05</span>
+      <h2>Your Slides</h2>
+    </div>
+
+    <p>Every wrap contains up to 10 slides. Each slide targets a specific dimension of your work, using only the contributions that are most relevant to it.</p>
+
+    <p>Wraps are displayed in two formats — <strong>Desktop</strong> (16:9, auto-advancing every 6 seconds) and <strong>Phone</strong> (vertical, swipe-friendly). Navigation arrows let you move forward and back at your own pace.</p>
+
+    <div class="slide-grid">
+      <div class="slide-card slide-launches">
+        <div class="slide-num">01</div>
+        <div class="slide-name">Launches Shipped</div>
+        <p class="slide-desc">Major outcomes that crossed the finish line. Counts only high-weight delivery contributions.</p>
+      </div>
+      <div class="slide-card slide-velocity">
+        <div class="slide-num">02</div>
+        <div class="slide-name">Velocity</div>
+        <p class="slide-desc">Throughput — how much you moved, and how consistently.</p>
+      </div>
+      <div class="slide-card slide-crossteam">
+        <div class="slide-num">03</div>
+        <div class="slide-name">Cross-Team Impact</div>
+        <p class="slide-desc">Reviews written, blockers cleared, teams helped. Collaboration and unblocking signal.</p>
+      </div>
+      <div class="slide-card slide-deepwork">
+        <div class="slide-num">04</div>
+        <div class="slide-name">Deep Work Streak</div>
+        <p class="slide-desc">Sustained focus periods — stretches of delivery and process without context switching.</p>
+      </div>
+      <div class="slide-card slide-mentorship">
+        <div class="slide-num">05</div>
+        <div class="slide-name">Mentorship</div>
+        <p class="slide-desc">Time invested in helping teammates grow. Draws from mentorship-tagged contributions.</p>
+      </div>
+      <div class="slide-card slide-initiative">
+        <div class="slide-num">06</div>
+        <div class="slide-name">Initiative</div>
+        <p class="slide-desc">Self-started work: things nobody asked for that you shipped anyway.</p>
+      </div>
+      <div class="slide-card slide-collab">
+        <div class="slide-num">07</div>
+        <div class="slide-name">Collaboration Style</div>
+        <p class="slide-desc">How you work with others — async habits, communication patterns, documentation.</p>
+      </div>
+      <div class="slide-card slide-consistency">
+        <div class="slide-num">08</div>
+        <div class="slide-name">Consistency</div>
+        <p class="slide-desc">Distribution of contributions across the year. No dead months, no crunch spikes.</p>
+      </div>
+      <div class="slide-card slide-highlight">
+        <div class="slide-num">09</div>
+        <div class="slide-name">Highlight Reel</div>
+        <p class="slide-desc">Your three defining moments — the highest-weight contributions from across all categories.</p>
+      </div>
+      <div class="slide-card slide-identity">
+        <div class="slide-num">10</div>
+        <div class="slide-name">Identity</div>
+        <p class="slide-desc">The synthesis slide. The AI names your signature style based on your top five contributions.</p>
+      </div>
+    </div>
+
+    <div class="callout callout-tip" style="margin-top: 32px;">
+      <span class="callout-icon">💡</span>
+      <p>A slide won't appear if there isn't enough signal for it. A wrap with strong delivery contributions but no mentorship will simply skip the Mentorship slide. More contributions = more slides.</p>
+    </div>
+  </section>
+
+  <!-- ─── 06 Settings ────────────────────────────────────────────────── -->
+  <section class="section" id="settings">
+    <div class="section-header">
+      <span class="section-num">06</span>
+      <h2>Settings &amp; Providers</h2>
+    </div>
+
+    <p>Open the <strong>Settings</strong> tab from the dashboard. The heading reads <em>"connect your tools — we watch the work you've already done. nothing manual."</em></p>
+
+    <h3>Your name</h3>
+    <p>Enter your name in the <strong>YOUR NAME</strong> field and tap <strong>Save name</strong>. This personalises the dashboard greeting and is used in wrap copy. It is stored locally — the server never sees it.</p>
+
+    <h3>Connecting providers</h3>
+    <p>The provider grid shows every available integration. Unlinked providers show a <span class="badge">+ LINK</span> badge. Connected providers show a <span class="badge badge-ink">ON</span> badge alongside <em>"● connected · X account(s)"</em> and last-sync information.</p>
+
+    <div class="card">
+      <div class="card-label">To connect a provider</div>
+      <ol class="steps">
+        <li><p>Click the provider tile to open <strong>Add Provider</strong>.</p></li>
+        <li><p>Enter your API token (for GitLab Dedicated, this is a personal access token).</p></li>
+        <li><p>Save. The provider appears as connected with an initial sync queued.</p></li>
+      </ol>
+    </div>
+
+    <h3>Leaving the preview</h3>
+    <p>The <strong>Leave preview</strong> section at the bottom of Settings lets you clear your invite session. You'll need a valid invite code to re-enter. This does not delete your encrypted data — it only ends the current authenticated session.</p>
+  </section>
+
+  <!-- ─── 07 Privacy Model ───────────────────────────────────────────── -->
+  <section class="section" id="privacy">
+    <div class="section-header">
+      <span class="section-num">07</span>
+      <h2>Privacy Model</h2>
+    </div>
+
+    <p>Wrapped for Work is local-first by design. Here's exactly what stays on your device and what leaves it.</p>
+
+    <div class="privacy-block">
+      <h3>What never leaves your device</h3>
+      <ul class="privacy-list">
+        <li>Your passphrase and encryption key — derived locally, never transmitted</li>
+        <li>Your name and profile information</li>
+        <li>Raw contribution text once classified and stored</li>
+        <li>Generated wrap content — encrypted with AES-GCM-256 in IndexedDB</li>
+        <li>External IDs, user IDs, and repository identifiers</li>
+      </ul>
+
+      <h3 style="margin-top: 28px;">What is sent to the server</h3>
+      <ul class="privacy-list">
+        <li>Contribution signal text only (no identifiers) when classifying or generating a wrap</li>
+        <li>An anonymous per-install JWT — no name, no email, no account link</li>
+        <li>File contents during a file import (stripped of metadata before sending)</li>
+      </ul>
+    </div>
+
+    <h3>Encryption specifics</h3>
+    <div class="card">
+      <ul style="list-style: none; display: grid; gap: 10px;">
+        <li><strong>Algorithm:</strong> AES-GCM-256</li>
+        <li><strong>Key derivation:</strong> PBKDF2-SHA-256, 600,000 iterations, 16-byte device salt</li>
+        <li><strong>Key storage:</strong> Memory only — cleared on tab hide, 15-minute idle, and page unload</li>
+        <li><strong>At rest:</strong> Each IndexedDB record stores <code>{ iv, ct }</code> — opaque without the key</li>
+      </ul>
+    </div>
+
+    <div class="callout callout-warn" style="margin-top: 24px;">
+      <span class="callout-icon">⚠️</span>
+      <p>Your browser's storage can be evicted under disk pressure. Enable persistent storage when prompted (<em>"Allow this site to store data on your device"</em>) to guard against eviction. The app calls <code>navigator.storage.persist()</code> during unlock.</p>
+    </div>
+  </section>
+
+</main>
+
+<!-- ─── Footer ─────────────────────────────────────────────────────────── -->
+<footer>
+  <img src="/logo.png" alt="Wrapped for Work" />
+  <p>Wrapped for Work · Private Preview</p>
+  <p>User Guide · 2026</p>
+</footer>
+
+</body>
+</html>
