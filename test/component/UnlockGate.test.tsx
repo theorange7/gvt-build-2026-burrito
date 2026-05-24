@@ -1,11 +1,11 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { UnlockGate } from '@/components/unlock/UnlockGate';
 import { hasActiveKey, lock } from '@/lib/local-store/crypto';
 import { addContribution } from '@/lib/local-store/contributions';
-import { db } from '@/lib/local-store/db';
+import { clearSessionId, db, setSessionId } from '@/lib/local-store/db';
 import { loadTestKey } from '../setup/key';
 import { SAMPLE_CONTRIBUTIONS } from '../fixtures/contributions';
 
@@ -20,8 +20,23 @@ function renderGate() {
   );
 }
 
+// Simulate an already-validated invite session so tests bypass the invite gate
+// and go straight to the passphrase setup / unlock screen.
+// NOTE: clearSessionId is intentionally deferred to afterAll so the global
+// afterEach (which clears DB tables) still operates on the test-session DB,
+// not the default DB. Calling clearSessionId in afterEach would reset _instance
+// before the global teardown runs, causing salt written in one test to leak
+// into the next.
+beforeEach(() => {
+  setSessionId('test-session');
+});
+
 afterEach(() => {
   lock();
+});
+
+afterAll(() => {
+  clearSessionId();
 });
 
 describe('<UnlockGate />', () => {

@@ -83,8 +83,12 @@
       const SYS_W = 700, SYS_H = 730;
 
       // Auth Service
-      const AUTH_X = 600, AUTH_Y = 310;
-      const AUTH_W = 200, AUTH_H = 140;
+      const AUTH_X = 600, AUTH_Y = 270;
+      const AUTH_W = 200, AUTH_H = 130;
+
+      // inviteCodes Table (Azure Table Storage — NEW)
+      const IC_X = 600, IC_Y = 414;
+      const IC_W = 200, IC_H = 88;
 
       // Backend Services boundary
       const BACK_X = 840, BACK_Y = 130;
@@ -237,12 +241,13 @@
           title: "Auth Service [Gateway]",
           color: C4.auth.sub,
           items: [
+            ["🎟️ Invite Code Gate", "POST /auth/register validates invite code against Azure Table Storage (inviteCodes). Falls back to INVITE_CODES env var if table not configured. Stamps usedAt on first use."],
             ["🔐 Token Validation", "Verifies Bearer tokens on every inbound request before passing to any service"],
             ["🗺️ Route Dispatcher", "Inspects path prefix — routes /wrap, /classify, /queue, /compose, /import to correct downstream"],
             ["🚦 Rate Limiting", "Per-client throttling to protect backend services"],
             ["📋 Audit Log", "All auth decisions logged for compliance and debugging"],
           ],
-          note: "Single entry point. No backend service or Composer is reachable without passing through Auth.",
+          note: "Single entry point. Invite code checked at /auth/register; per-install JWT issued on success. Each invite code gets its own isolated IndexedDB on the client (wrapped-for-work-{slug}).",
         },
         backend: {
           title: "Backend Services [Azure Container Apps]",
@@ -353,6 +358,12 @@
   ${Arrow({ x1: ADAPTER_X + ADAPTER_W, y1: AUTH_Y + AUTH_H/2,
             x2: AUTH_X, y2: AUTH_Y + AUTH_H/2,
             label: "JSON contract" })}
+  ${Arrow({ x1: AUTH_X + AUTH_W, y1: AUTH_Y + AUTH_H - 18,
+            x2: IC_X + IC_W, y2: IC_Y + 18,
+            cx1: AUTH_X + AUTH_W + 36, cy1: AUTH_Y + AUTH_H - 18,
+            cx2: IC_X + IC_W + 36, cy2: IC_Y + 18,
+            label: "validate code",
+            lx: IC_X + IC_W + 64, ly: (AUTH_Y + AUTH_H + IC_Y)/2 })}
   ${Arrow({ x1: AUTH_X + AUTH_W, y1: AUTH_Y + 22,
             x2: WRAP_X, y2: WRAP_Y + 28,
             cx1: AUTH_X + AUTH_W + 22, cy1: AUTH_Y + 18,
@@ -430,7 +441,7 @@
           desc: "Pre-classification before upload" })}
   ${Box({ x: COMP_X, y: COMP4_Y, w: COMP_W, h: COMP_H, type: "component",
           label: "Personal Vault", tech: "IndexedDB",
-          desc: "Encrypted local contribution store" })}
+          desc: "Per-invite-code encrypted store\n(wrapped-for-work-{slug})" })}
   ${Box({ x: COMP_X, y: COMP5_Y, w: COMP_W, h: COMP_H, type: "component",
           label: "File Import Panel", tech: "UI component",
           desc: "Two-step modal: label → file + egress disclosure · POST /import" })}
@@ -444,12 +455,17 @@
   <!-- Auth Service + GATEWAY badge -->
   ${Box({ x: AUTH_X, y: AUTH_Y, w: AUTH_W, h: AUTH_H, type: "auth",
           label: "Auth Service", tech: "Azure API Management",
-          desc: "Token validation · Route dispatch\nAll traffic enters here first",
+          desc: "Invite-code gate · Token validation\nRoute dispatch · All traffic enters here first",
           active: panel === 'auth', onClick: 'auth' })}
   <g style="pointer-events:none">
     <rect x="${AUTH_X + AUTH_W - 64}" y="${AUTH_Y + 4}" width="58" height="14" rx="7" fill="#0D5C45" stroke="#5FD9B0" stroke-width="0.8"/>
     <text x="${AUTH_X + AUTH_W - 35}" y="${AUTH_Y + 14}" font-family="${MONO}" font-weight="bold" font-size="8" fill="#5FD9B0" text-anchor="middle">GATEWAY</text>
   </g>
+
+  <!-- inviteCodes Table (NEW) -->
+  ${Box({ x: IC_X, y: IC_Y, w: IC_W, h: IC_H, type: "storage",
+          label: "inviteCodes Table", tech: "Azure Table Storage",
+          desc: "PartitionKey: invite · RowKey: code\nactive · usedAt · createdAt" })}
 
   <!-- Backend components -->
   ${Box({ x: WRAP_X, y: WRAP_Y, w: WRAP_W, h: WRAP_H, type: "container",
@@ -533,7 +549,7 @@
       function render() {
         container.innerHTML = `
           ${buildSvg()}
-          <div class="hint">Click Contribution Sources · Auth Service · Backend Services boundary · Composer · Blob: Shareable · LLM Providers to expand details</div>
+          <div class="hint">Click Contribution Sources · Auth Service (includes Invite Code Gate) · Backend Services boundary · Composer · Blob: Shareable · LLM Providers to expand details</div>
           ${buildPanel()}
         `;
 

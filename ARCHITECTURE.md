@@ -4,12 +4,14 @@
 
 A local-first Next.js app backed by a separately deployed Azure Functions
 service. User contribution data lives in IndexedDB on the device, encrypted
-with a passphrase-derived AES-GCM key. The client calls the Functions backend
-via a per-install Bearer JWT; the backend classifies contributions and runs
-async wrap generation (enqueue → Service Bus → worker → Table Storage result).
-The wrap experience is composed from ten parallel slice prompts. The shipping
-target for v2 is a Tauri 2 macOS shell that pins data to disk and uses the OS
-Keychain.
+with a passphrase-derived AES-GCM key. Access is gated by an invite code
+validated against Azure Table Storage; each invite code gets its own isolated
+IndexedDB so multiple users on the same device never share data. The client
+calls the Functions backend via a per-install Bearer JWT; the backend
+classifies contributions and runs async wrap generation (enqueue → Service Bus
+→ worker → Table Storage result). The wrap experience is composed from ten
+parallel slice prompts. The shipping target for v2 is a Tauri 2 macOS shell
+that pins data to disk and uses the OS Keychain.
 
 ## System diagram
 
@@ -18,14 +20,22 @@ Keychain.
 │                                                               │
 │  React UI (Next.js App Router)                                │
 │   │                                                           │
-│   ├── UnlockGate ──► crypto.deriveKey(passphrase, salt) ──┐   │
-│   │                                                       ▼   │
-│   │                                                 in-mem KEY│
+│   ├── UnlockGate                                              │
+│   │    ├── [no session] ──► InviteGate                        │
+│   │    │     └── POST /auth/register (inviteCode)             │
+│   │    │           ├── 403 → show error                       │
+│   │    │           └── 200 → setSessionId(code)               │
+│   │    │                 └── DB scoped to invite-code slug     │
+│   │    │                     (localStorage: burrito:session)  │
+│   │    ├── [session, no salt] ──► PassphraseSetup             │
+│   │    └── [session + salt] ──► PassphraseUnlock              │
+│   │          └── crypto.deriveKey(passphrase, salt) ──► KEY   │
 │   │                                                       │   │
 │   ├── DashboardShell ──► useContributions ──► local-store     │
 │   │                                              │            │
 │   │                                              ▼            │
-│   │                                         Dexie / IDB       │
+│   │                              Dexie / IDB (per-invite-code)│
+│   │                        wrapped-for-work-{invite-code-slug}│
 │   │                                  ┌─────────┴──────────┐   │
 │   │                                  │  contributions     │   │
 │   │                                  │  wraps             │   │
@@ -47,7 +57,13 @@ Keychain.
 │  POST /classify   ──► classify() ──► LLM                      │
 │  POST /wrap       ──► createJobRow ──► Service Bus enqueue    │
 │  GET  /wrap/{id}  ──► read wrapJobs Table Storage             │
-│  POST /auth/register ──► sign per-install JWT                 │
+│  POST /auth/register                                          │
+│    ├── isInviteCodesTableConfigured()?                        │
+│    │    ├── yes → isInviteCodeValid(code)                     │
+│    │    │          ├── lookup inviteCodes Table Storage        │
+│    │    │          └── stamp usedAt on first use              │
+│    │    └── no  → validateInviteCode(INVITE_CODES env var)    │
+│    └── sign per-install JWT                                   │
 │                                                               │
 │  [Service Bus trigger]                                        │
 │  wrapWorker ──► generateWrap() ──► 10 × createSlice           │
@@ -61,6 +77,9 @@ Keychain.
         ▼                ▼                  ▼
  api.anthropic.com  *.services.ai.azure.com  Azure Service Bus
                                              Azure Table Storage
+                                              ├── wrapJobs
+                                              ├── wrapResults
+                                              └── inviteCodes
 ```
 
 ## Trust boundaries
@@ -193,8 +212,42 @@ wraps:         'id, mode, createdAt'
 meta:          'key'
 ```
 
-`meta` stores `kdfSalt` (Uint8Array), `seeded` (boolean),
-`passphraseHint` (optional string).
+`meta` stores:
+
+| Key                | Type           | Notes                                                   |
+|--------------------|----------------|---------------------------------------------------------|
+| `kdfSalt`          | Uint8Array     | 16-byte device-local salt for PBKDF2                    |
+| `seeded`           | boolean        | Whether seed contributions have been loaded             |
+| `passphraseHint`   | string?        | Optional advisory hint; never used for recovery         |
+| `inviteValidated`  | boolean        | Set after a valid invite code is accepted               |
+| `wrapInstallToken` | InstallToken   | Per-install JWT + expiry, stored after invite gate      |
+
+### Per-invite-code DB isolation
+
+The Dexie database name is derived from the invite code stored in
+`localStorage` under the key `burrito:session`:
+
+```
+wrapped-for-work                    ← default (no session / open access)
+wrapped-for-work-burrito-alice-01   ← invite code BURRITO-ALICE-01
+wrapped-for-work-burrito-bob-02     ← invite code BURRITO-BOB-02
+```
+
+`setSessionId(code)` writes to `localStorage` and resets the Dexie singleton.
+`clearSessionId()` removes the key and resets the singleton (used by "Leave
+preview"). Different invite-code sessions on the same device are fully
+isolated — they never share contributions, wraps, or encryption keys.
+
+### inviteCodes Table Storage schema
+
+| Column       | Type    | Notes                                               |
+|--------------|---------|-----------------------------------------------------|
+| PartitionKey | string  | Always `invite`                                     |
+| RowKey       | string  | The invite code (e.g. `BURRITO-ALICE-01`)           |
+| active       | boolean | `false` to revoke without deleting                  |
+| label        | string? | Optional human-readable description                 |
+| createdAt    | string  | ISO timestamp set when the code was created         |
+| usedAt       | string? | ISO timestamp stamped on first successful validation |
 
 ## Tauri shell (v2 distribution)
 
@@ -303,6 +356,8 @@ See `src-tauri/README.md` for the full setup and release runbook.
 | `AZURE_TABLES_ENDPOINT`                  | Table Storage account endpoint.                                                |
 | `AZURE_TABLES_JOBS`                      | Table name for job rows. Default `wrapJobs`.                                   |
 | `AZURE_TABLES_RESULTS`                   | Table name for result rows. Default `wrapResults`.                             |
+| `AZURE_TABLES_INVITE_CODES`              | Table name for invite codes. When set, takes priority over `INVITE_CODES`. Default `inviteCodes`. |
+| `INVITE_CODES`                           | Comma-separated static invite code list. Fallback when `AZURE_TABLES_INVITE_CODES` is unset. Omit both for open access. |
 | `WRAP_MAX_CONCURRENCY`                   | Global in-flight cap (default `8`).                                            |
 | `WRAP_PER_INSTALL_LIMIT`                 | Per-install in-flight cap (default `1`).                                       |
 | `WRAP_RESULT_TTL_HOURS`                  | Hours before an unclaimed result is swept (default `24`).                      |

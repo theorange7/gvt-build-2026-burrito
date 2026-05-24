@@ -99,6 +99,13 @@ async function goToSettings(page: Page) {
 }
 
 test.describe('GitLab provider — settings + sync flow', () => {
+  test.beforeEach(async ({ page }) => {
+    // Bypass the invite gate: per-session DB is named 'wrapped-for-work-e2e-session'.
+    await page.addInitScript(() => {
+      localStorage.setItem('burrito:session', 'e2e-session');
+    });
+  });
+
   test('rejects http:// instance URL inline (HTTPS-only)', async ({ page }) => {
     await mockGitLab(page);
     await unlock(page);
@@ -138,7 +145,7 @@ test.describe('GitLab provider — settings + sync flow', () => {
     await expect(page.getByText(/Last sync: \+\s*[1-9]\d*\s*new/i)).toBeVisible({ timeout: 10_000 });
 
     const stored = await page.evaluate(async () => {
-      const open = indexedDB.open('wrapped-for-work');
+      const open = indexedDB.open('wrapped-for-work-e2e-session');
       const idb: IDBDatabase = await new Promise((resolve, reject) => {
         open.onsuccess = () => resolve(open.result);
         open.onerror = () => reject(open.error);
@@ -174,7 +181,7 @@ test.describe('GitLab provider — settings + sync flow', () => {
           req.onerror = () => reject(req.error);
         });
       }
-      const open = indexedDB.open('wrapped-for-work');
+      const open = indexedDB.open('wrapped-for-work-e2e-session');
       const db: IDBDatabase = await new Promise((resolve, reject) => {
         open.onsuccess = () => resolve(open.result);
         open.onerror = () => reject(open.error);

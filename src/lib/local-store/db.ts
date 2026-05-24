@@ -84,6 +84,51 @@ export type PendingWrapRow = {
   lastCheckedAt?: string;
 };
 
+// ---------------------------------------------------------------------------
+// Session-scoped database naming
+// ---------------------------------------------------------------------------
+
+/** localStorage key that stores the active invite-code session slug. */
+export const SESSION_STORAGE_KEY = 'burrito:session';
+
+/**
+ * Returns the IndexedDB name for the current session.
+ * Each invite code gets its own isolated database so users on the same
+ * device never share contributions, wraps, or identities.
+ */
+export function getDbName(): string {
+  if (typeof window === 'undefined') return 'wrapped-for-work';
+  const session = localStorage.getItem(SESSION_STORAGE_KEY);
+  if (!session) return 'wrapped-for-work';
+  const slug = session
+    .toLowerCase()
+    .replace(/[^a-z0-9-]/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+  return slug ? `wrapped-for-work-${slug}` : 'wrapped-for-work';
+}
+
+/**
+ * Activate a session for the given invite code.
+ * Writes the code to localStorage and resets the DB singleton so the next
+ * call to db() opens the correct per-session database.
+ */
+export function setSessionId(code: string): void {
+  localStorage.setItem(SESSION_STORAGE_KEY, code);
+  _instance = null;
+}
+
+/**
+ * Clear the active session (called on "leave preview").
+ * Resets the DB singleton so subsequent db() calls use the default database.
+ */
+export function clearSessionId(): void {
+  localStorage.removeItem(SESSION_STORAGE_KEY);
+  _instance = null;
+}
+
+// ---------------------------------------------------------------------------
+
 export class WrappedDB extends Dexie {
   contributions!: Table<ContributionRow, string>;
   wraps!: Table<WrapRow, string>;
@@ -95,7 +140,7 @@ export class WrappedDB extends Dexie {
   pendingWrapRequests!: Table<PendingWrapRow, string>;
 
   constructor() {
-    super('wrapped-for-work');
+    super(getDbName());
     this.version(1).stores({
       contributions: 'id, occurredAt, category, source, weight, createdAt',
       wraps: 'id, mode, createdAt',
@@ -135,4 +180,5 @@ export const META_KEYS = {
   seeded: 'seeded',
   passphraseHint: 'passphraseHint',
   wrapInstallToken: 'wrapInstallToken',
+  inviteValidated: 'inviteValidated',
 } as const;

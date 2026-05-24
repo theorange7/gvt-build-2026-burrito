@@ -1,6 +1,13 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('encrypted-at-rest in IndexedDB', () => {
+  test.beforeEach(async ({ page }) => {
+    // Bypass the invite gate: per-session DB is named 'wrapped-for-work-e2e-session'.
+    await page.addInitScript(() => {
+      localStorage.setItem('burrito:session', 'e2e-session');
+    });
+  });
+
   test('contribution signals are not stored as plaintext strings', async ({ page }) => {
     await page.goto('/dashboard');
     const fields = page.getByPlaceholder(/passphrase/i);
@@ -11,7 +18,7 @@ test.describe('encrypted-at-rest in IndexedDB', () => {
     await expect(page.getByText(/total signals/i)).toBeVisible({ timeout: 15_000 });
 
     const rawRow = await page.evaluate(async () => {
-      const open = indexedDB.open('wrapped-for-work');
+      const open = indexedDB.open('wrapped-for-work-e2e-session');
       const db: IDBDatabase = await new Promise((resolve, reject) => {
         open.onsuccess = () => resolve(open.result);
         open.onerror = () => reject(open.error);

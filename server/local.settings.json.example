@@ -6,6 +6,7 @@
 
     "AzureWebJobsStorage": "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;QueueEndpoint=http://127.0.0.1:10001/devstoreaccount1;TableEndpoint=http://127.0.0.1:10002/devstoreaccount1;",
 
+    "INVITE_CODES": "*",
     "WRAP_JWT_SECRET": "change-me-locally-and-store-in-keyvault-elsewhere",
     "WRAP_MAX_CONCURRENCY": "8",
     "WRAP_PER_INSTALL_LIMIT": "1",
@@ -25,7 +26,9 @@
 
     "AZURE_TABLES_CONNECTION_STRING": "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;TableEndpoint=http://127.0.0.1:10002/devstoreaccount1;",
     "AZURE_TABLES_JOBS": "wrapJobs",
-    "AZURE_TABLES_RESULTS": "wrapResults"
+    "AZURE_TABLES_RESULTS": "wrapResults",
+    "_comment_AZURE_TABLES_INVITE_CODES": "Optional. Set to the table name (e.g. 'inviteCodes') to enable dynamic invite-code management via Azure Table Storage. When set, the INVITE_CODES env-var is ignored. Leave empty to fall back to INVITE_CODES list. For private preview deployments, set INVITE_CODES to a comma-separated list of valid codes; set INVITE_CODES=* only for local dev (skips gate entirely).",
+    "AZURE_TABLES_INVITE_CODES": ""
   },
   "Host": {
     "CORS": "http://localhost:3000,tauri://localhost",

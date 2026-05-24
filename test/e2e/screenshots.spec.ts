@@ -315,6 +315,14 @@ async function goToSettings(page: Page) {
 test.use({ viewport: { width: 1440, height: 900 } });
 
 test.describe('UI screenshots', () => {
+  test.beforeEach(async ({ page }) => {
+    // Bypass the invite gate: per-session DB is named 'wrapped-for-work-e2e-session'.
+    // addInitScript fires before every page.goto() in the test, including inside unlock/reUnlock.
+    await page.addInitScript(() => {
+      localStorage.setItem('burrito:session', 'e2e-session');
+    });
+  });
+
   test('01 — passphrase setup gate', async ({ page }) => {
     await page.goto('/dashboard');
     await expect(page.getByRole('heading', { name: /create your passphrase/i })).toBeVisible();
