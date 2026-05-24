@@ -20,9 +20,10 @@ function clientIp(request: HttpRequest): string {
 
 export function validateInviteCode(code: string): boolean {
   const raw = process.env.INVITE_CODES;
-  if (!raw) return true; // no gate configured — open access
+  if (raw === '*') return true; // explicit open-access opt-in
+  if (!raw) return false; // unconfigured → deny (fail closed)
   const allowed = raw.split(',').map((c) => c.trim()).filter(Boolean);
-  if (allowed.length === 0) return true;
+  if (allowed.length === 0) return false;
   return allowed.includes(code.trim());
 }
 
@@ -31,8 +32,9 @@ export function validateInviteCode(code: string): boolean {
  *
  * Priority:
  *   1. Azure Tables (AZURE_TABLES_INVITE_CODES configured) — dynamic, no redeploy needed
- *   2. INVITE_CODES env-var list — static fallback for local dev / CI
- *   3. Neither configured → open access (returns true)
+ *   2. INVITE_CODES=* — explicit open-access opt-in (handled before this call)
+ *   3. INVITE_CODES=<list> — static comma-separated allowlist
+ *   4. Unconfigured → deny (fail closed)
  */
 async function isCodePermitted(code: string): Promise<boolean> {
   if (isInviteCodesTableConfigured()) {
@@ -45,9 +47,12 @@ export async function authRegister(
   request: HttpRequest,
   context: InvocationContext,
 ): Promise<HttpResponseInit> {
-  // Invite code gate — active when Azure Tables or INVITE_CODES env var is configured.
-  const gateActive = isInviteCodesTableConfigured() || Boolean(process.env.INVITE_CODES);
-  if (gateActive) {
+  // Invite code gate.
+  // Explicit open-access opt-out: set INVITE_CODES=* to skip validation (local dev only).
+  // Any other configuration (Azure Tables or a non-wildcard INVITE_CODES list) validates
+  // the submitted code. Unconfigured defaults to deny — fail closed for private preview.
+  const openAccess = process.env.INVITE_CODES === '*';
+  if (!openAccess) {
     let body: Record<string, unknown> = {};
     try {
       body = (await request.json()) as Record<string, unknown>;

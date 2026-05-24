@@ -40,15 +40,21 @@ function makeContext(): InvocationContext {
 // ---------------------------------------------------------------------------
 
 describe('validateInviteCode', () => {
-  it('returns true when INVITE_CODES is not set (open access)', () => {
+  it('returns false when INVITE_CODES is not set (fail closed)', () => {
     delete process.env.INVITE_CODES;
-    expect(validateInviteCode('anything')).toBe(true);
-    expect(validateInviteCode('')).toBe(true);
+    expect(validateInviteCode('anything')).toBe(false);
+    expect(validateInviteCode('')).toBe(false);
   });
 
-  it('returns true when INVITE_CODES is an empty string (open access)', () => {
+  it('returns false when INVITE_CODES is an empty string (fail closed)', () => {
     process.env.INVITE_CODES = '';
+    expect(validateInviteCode('anything')).toBe(false);
+  });
+
+  it('returns true when INVITE_CODES=* (explicit open-access opt-in)', () => {
+    process.env.INVITE_CODES = '*';
     expect(validateInviteCode('anything')).toBe(true);
+    expect(validateInviteCode('')).toBe(true);
   });
 
   it('returns true for a valid code', () => {
@@ -75,9 +81,9 @@ describe('validateInviteCode', () => {
     expect(validateInviteCode('  BURRITO-ALICE-01  ')).toBe(true);
   });
 
-  it('returns true when INVITE_CODES has only whitespace entries', () => {
+  it('returns false when INVITE_CODES has only whitespace entries (no valid codes)', () => {
     process.env.INVITE_CODES = ' , , ';
-    expect(validateInviteCode('anything')).toBe(true);
+    expect(validateInviteCode('anything')).toBe(false);
   });
 });
 
@@ -86,11 +92,17 @@ describe('validateInviteCode', () => {
 // ---------------------------------------------------------------------------
 
 describe('authRegister — invite gate', () => {
-  it('issues a token when INVITE_CODES is not set (no gate)', async () => {
-    delete process.env.INVITE_CODES;
+  it('issues a token when INVITE_CODES=* (explicit open access)', async () => {
+    process.env.INVITE_CODES = '*';
     const res = await authRegister(makeRequest(), makeContext());
     expect(res.status).toBe(200);
     expect((res.jsonBody as Record<string, unknown>).token).toBeTruthy();
+  });
+
+  it('returns 403 when INVITE_CODES is not set (fail closed)', async () => {
+    delete process.env.INVITE_CODES;
+    const res = await authRegister(makeRequest(), makeContext());
+    expect(res.status).toBe(403);
   });
 
   it('returns 403 when INVITE_CODES is set and no code is provided', async () => {
