@@ -9,6 +9,63 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+#### App logo (PR #73)
+
+The app now has a logo asset wired into the UI.
+
+#### Tauri 2 macOS shell bootstrap — `src-tauri/` Rust crate (Spec 40, PR #71)
+
+The Rust crate for the Tauri 2 native macOS distribution target is now present
+and buildable. Key design decisions:
+
+- **No invoke handlers in v1.** Crypto, storage, and AI remain in JavaScript and
+  load from the same Next.js static export the browser build produces. The Tauri
+  shell is a thin WebView wrapper only.
+- **`scripts/tauri-csp.mjs`** replaces the stale `scripts/tauri-export.mjs`
+  (which referenced `src/app/api/`, a directory removed when the backend moved to
+  `server/`). The new script templates `tauri.conf.json` from
+  `tauri.conf.template.json`, substituting the Functions origin from
+  `NEXT_PUBLIC_WRAP_API_URL` (defaults to `http://localhost:7071`; wildcards
+  rejected). The CSP `connect-src` now names the configured Functions host
+  instead of the old `https://api.anthropic.com`.
+- **`pnpm tauri:check`** runs `cargo check` without opening a window; CI gains a
+  paths-filter-gated job so the crate can't silently break.
+- **Tauri invariant tests** added in `test/unit/tauri-invariants.test.ts`: no
+  static `@tauri-apps/api/*` imports under `src/`, `endpoint.ts` keeps throwing
+  when `NEXT_PUBLIC_WRAP_API_URL` is unset (no implicit Tauri fallback), and the
+  `TAURI=1` → `output: 'export'` mapping in `next.config.mjs` is preserved.
+
+#### Private-preview invite-code gate and per-session data isolation (PR #69)
+
+Wrapped for Work now supports a private-preview mode gated by invite codes:
+
+- **Backend gate**: `POST /auth/register` validates the supplied code against the
+  `INVITE_CODES` env var (comma-separated list). Unknown codes receive a 403.
+  When `INVITE_CODES` is unset the endpoint remains open, so existing
+  deployments are unaffected.
+- **Invite gate UI**: `UnlockGate` shows an invite-code form on first launch.
+  The code is validated against the backend before the passphrase setup/unlock
+  screen appears.
+- **Per-session IndexedDB isolation**: each invite code gets its own IndexedDB
+  database (`wrapped-for-work-{code-slug}`). Users on the same device sharing
+  codes never see each other's contributions, wraps, or identities.
+- **Leave preview**: both the dashboard settings tab and `/dashboard/settings`
+  have a "Leave preview" button that clears the session and returns to the
+  invite-code gate.
+
+The backend gate is covered by 14 new unit tests in
+`server/test/unit/authRegister.test.ts`.
+
+#### Desktop variant layout for SlideFrame — landscape 1440×760 (PR #49)
+
+`SlideFrame` now accepts a `variant` prop (`'phone' | 'desktop'`). The desktop
+variant renders slides at 1440×760 in a two-column landscape layout: stat on the
+left, headline/body/supporting copy on the right, with typography scaled up
+significantly (headline 64 px, stat up to 200 px). `WrapDesktop` was updated to
+use the new desktop layout and recalculates `SLIDE_SCALE` to fit within the
+available canvas. All 10 slice components were updated to accept and forward the
+`variant` prop.
+
 #### OpenAPI 3.1 spec for the server API at `docs/openapi.yaml`
 
 Every HTTP endpoint the server exposes — `POST /auth/register`,
@@ -196,6 +253,21 @@ highlighted so you can correct them before they are saved.
 
 ### Fixed
 
+#### ManualInputForm wired to `classify()`, wrap players forwarded real slices (PR #30)
+
+Two wiring bugs that caused incorrect behaviour in all environments:
+
+- `ManualInputForm` was calling `fetch('/api/classify', ...)` — a relative URL
+  that 404s in any deployment. The call is now routed through `classify()` from
+  `src/lib/ai/classify.ts`, which uses the configured backend URL with auth
+  headers and falls back gracefully on error.
+- `WrapExperience` was rendering `WrapDesktop` / `WrapPhone` without forwarding
+  `slices`, `mode`, or `title`, so every generated wrap showed hardcoded mock
+  data. The players now receive real props and use the `src/components/slides/`
+  components as the single rendering path for both mobile and desktop views.
+
+Component tests added: 7 cases for `ManualInputForm` and 4 for `WrapViewer`.
+
 #### Polling no longer drops a wrap when the store is idle-locked (Spec 01)
 
 Previously, if the IndexedDB store auto-locked while a wrap was generating,
@@ -211,6 +283,14 @@ dispatches `store-unlocked` after both first-time setup and unlock flows, so
 the poller resumes the moment the key is back in memory.
 
 ### Changed
+
+#### Pending wrap viewer restyled to match editorial theme (PR #57)
+
+The loading and pending states of the wrap viewer used a dark theme (near-black
+background, white text, soft borders) that clashed with the rest of the site's
+maximalist editorial style. They now use the same cream-paper background, 2 px
+ink borders, hard offset shadows, and Space Grotesk / JetBrains Mono typography
+as the rest of the UI.
 
 #### C4 architecture diagram moved into `docs/`
 
