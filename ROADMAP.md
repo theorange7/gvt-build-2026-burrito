@@ -41,6 +41,18 @@ What we're working on now
 ### Wrap polling continuity
 The poller pauses when the IndexedDB store auto-locks and resumes the moment the passphrase is re-entered, so a wrap in flight is never lost to an idle lock.
 
+### Automated UAT suite (Playwright) — PR #38
+End-to-end flows covering the golden path — invite gate, contribution import, wrap generation, and slide review — running in CI against a local Functions host.
+
+### Shareable highlight wheels — PR #58
+Export a public bundle of selected slides — with a revocation link — so recipients can view a curated recap without needing an account.
+
+### GitLab sync throttling and call visibility — PR #60
+Respect GitLab's secondary rate-limit headers and surface the active provider in the contribution feed so users can see which sync is running.
+
+### Tauri icon and v0.1.0-alpha-tauri — PR #76
+Spiral logo wired in as the macOS app icon; version bumped across `tauri.conf.json` and `Cargo.toml` to mark the first distributable alpha build.
+
 ### UI and functionality overhaul
 Full design handoff from the Claude Design brief — revised visual language, file upload as a primary recap entry point, and consolidated navigation. Largest single surface change to date.
 
@@ -61,9 +73,6 @@ Stop hitting the server while the tab is backgrounded or the device is offline. 
 ### Graceful "wrap not on this device"
 When a wrap job was completed on a different device, show a clear explanation rather than a silent failure or a stale loading state.
 
-### Automated UAT suite (Playwright)
-End-to-end flows covering the golden path — invite gate, contribution import, wrap generation, and slide review — running in CI against a local Functions host.
-
 ### Backend metrics and observability
 App Insights integration for wrap generation latency, slice failure rates, queue depth, and upstream LLM error codes, surfaced in Azure Monitor dashboards.
 
@@ -73,16 +82,10 @@ Signed `.app.tar.gz` artifacts and a hosted update manifest so the macOS shell c
 ### Client-side Ollama wrap generation
 Skip the queue entirely when Ollama is reachable from the browser. Includes a settings UI for the Ollama URL and a status badge showing whether the local runtime is reachable.
 
-### GitLab sync throttling and call visibility
-Respect GitLab's secondary rate-limit headers and surface the active provider in the contribution feed so users can see which sync is running.
-
 ---
 
 ## Considering
 Haven't committed to it (yet)
-
-### Shareable highlight wheels
-Export a public bundle of selected slides — with a revocation link — so recipients can view a curated recap without needing an account.
 
 ### Composer — music-synced video render service
 A render pipeline that turns a generated wrap into a short video with a synced soundtrack, exportable as an MP4.
