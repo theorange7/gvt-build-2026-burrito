@@ -36,6 +36,8 @@ test.describe('locality — data lives only on the device', () => {
     });
 
     await page.goto('/dashboard');
+    // addInitScript re-fires on this goto → session is re-set → invite gate skipped.
+    // Salt was wiped so passphrase setup form appears (not unlock).
     await expect(page.getByRole('heading', { name: /create your passphrase/i })).toBeVisible();
   });
 });

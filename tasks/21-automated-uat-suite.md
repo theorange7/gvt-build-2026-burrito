@@ -1,6 +1,6 @@
 # Spec 21 — Automated UAT suite (Playwright)
 
-**Status**: Shaped — ready to pick up
+**Status**: Done
 **Branch**: both (client test files + CI workflow)
 **Appetite**: medium (≤ 3 days)
 **Last shaped**: 2026-05-10
@@ -402,3 +402,9 @@ The spec is complete when all of the following hold:
   isn't in any example file. Add it to `server/local.settings.json.example`
   as part of this PR (`ServiceBusConnection = ""` with a comment pointing
   to Azure Portal → Service Bus → Shared Access Policies).
+
+## Done
+
+**Completed**: 2026-05-11
+**PR**: claude/spec-21-sub-agents-2BTvK
+**Summary**: Implemented all five layers of the spec. Layer 1: added `test/e2e/uat/helpers.ts` (clearStorage, setupPassphrase, unlockWithPassphrase, seedDemoData, stubBackend) and 21 UAT spec files plus `known-gaps.spec.ts` covering UAT-001 through UAT-021 in the `test/e2e/uat/` directory. Layer 2: three `test.fail()` regression signals for KG-1, KG-3, and KG-5 in `known-gaps.spec.ts`. Layer 3: all UAT tests default to `stubBackend`; full-stack scenarios gated on `UAT_FULL=1`. Layer 4: added `test:uat` and `test:uat:full` scripts to root `package.json`. Layer 5: renamed the CI playwright-report artifact to `playwright-report-e2e`; added `uat-full` workflow_dispatch job. Also fixed stale `total signals` selectors in `test/e2e/encryption.spec.ts` and `test/e2e/network-minimality.spec.ts` to `contributions caught`. Added `GET /health` Function to `server/src/functions/health.ts` and registered it in `server/src/index.ts`. Added `ServiceBusConnection` to `server/local.settings.json.example`. Notable: KG-1 is effectively already fixed in the current codebase (ManualInputForm already uses `classify()` from `src/lib/ai/classify.ts`), so the KG-1 `test.fail()` block will immediately report "unexpectedly passed" — this is the correct signal per the spec.
