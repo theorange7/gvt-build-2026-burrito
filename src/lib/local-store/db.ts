@@ -63,6 +63,11 @@ export type SyncStateRow = {
   lastError: string | null;
   iv: Uint8Array | null;
   ct: Uint8Array | null;
+  // Additive call-volume stats — undefined on rows written before spec 62.
+  callsMadeLastSync?: number;
+  eventsReceivedLastSync?: number;
+  pagesLastSync?: number;
+  lastSyncDurationMs?: number;
 };
 
 export type ImportedRangeRow = {

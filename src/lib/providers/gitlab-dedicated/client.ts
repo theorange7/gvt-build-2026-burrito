@@ -1,4 +1,4 @@
-import { ProviderAuthError, ProviderTransientError } from '../types';
+import { ProviderAuthError, ProviderRateLimitError, ProviderTransientError } from '../types';
 
 export type GitLabFetchOptions = {
   instanceUrl: string;
@@ -53,6 +53,12 @@ export async function gitlabFetch<T>(opts: GitLabFetchOptions): Promise<GitLabRe
       response.status,
     );
   }
+  if (response.status === 429) {
+    const raw = response.headers.get('Retry-After');
+    const parsed = raw !== null ? Number(raw) : NaN;
+    const retryAfterSeconds = Number.isFinite(parsed) && parsed > 0 ? parsed : 30;
+    throw new ProviderRateLimitError(`GitLab rate limit exceeded`, retryAfterSeconds);
+  }
   if (response.status >= 500) {
     throw new ProviderTransientError(
       `GitLab transient error: ${response.status}`,
@@ -74,6 +80,20 @@ export function parseScopesHeader(headers: Headers): string[] {
     .split(',')
     .map((s) => s.trim())
     .filter(Boolean);
+}
+
+export function parseRateLimitHeaders(headers: Headers): {
+  remaining: number | null;
+  resetAt: number | null;
+} {
+  const remainingRaw = headers.get('RateLimit-Remaining');
+  const resetRaw = headers.get('RateLimit-Reset');
+  const toNum = (raw: string | null): number | null => {
+    if (raw === null || raw.trim() === '') return null;
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : null;
+  };
+  return { remaining: toNum(remainingRaw), resetAt: toNum(resetRaw) };
 }
 
 export function parseNextPage(headers: Headers): number | null {
