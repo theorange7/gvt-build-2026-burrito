@@ -59,9 +59,14 @@ resource "azurerm_function_app_flex_consumption" "main" {
     AZURE_SERVICE_BUS_QUEUE_NAME                    = var.service_bus_queue_name
 
     # Table Storage
-    AZURE_TABLES_ENDPOINT = var.tables_endpoint
-    AZURE_TABLES_JOBS     = var.wrap_tables_jobs
-    AZURE_TABLES_RESULTS  = var.wrap_tables_results
+    AZURE_TABLES_ENDPOINT     = var.tables_endpoint
+    AZURE_TABLES_JOBS         = var.wrap_tables_jobs
+    AZURE_TABLES_RESULTS      = var.wrap_tables_results
+    AZURE_TABLES_SHARE_LINKS  = var.wrap_tables_share_links
+
+    # Spec 31 — share bundles in Blob Storage. Optional CDN override.
+    AZURE_BLOB_STORAGE_ACCOUNT = var.storage_account_name
+    WRAP_SHARE_BASE_URL        = var.wrap_share_base_url
 
     # Secrets via Key Vault references — Functions resolves @Microsoft.KeyVault(…) at runtime
 

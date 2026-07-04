@@ -20,6 +20,8 @@ export async function enqueueWrap(input: {
   windowStart: string;
   windowEnd: string;
   modelId?: string;
+  share?: boolean;
+  shareName?: string;
 }): Promise<EnqueueWrapResponse> {
   const payload: EnqueueWrapRequest = input;
   const response = await fetch(backendUrl('/wrap'), {

@@ -99,7 +99,8 @@ Future / new features:
 | ID | Title | Status | Branch | Appetite |
 |----|-------|--------|--------|----------|
 | 30 | Composer — music-synced video render service | Shaped — ready | composer + server + client | large |
-| 31 | Shareable highlight wheels (public bundle + revoke) | Shaped — ready | both | large |
+| 31 | Shareable highlight wheels (public bundle + revoke) | Done — 2026-05-17 (claude/implement-spec-31-OdDUF) | both | large |
+| 32 | Share-viewer visual parity with the in-app experience | Shaped — ready | both | large |
 | 40 | Tauri 2 macOS shell bootstrap | Done — 2026-05-23 (claude/spec-40-bpkpC) | client | medium |
 | 41 | Tauri auto-updater (signed `.app.tar.gz` + hosted manifest) | Shaped — ready | client | medium |
 | 50 | File-upload contribution provider | Done — 2026-05-17 (claude/implement-spec-50-ky0SM) | both | medium |

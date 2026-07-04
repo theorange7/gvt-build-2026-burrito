@@ -35,6 +35,8 @@ export function GenerateWrapModal({ open: controlledOpen, onOpenChange }: Genera
   const [windowStart, setWindowStart] = useState('2025-04-01');
   const [windowEnd, setWindowEnd] = useState('2025-06-30');
   const [modelId, setModelId] = useState<string>(DEFAULT_MODEL_ID);
+  const [share, setShare] = useState(false);
+  const [shareName, setShareName] = useState('');
   const [status, setStatus] = useState<'idle' | 'loading' | 'queued' | 'error'>('idle');
   const [jobId, setJobId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -76,6 +78,7 @@ export function GenerateWrapModal({ open: controlledOpen, onOpenChange }: Genera
 
       const newJobId = crypto.randomUUID();
 
+      const trimmedShareName = shareName.trim();
       const result = await enqueueWrap({
         jobId: newJobId,
         contributions: stripped,
@@ -83,6 +86,7 @@ export function GenerateWrapModal({ open: controlledOpen, onOpenChange }: Genera
         windowStart: start.toISOString(),
         windowEnd: end.toISOString(),
         modelId,
+        ...(share ? { share: true, ...(trimmedShareName ? { shareName: trimmedShareName } : {}) } : {}),
       });
 
       await addPendingWrap({
@@ -384,6 +388,74 @@ export function GenerateWrapModal({ open: controlledOpen, onOpenChange }: Genera
                   Anthropic models use ANTHROPIC_API_KEY. Azure Foundry options call your project&apos;s Azure OpenAI deployment of the same name via AZURE_FOUNDRY_PROJECT_ENDPOINT and DefaultAzureCredential (Entra ID). Override AZURE_FOUNDRY_API_VERSION if your deployment requires a different api-version.
                 </span>
               </label>
+
+              {/* Share toggle (spec 31) */}
+              <div style={{
+                marginTop: 20,
+                background: PAPER,
+                border: `2px solid ${INK}`,
+                borderRadius: 14,
+                padding: '16px 18px',
+              }}>
+                <label style={{ display: 'flex', alignItems: 'flex-start', gap: 12, cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={share}
+                    onChange={(event) => setShare(event.target.checked)}
+                    style={{ marginTop: 3, accentColor: HOT, width: 16, height: 16 }}
+                  />
+                  <span>
+                    <span style={{
+                      display: 'block',
+                      fontFamily: 'Space Grotesk, sans-serif',
+                      fontSize: 14,
+                      fontWeight: 600,
+                      color: INK,
+                    }}>Share this wrap with a public link</span>
+                    <span style={{
+                      display: 'block',
+                      marginTop: 4,
+                      fontFamily: 'Space Grotesk, sans-serif',
+                      fontSize: 12,
+                      color: INK,
+                      opacity: 0.6,
+                    }}>
+                      Anyone with the link will be able to view this wrap until you delete it.
+                    </span>
+                  </span>
+                </label>
+                {share ? (
+                  <label style={{ display: 'grid', gap: 6, marginTop: 14 }}>
+                    <span style={{
+                      fontFamily: 'JetBrains Mono, monospace',
+                      fontSize: 9,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.12em',
+                      color: INK,
+                      opacity: 0.55,
+                    }}>Display name (optional, max 80)</span>
+                    <input
+                      type="text"
+                      value={shareName}
+                      maxLength={80}
+                      onChange={(event) => setShareName(event.target.value)}
+                      placeholder="Wrapped for Work — 2026"
+                      style={{
+                        background: 'white',
+                        border: `2px solid ${INK}`,
+                        borderRadius: 8,
+                        padding: '10px 14px',
+                        fontFamily: 'Space Grotesk, sans-serif',
+                        fontSize: 14,
+                        color: INK,
+                        outline: 'none',
+                      }}
+                      onFocus={(e) => { e.currentTarget.style.borderColor = HOT; }}
+                      onBlur={(e) => { e.currentTarget.style.borderColor = INK; }}
+                    />
+                  </label>
+                ) : null}
+              </div>
 
               {/* Status panel */}
               <div style={{

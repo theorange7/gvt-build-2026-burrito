@@ -16,6 +16,23 @@ import {
 import { putResult } from '../queue/results';
 import { maxDeliveries } from '../queue/concurrency';
 import { safeError } from '../privacy';
+import { publishShareBundle } from '../share/publish';
+import { loadShareViewerAssets, type ShareViewerAssets } from '../share/assets';
+
+/**
+ * Memoised viewer-bundle assets. Loaded lazily on the first share publish
+ * (rather than at module init) so cold-starts that never publish a share
+ * skip the disk reads — and so module load doesn't break in environments
+ * that don't ship the dist artifacts (e.g. unit tests that never exercise
+ * `share=true`). After the first publish the cache lives for the worker
+ * lifetime; tests can rely on the underlying dist being immutable for a
+ * test run, so no reset hook is needed.
+ */
+let cachedShareViewerAssets: ShareViewerAssets | null = null;
+function getCachedShareViewerAssets(): ShareViewerAssets {
+  if (!cachedShareViewerAssets) cachedShareViewerAssets = loadShareViewerAssets();
+  return cachedShareViewerAssets;
+}
 
 function hydrateContributions(message: EnqueueWrapRequest): Contribution[] {
   return message.contributions.map((c, idx) => ({
@@ -116,7 +133,30 @@ export async function wrapWorker(message: unknown, context: InvocationContext): 
       modelId: payload.modelId,
     });
 
-    await putResult(installId, jobId, sliceContent);
+    // Publish step (spec 31). Only runs when the caller opted in — share=true.
+    // Failure here MUST NOT fail the wrap: the user still gets their result;
+    // they just don't get a share link. The publish module owns its own
+    // orphan-blob rollback if the row write fails, so the only thing left to
+    // do here is log the safe code and continue with shareSlug/shareUrl
+    // unset on the result row.
+    let share: { shareSlug: string; shareUrl: string } | undefined;
+    if (payload.share) {
+      try {
+        share = await publishShareBundle({
+          installId,
+          jobId,
+          sliceContent,
+          mode: payload.mode,
+          displayName: payload.shareName,
+          assets: getCachedShareViewerAssets(),
+        });
+      } catch (err) {
+        const safe = safeError(err);
+        context.warn('wrapWorker share publish failed', { jobId, ...safe });
+      }
+    }
+
+    await putResult(installId, jobId, sliceContent, share);
 
     // Conditional flip to complete using the ETag from the running write —
     // not a fresh read. If something else mutated the row during generation

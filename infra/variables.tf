@@ -110,6 +110,18 @@ variable "wrap_tables_results" {
   default     = "wrapResults"
 }
 
+variable "wrap_tables_share_links" {
+  description = "Azure Table Storage table name for spec 31 share-link ownership rows."
+  type        = string
+  default     = "shareLinks"
+}
+
+variable "wrap_share_base_url" {
+  description = "Optional CDN / custom-domain base URL for share bundles. Falls back to the blob storage account URL when empty."
+  type        = string
+  default     = ""
+}
+
 variable "wrap_allowed_origins" {
   description = "Comma-separated list of CORS origins the Function app permits."
   type        = string

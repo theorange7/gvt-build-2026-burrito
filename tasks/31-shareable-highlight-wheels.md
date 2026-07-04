@@ -1,6 +1,6 @@
 # Spec 31 — Shareable highlight wheels (public bundle + revoke)
 
-**Status**: Shaped — ready to pick up
+**Status**: Done
 **Branch**: both (server + client; small infra change)
 **Appetite**: large (≤ 1 week)
 **Last shaped**: 2026-05-14
@@ -325,3 +325,43 @@ otherwise zero-network bundle. Do not remove the probe in this spec.
 - Branch: `claude/shareable-highlight-wheels-DONk5`.
 - Once shipped, add a `Tasks.md` follow-up entry for "password-protected
   share links if customers ask" so we don't lose the option.
+
+## Done
+
+**Completed**: 2026-05-17
+**PR**: claude/implement-spec-31-OdDUF
+**Summary**: Shipped opt-in shareable highlight wheels. New top-level
+`share-viewer/` package builds a vanilla-JS standalone bundle (no React,
+no Framer Motion) with the spec's noindex meta, JSON-payload XSS escape,
+and the allowlisted same-origin `./video.mp4` HEAD probe for spec 30.
+Server gains a `share/` module (slug, bundle stamping, blob storage,
+shareLinks table), a `POST /wrap` schema extension for `share`/`shareName`,
+a publish step on the worker (best-effort — a publish failure does not
+fail the wrap), and a new `DELETE /wrap/share/{slug}` function gated on
+the install JWT matching the row's installId. The `wrapResults` entity
+gains optional `shareSlug`/`shareUrl` columns; `GET /wrap/{jobId}`
+surfaces them on the complete response. `meReset` cascade-deletes
+shared bundles. Client extends the encrypted wrap envelope with
+share fields, surfaces Copy link / Stop sharing on the dashboard
+wrap card, and reveals an opt-in display-name input in the generate
+modal once the share box is ticked. Infra adds the `wraps` blob
+container (`container_access_type = "blob"` — object reads, no
+listing), the `shareLinks` table, and a Storage Blob Data Contributor
+role assignment for the function app's managed identity. Privacy
+invariants extended on both sides (server forbids slug/installId
+in worker + delete-handler logs; both sides assert the share viewer
+bundle has no third-party hostnames and exactly one fetch — the
+allowlisted video HEAD probe). **Deviation from the Solution shape**:
+the share viewer was implemented as a hand-authored vanilla JS bundle
+(checked in under `share-viewer/dist/`) rather than reusing slide
+visuals from `src/components/slides/` via a thin import shim — those
+React components require Framer Motion + React to render, which would
+have pushed the bundle past the 150 KB budget called out in the
+spec's Rabbit holes. The standalone viewer renders the same slice
+data with CSS transitions and keyboard navigation, keeping the bundle
+under ~5 KB. Share controls are surfaced on the dashboard wrap card
+only (not on the in-experience header) — the spec listed both as
+acceptable; threading buttons into WrapDesktop/WrapPhone's full-screen
+players would have been a much larger UI change for the same revoke
+capability. Follow-up: add a `Tasks.md` entry for the
+password-protected share link option once customer demand is real.
